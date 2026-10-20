@@ -1,6 +1,6 @@
 // Meta Conversions API (CAPI): reenvía a Meta el evento Lead del formulario de la landing, con email y teléfono cifrados (SHA-256).
 // Variables de entorno en Vercel: META_CAPI_TOKEN (obligatoria) y META_PIXEL_ID (opcional).
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 function hash(value) {
   if (!value) return undefined;
@@ -9,7 +9,7 @@ function hash(value) {
   return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const { nombre, email, telefono, nivel, event_id, fbp, fbc, url } = body;
     // Solo se acepta como origen del evento una URL de nuestro dominio
-    const sourceUrl = typeof url === 'string' && /^https://(www.)?raceupkc.com//.test(url) ? url : 'https://raceupkc.com/';
+    const sourceUrl = typeof url === 'string' && /^https:\/\/(www\.)?raceupkc\.com\//.test(url) ? url : 'https://raceupkc.com/';
 
     if (!email && !telefono) {
       res.status(400).json({ error: 'missing_contact_data' });
@@ -81,4 +81,4 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
   }
-};
+}

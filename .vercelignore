@@ -1,0 +1,5 @@
+qa/
+tools/hero/out/
+.claude/
+node_modules/
+dist/
