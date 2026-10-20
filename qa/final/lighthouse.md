@@ -9,3 +9,12 @@
 
 Lighthouse 13.5 en modo móvil (Moto G Power simulado, 4G lento), sobre la compilación local (`astro preview`), 20/10/2026.
 El SEO de la landing es bajo a propósito: lleva noindex.
+
+## Producción (https://raceupkc.com, 20/10/2026)
+
+| Página | Rendimiento | Accesibilidad | Buenas prácticas | SEO | LCP | TBT |
+|---|---|---|---|---|---|---|
+| `/` | 100 | 100 | 100 | 100 | 1.1 s | 10 ms |
+| `/acceso-t2-c7e594` | 97 | 92 | 100 | 58 (noindex) | 1.8 s | 170 ms |
+
+Pixel en producción: `PageView` al entrar; tras pulsar Rechazar no se envía ningún evento más.
