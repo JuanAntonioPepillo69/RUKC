@@ -1,0 +1,47 @@
+---
+import Doc from '../layouts/Doc.astro';
+import { SITE } from '../config/site';
+---
+<Doc
+  title="Política de privacidad | RUKC"
+  description="Cómo trata RUKC los datos personales de quienes visitan la web, solicitan información o compiten en la liga."
+  eyebrow="Legal"
+  heading="Política de privacidad"
+  updated="20 de octubre de 2026"
+>
+  <h2>Responsable</h2>
+  <p><strong>RUKC (RaceUp Karting Championship)</strong>. Contacto para cualquier cuestión sobre tus datos: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+
+  <h2>Qué datos tratamos y para qué</h2>
+  <h3>Si solicitas información desde el formulario</h3>
+  <ul>
+    <li><strong>Datos:</strong> nombre, número de WhatsApp, correo electrónico y si has competido antes.</li>
+    <li><strong>Finalidad:</strong> contactarte por WhatsApp o correo sobre la Temporada 2 y tu posible inscripción.</li>
+    <li><strong>Base jurídica:</strong> tu consentimiento, que das al marcar la casilla del formulario. Puedes retirarlo cuando quieras.</li>
+    <li><strong>Medición de anuncios:</strong> si no has rechazado las cookies, el correo y el teléfono se envían cifrados (SHA-256) a Meta mediante su API de conversiones, para medir la eficacia de nuestros anuncios. Consulta la <a href="/cookies">política de cookies</a>.</li>
+    <li><strong>Conservación:</strong> hasta 12 meses si no llegas a inscribirte, o hasta que pidas su supresión.</li>
+  </ul>
+
+  <h3>Si te inscribes y compites</h3>
+  <p>Los datos de inscripción, pesaje, comunicaciones, imagen y resultados se tratan según el Título XI del <a href="/reglamento#titulo-xi-proteccion-de-datos-rgpd">reglamento</a> (Arts. 59 a 62), que detalla cada finalidad, su base jurídica y su plazo de conservación. El peso solo se trata con tu consentimiento explícito y nunca se publica.</p>
+
+  <h3>Resultados y clasificaciones publicados</h3>
+  <p>En la web publicamos el dorsal y el nombre con el que compites, tus resultados, puntos, menciones y saldo de puntos de penalización (Arts. 45 y 50 del reglamento). La base jurídica es el interés legítimo en informar de la competición. Puedes oponerte escribiéndonos y limitaremos tu aparición identificable.</p>
+
+  <h3>Navegación por la web</h3>
+  <p>La web no usa cookies de analítica. Solo la página de campaña usa el píxel de Meta, como se explica en la <a href="/cookies">política de cookies</a>. Nuestro proveedor de alojamiento registra datos técnicos de las visitas, como la dirección IP, por seguridad.</p>
+
+  <h2>Destinatarios</h2>
+  <ul>
+    <li><strong>Meta Platforms</strong> (píxel, API de conversiones y WhatsApp), como responsable o encargado según el servicio.</li>
+    <li><strong>Vercel</strong>, alojamiento de la web, como encargado del tratamiento.</li>
+    <li>El <strong>circuito</strong> de cada prueba, con los datos necesarios para correr, si te inscribes (Art. 59).</li>
+  </ul>
+  <p>Algunos de estos proveedores están en Estados Unidos. Las transferencias se amparan en el Marco de Privacidad de Datos UE-EE. UU. o en cláusulas contractuales tipo aprobadas por la Comisión Europea.</p>
+
+  <h2>Tus derechos</h2>
+  <p>Puedes pedir el acceso, la rectificación, la supresión, la oposición, la limitación y la portabilidad de tus datos, y retirar tu consentimiento, escribiendo a <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Si crees que no hemos atendido bien tu solicitud, puedes reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">www.aepd.es</a>).</p>
+
+  <h2>Menores</h2>
+  <p>Los menores de 14 años necesitan el consentimiento de su padre, madre o tutor. La imagen de menores no se usa con fines publicitarios (Arts. 60 y 61 del reglamento).</p>
+</Doc>

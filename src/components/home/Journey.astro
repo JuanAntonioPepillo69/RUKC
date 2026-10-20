@@ -1,0 +1,142 @@
+---
+import { Picture } from 'astro:assets';
+import salida from '../../assets/t1/salida-paralelo.jpg';
+import boxes from '../../assets/t1/boxes-karts.jpg';
+import podioMijas from '../../assets/t1/podio-mijas.jpg';
+import parrilla from '../../assets/t1/parrilla-comisario.jpg';
+import pianos from '../../assets/t1/pianos.jpg';
+import publico from '../../assets/t1/publico.jpg';
+import podio from '../../assets/t1/podio-banner.jpg';
+
+const strip = [
+  { src: salida, alt: 'Cuatro karts en paralelo tras la salida, Temporada 1' },
+  { src: podioMijas, alt: 'Podio de RUKC con la bandera de la liga en Karting Mijas' },
+  { src: boxes, alt: 'Karts alineados en el pit lane antes de una manga' },
+  { src: pianos, alt: 'Karts trazando una curva junto a los pianos' },
+  { src: publico, alt: 'Público siguiendo la carrera desde la grada' },
+  { src: parrilla, alt: 'Parrilla formada con un comisario en pista' },
+  { src: podio, alt: 'Podio de una ronda de la Temporada 1' },
+];
+
+const t1 = [
+  { n: 6, l: 'carreras' },
+  { n: 6, l: 'circuitos' },
+  { n: 60, l: 'pilotos' },
+  { n: 130, l: 'inscripciones' },
+];
+const t1Circuits = ['Campillos', 'Mijas', 'Kart&Fun Málaga', 'Kart&Fun Estepona', 'Karting del Sol'];
+
+const t2 = [
+  { n: 8, l: 'rondas' },
+  { n: 5, l: 'circuitos' },
+  { n: 2, l: 'categorías' },
+];
+// Todo sale del reglamento v1.1
+const nuevo = [
+  { t: 'Ligeros y Pesados', d: 'Dos categorías por peso, cada una con su campeonato. Lastre hasta el mínimo de cada una.' },
+  { t: 'Comité de Comisarios', d: 'Tres miembros que resuelven las apelaciones. La Dirección de Carrera decide en pista.' },
+  { t: 'Pasaporte de penalización', d: 'Las infracciones suman puntos. Con 12 en un año, una ronda fuera.' },
+  { t: 'Resultados en la web', d: 'Clasificación de cada carrera y del campeonato publicadas tras cada ronda.' },
+];
+---
+<section class="section journey" id="recorrido" aria-labelledby="journey-title">
+  <div class="wrap journey__head">
+    <p class="eyebrow" data-reveal>El recorrido</p>
+    <h2 class="h2" id="journey-title" data-reveal>De la primera parrilla <em>a la Temporada 2.</em></h2>
+  </div>
+
+  <!-- Temporada 1 -->
+  <div class="wrap season">
+    <div class="season__tag" data-reveal><span>T1</span>Lo que ya hicimos</div>
+    <dl class="stats">
+      {t1.map((s, i) => (
+        <div class="stat" data-reveal data-reveal-delay={i * 0.06}>
+          <dt class="stat__n tnum" data-count={s.n}>{s.n}</dt>
+          <dd>{s.l}</dd>
+        </div>
+      ))}
+    </dl>
+    <ul class="chips" data-reveal aria-label="Circuitos de la Temporada 1">
+      {t1Circuits.map((c) => <li>{c}</li>)}
+    </ul>
+  </div>
+
+  <div class="strip" aria-label="Fotos de la Temporada 1">
+    <ul class="strip__track" data-drift="-18">
+      {strip.map((p) => (
+        <li>
+          <Picture src={p.src} formats={['avif', 'webp']} widths={[360, 560, 840]} sizes="(max-width: 700px) 72vw, 30vw" alt={p.alt} loading="lazy" />
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <!-- Temporada 2 -->
+  <div class="wrap season season--t2">
+    <div class="season__tag season__tag--gold" data-reveal><span>T2</span>Lo que viene</div>
+    <dl class="stats stats--3">
+      {t2.map((s, i) => (
+        <div class="stat" data-reveal data-reveal-delay={i * 0.06}>
+          <dt class="stat__n stat__n--gold tnum" data-count={s.n}>{s.n}</dt>
+          <dd>{s.l}</dd>
+        </div>
+      ))}
+    </dl>
+    <ul class="news">
+      {nuevo.map((x, i) => (
+        <li data-reveal data-reveal-delay={i * 0.06}>
+          <h3>{x.t}</h3>
+          <p>{x.d}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .journey { background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 50%, var(--ink) 100%); overflow: hidden; }
+  .journey__head { display: grid; gap: 18px; margin-bottom: clamp(48px, 7vw, 88px); }
+  .journey__head .h2 { max-width: 16ch; }
+
+  .season { display: grid; gap: 28px; }
+  .season__tag { display: inline-flex; align-items: center; gap: 12px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--muted); }
+  .season__tag span {
+    display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
+    border: 1px solid rgba(246, 243, 236, 0.25); font-weight: 900; font-size: 16px; color: var(--paper);
+  }
+  .season__tag--gold span { border: 0; background: var(--grad-gold); color: #0a0a0b; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; border-top: 1px solid var(--line); }
+  .stats--3 { grid-template-columns: repeat(3, 1fr); }
+  .stat { padding: 22px 0 6px; }
+  .stat + .stat { padding-left: 24px; border-left: 1px solid var(--line); }
+  .stat__n { font-family: var(--font-display); font-weight: 900; font-size: clamp(56px, 8vw, 120px); line-height: 0.9; letter-spacing: -0.04em; }
+  .stat__n--gold { background: var(--grad-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat dd { margin: 10px 0 0; color: var(--muted); font-size: 15px; letter-spacing: 0.02em; }
+
+  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips li { font-family: var(--font-display); font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); color: #d8d4cb; }
+
+  .strip { margin-block: clamp(48px, 7vw, 96px); }
+  .strip__track { list-style: none; margin: 0; padding: 0 var(--gutter); display: flex; gap: 16px; width: max-content; }
+  .strip__track li { width: clamp(260px, 30vw, 460px); flex: none; border-radius: 14px; overflow: hidden; }
+  .strip__track li:nth-child(even) { margin-top: 48px; }
+  .strip__track :global(img) { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; filter: saturate(0.85) contrast(1.05); }
+
+  .news { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .news li { padding: 24px; border-radius: 14px; background: rgba(246, 243, 236, 0.03); border: 1px solid var(--line); }
+  .news h3 { font-size: 20px; font-weight: 800; }
+  .news p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats--3 { grid-template-columns: repeat(3, 1fr); }
+    .stat + .stat { padding-left: 16px; }
+    .stats:not(.stats--3) .stat:nth-child(3) { padding-left: 0; border-left: 0; }
+    .news { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 560px) {
+    .news { grid-template-columns: 1fr; }
+    .stats--3 .stat__n { font-size: 52px; }
+  }
+</style>

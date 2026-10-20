@@ -1,0 +1,35 @@
+---
+import Doc from '../layouts/Doc.astro';
+import { SITE } from '../config/site';
+---
+<Doc
+  title="Aviso legal | RUKC"
+  description="Aviso legal del sitio web de RUKC, RaceUp Karting Championship."
+  eyebrow="Legal"
+  heading="Aviso legal"
+  updated="20 de octubre de 2026"
+>
+  <h2>Titular del sitio web</h2>
+  <p>Este sitio web, <strong>raceupkc.com</strong>, pertenece a <strong>RUKC (RaceUp Karting Championship)</strong>, organizadora de la liga de karting de alquiler del mismo nombre.</p>
+  <p>Contacto: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+
+  <h2>Objeto</h2>
+  <p>El sitio informa sobre la liga, su calendario, sus resultados y su reglamento, y permite solicitar información para participar. RUKC es una competición privada de karting de alquiler, no federada (Art. 3 del reglamento).</p>
+
+  <h2>Condiciones de uso</h2>
+  <p>Al navegar por el sitio aceptas usarlo de forma lícita y no dañar su funcionamiento ni el de los servicios que lo soportan. Los resultados y clasificaciones se publican tras cada ronda y son provisionales hasta que se resuelvan las reclamaciones y apelaciones previstas en el reglamento (Arts. 31 bis, 51 a 53).</p>
+
+  <h2>Propiedad intelectual e industrial</h2>
+  <p>El nombre RUKC, el logotipo, los textos, las fotografías, los vídeos y el diseño del sitio pertenecen a RUKC o se usan con autorización de sus titulares. No se pueden reproducir ni usar con fines distintos a la consulta personal sin autorización previa (Art. 58 del reglamento).</p>
+
+  <h2>Enlaces</h2>
+  <p>El sitio puede enlazar a servicios de terceros, como WhatsApp o Instagram. RUKC no controla su contenido ni sus condiciones, que se rigen por las de cada servicio.</p>
+
+  <h2>Responsabilidad</h2>
+  <p>RUKC procura que la información sea correcta y esté actualizada, pero puede contener errores o cambiar sin previo aviso, en especial el calendario. Las comunicaciones oficiales de la liga se hacen por los canales indicados en el reglamento (Art. 4).</p>
+
+  <h2>Legislación aplicable</h2>
+  <p>Este aviso se rige por la legislación española. Para cualquier controversia, las partes se someten a los juzgados y tribunales que correspondan según la normativa de consumidores y usuarios.</p>
+
+  <p>Más información: <a href="/privacidad">Política de privacidad</a> · <a href="/cookies">Política de cookies</a>.</p>
+</Doc>

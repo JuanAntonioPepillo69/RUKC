@@ -1,0 +1,6 @@
+# La landing de anuncios no se bloquea aquí a propósito: lleva noindex (meta y cabecera)
+# y Google tiene que poder leerlo. Simplemente no está enlazada ni en el sitemap.
+User-agent: *
+Allow: /
+
+Sitemap: https://raceupkc.com/sitemap.xml

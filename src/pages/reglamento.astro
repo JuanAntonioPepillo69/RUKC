@@ -1,0 +1,30 @@
+---
+// El contenido sale de tools/reglamento/*.docx (npm run reglamento)
+import Doc from '../layouts/Doc.astro';
+import html from '../content/reglamento.html?raw';
+import meta from '../content/reglamento-toc.json';
+---
+<Doc
+  title="Reglamento deportivo | RUKC"
+  description="Reglamento deportivo oficial de RUKC, modalidad Sprint: categorías por peso, lastre, formato de carrera, sanciones, sistema de puntos y protección de datos."
+  eyebrow="Documento vinculante · Versión 1.1"
+  heading="Reglamento deportivo"
+>
+  <p slot="head" class="lead" style="margin:0">Modalidad Sprint. Vigente desde la Temporada 2 (2026-2027). La inscripción en cualquier prueba implica su aceptación íntegra.</p>
+  <aside slot="aside" class="toc">
+    <p class="toc__title">Contenido</p>
+    <ol>{meta.toc.map((x) => <li><a href={`#${x.id}`}>{x.t}</a></li>)}</ol>
+  </aside>
+  <Fragment set:html={html} />
+</Doc>
+
+<style>
+  .toc { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow: auto; font-size: 14px; }
+  .toc__title { margin: 0 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .toc a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--paper); background: rgba(246, 243, 236, 0.05); }
+  @media (max-width: 960px) {
+    .toc { position: static; max-height: none; padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+  }
+</style>

@@ -1,0 +1,48 @@
+---
+import { SITE, whatsappUrl } from '../config/site';
+const year = new Date().getFullYear();
+---
+<footer class="ftr">
+  <div class="wrap ftr__grid">
+    <div class="ftr__brand">
+      <img src="/brand/escudo-192.webp" width="72" height="70" alt="" loading="lazy" />
+      <p><strong>RUKC</strong><br />RaceUp Karting Championship</p>
+      <p class="muted">La liga de karting de alquiler de la Costa del Sol.</p>
+    </div>
+    <nav class="ftr__col" aria-label="Secciones">
+      <p class="ftr__h">La liga</p>
+      <a href="/">Inicio</a>
+      <a href="/season-2">Temporada 2</a>
+      <a href="/reglamento">Reglamento</a>
+    </nav>
+    <div class="ftr__col">
+      <p class="ftr__h">Contacto</p>
+      <a href={whatsappUrl()} target="_blank" rel="noopener">WhatsApp</a>
+      <a href={SITE.instagram} target="_blank" rel="noopener">Instagram @RUKC2026</a>
+      <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
+    </div>
+    <nav class="ftr__col" aria-label="Legal">
+      <p class="ftr__h">Legal</p>
+      <a href="/aviso-legal">Aviso legal</a>
+      <a href="/privacidad">Privacidad</a>
+      <a href="/cookies">Cookies</a>
+    </nav>
+  </div>
+  <div class="wrap ftr__bottom">
+    <span>© {year} RUKC · RaceUp Karting Championship</span>
+    <span>Competición privada de karting de alquiler, no federada.</span>
+  </div>
+</footer>
+
+<style>
+  .ftr { border-top: 1px solid var(--line); padding-block: 64px 28px; background: var(--ink); font-size: 15px; }
+  .ftr__grid { display: grid; grid-template-columns: 1.4fr 1fr 1.2fr 1fr; gap: 32px; }
+  .ftr__brand p { margin: 14px 0 0; }
+  .ftr__brand strong { font-family: var(--font-display); font-weight: 900; letter-spacing: 0.06em; }
+  .ftr__col { display: grid; align-content: start; gap: 10px; }
+  .ftr__h { margin: 0 0 4px; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+  .ftr__col a { color: var(--muted); text-decoration: none; transition: color 0.2s; overflow-wrap: anywhere; }
+  .ftr__col a:hover { color: var(--paper); }
+  .ftr__bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 13px; }
+  @media (max-width: 900px) { .ftr__grid { grid-template-columns: 1fr 1fr; } .ftr__brand { grid-column: 1 / -1; } }
+</style>

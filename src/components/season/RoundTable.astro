@@ -1,0 +1,65 @@
+---
+// Clasificación de una ronda en una categoría
+import type { FilaRonda } from '../../lib/season/points';
+import { pts } from '../../lib/season/format';
+
+interface Props { filas: FilaRonda[]; categoria: string; mitad?: boolean }
+const { filas, categoria, mitad = false } = Astro.props;
+const conSalida = filas.some((f) => f.salida !== null);
+const conVuelta = filas.some((f) => f.mejorVuelta);
+---
+{filas.length === 0 ? (
+  <p class="empty">Sin resultados en {categoria}.</p>
+) : (
+  <div class="table-scroll" tabindex="0" role="region" aria-label={`Resultados ${categoria}`}>
+    <table class="table">
+      <caption class="sr-only">Clasificación de la ronda, categoría {categoria}</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="c-pos">Pos</th>
+          <th scope="col" class="c-name">Piloto</th>
+          {conSalida && <th scope="col" class="c-num hide-sm">Salida</th>}
+          {conVuelta && <th scope="col" class="c-num hide-sm">Mejor vuelta</th>}
+          <th scope="col" class="c-num hide-sm">{mitad ? 'Pos. (½)' : 'Posición'}</th>
+          <th scope="col" class="c-bonus hide-sm">Bonus</th>
+          <th scope="col" class="c-total">Puntos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((f) => (
+          <tr class:list={[{ 'is-podium': f.pos !== null && f.pos <= 3, 'is-out': f.pos === null }]}>
+            <td class="c-pos tnum">{f.pos !== null ? <span class={`pos pos-${f.pos}`}>{f.pos}</span> : <span class="out">{f.dsq ? 'DSQ' : 'NC'}</span>}</td>
+            <th scope="row" class="c-name"><span class="dorsal tnum">#{f.dorsal}</span> {f.nombre}
+              {(f.bonus.pole + f.bonus.vueltaRapida + f.bonus.constancia) > 0 && (
+                <span class="show-sm bonus-inline">
+                  {f.bonus.pole > 0 && <span class="badge">Pole</span>}
+                  {f.bonus.vueltaRapida > 0 && <span class="badge">VR</span>}
+                  {f.bonus.constancia > 0 && <span class="badge">Const.</span>}
+                </span>
+              )}
+            </th>
+            {conSalida && <td class="c-num tnum hide-sm">{f.salida ?? '–'}{f.remontada !== null && f.remontada > 0 && <span class="gain"> +{f.remontada}</span>}</td>}
+            {conVuelta && <td class="c-num tnum hide-sm">{f.mejorVuelta || '–'}</td>}
+            <td class="c-num tnum hide-sm">{pts(f.puntosPosicion)}</td>
+            <td class="c-bonus hide-sm">
+              {f.bonus.pole > 0 && <span class="badge" title="Pole position, +2">Pole</span>}
+              {f.bonus.vueltaRapida > 0 && <span class="badge" title="Vuelta rápida, +2">VR</span>}
+              {f.bonus.constancia > 0 && <span class="badge" title="Constancia, +3">Const.</span>}
+            </td>
+            <td class="c-total tnum">{pts(f.puntos)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+<style>
+  .c-bonus { white-space: nowrap; }
+  .bonus-inline { margin-top: 6px; }
+  .badge { display: inline-block; margin-right: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #0a0a0b; background: var(--grad-gold); }
+  .out { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); }
+  .gain { color: #6fd38a; font-size: 13px; }
+  tr.is-out { color: var(--muted); }
+  .empty { color: var(--muted); padding: 24px 0; }
+</style>

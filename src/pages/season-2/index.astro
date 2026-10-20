@@ -1,0 +1,258 @@
+---
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import DemoBanner from '../../components/season/DemoBanner.astro';
+import Standings from '../../components/season/Standings.astro';
+import Mentions from '../../components/season/Mentions.astro';
+import { cargarTemporada } from '../../lib/season/load';
+import { campeonato, clasificacionRonda, mencionesRonda, pasaporte, rondasPuntuables, PUNTOS_POSICION, BONUS, PP_LIMITE } from '../../lib/season/points';
+import { CATEGORIAS } from '../../lib/season/types';
+import { ESTADO, fechaCorta, fechaLarga, urlRonda } from '../../lib/season/format';
+import { whatsappUrl } from '../../config/site';
+
+const t = await cargarTemporada();
+const disputadas = t.rondas.filter((r) => r.estado === 'disputada');
+const puntuables = rondasPuntuables(t);
+const tablas = CATEGORIAS.map((c) => ({ categoria: c, ...campeonato(t, c) }));
+const pp = pasaporte(t);
+const ultimas = [...disputadas].reverse();
+const ganadores = (ronda: number) => CATEGORIAS.map((c) => ({ c, f: clasificacionRonda(t, ronda, c).find((x) => x.pos === 1) }));
+const primera = t.rondas[0], ultima = t.rondas[t.rondas.length - 1];
+const hoy = new Date().toISOString().slice(0, 10);
+const proxima = t.rondas.find((r) => r.fecha >= hoy && r.estado !== 'cancelada');
+---
+<Base
+  title="Temporada 2 | Calendario, resultados y clasificación | RUKC"
+  description="Calendario de las ocho rondas de la Temporada 2 de RUKC, resultados de cada carrera, clasificación de Ligeros y Pesados, menciones especiales y puntos de penalización."
+>
+  <Header />
+  <main class="season">
+    <section class="wrap season__head">
+      <p class="eyebrow">RaceUp Karting Championship · 2026-2027</p>
+      <h1 class="h2">Temporada 2</h1>
+      {primera && ultima && (
+        <p class="lead">{t.rondas.length} rondas en sábado, del {fechaLarga(primera.fecha)} al {fechaLarga(ultima.fecha)}. Dos campeonatos: Ligeros y Pesados.</p>
+      )}
+      <ul class="kpis">
+        <li><strong class="tnum">{disputadas.length}<span>/{t.rondas.length}</span></strong> rondas disputadas</li>
+        <li data-next-round><strong>{proxima ? `R${proxima.ronda} · ${fechaCorta(proxima.fecha)} · ${proxima.circuito}` : 'Temporada terminada'}</strong> próxima ronda</li>
+      </ul>
+      <DemoBanner t={t} />
+      <nav class="subnav" aria-label="Secciones de la temporada">
+        <a href="#calendario">Calendario</a>
+        <a href="#clasificacion">Clasificación</a>
+        <a href="#rondas">Rondas</a>
+        <a href="#menciones">Menciones</a>
+        <a href="#penalizaciones">Penalizaciones</a>
+      </nav>
+    </section>
+
+    <!-- Calendario -->
+    <section class="wrap block" id="calendario" aria-labelledby="h-cal">
+      <h2 class="block__title" id="h-cal">Calendario</h2>
+      <ol class="rounds" data-calendar>
+        {t.rondas.map((r) => (
+          <li class:list={['round', `is-${r.estado}`]} data-date={r.fecha} data-label={`R${r.ronda} · ${fechaCorta(r.fecha)} · ${r.circuito}`}>
+            <span class="round__n tnum">R{r.ronda}</span>
+            <span class="round__date tnum">{fechaCorta(r.fecha)}</span>
+            <span class="round__place">{r.circuito}</span>
+            {r.nota && <span class="round__note">{r.nota}</span>}
+            <span class="round__state">{ESTADO[r.estado]}</span>
+            {r.estado === 'disputada' && <a class="round__link" href={urlRonda(r)}>Resultados<span class="sr-only"> de la ronda {r.ronda}</span></a>}
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <!-- Clasificación -->
+    <section class="wrap block" id="clasificacion" aria-labelledby="h-std">
+      <div class="block__head">
+        <h2 class="block__title" id="h-std">Clasificación</h2>
+        <div class="tabs" role="tablist" aria-label="Categoría">
+          {tablas.map((x, i) => (
+            <button type="button" role="tab" id={`tab-${x.categoria}`} aria-controls={`panel-${x.categoria}`} aria-selected={i === 0 ? 'true' : 'false'}>{x.categoria}</button>
+          ))}
+        </div>
+      </div>
+      {tablas.map((x) => (
+        <div class:list={['panel', { 'is-on': x.categoria === tablas[0].categoria }]} role="tabpanel" id={`panel-${x.categoria}`} aria-labelledby={`tab-${x.categoria}`}>
+          <h3 class="panel__title">{x.categoria} <span>{x.categoria === 'Ligeros' ? '70 a 80 kg' : '85 kg o más'}</span></h3>
+          <Standings filas={x.filas} rondas={x.rondas} descarte={x.descarte} categoria={x.categoria} />
+        </div>
+      ))}
+      <details class="rules">
+        <summary>Cómo se puntúa</summary>
+        <div class="rules__body">
+          <p>Puntos por posición en la clasificación de cada categoría: {PUNTOS_POSICION.map((p, i) => `${i + 1}.º ${p}`).join(' · ')} · del 11.º en adelante, 1 punto por finalizar.</p>
+          <p>Bonificaciones: pole +{BONUS.pole}, vuelta rápida +{BONUS.vueltaRapida}, constancia +{BONUS.constancia}. Con bandera roja entre el 25 % y el 75 % de la carrera, mitad de puntos y sin vuelta rápida ni constancia.</p>
+          <p>Al terminar la temporada se descarta la ronda con menos puntos de cada piloto (no se puede descartar una descalificación). No hay clasificación general absoluta: cada categoría tiene su campeón. Reglamento, Arts. 46 a 50.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- Rondas disputadas -->
+    <section class="wrap block" id="rondas" aria-labelledby="h-rounds">
+      <h2 class="block__title" id="h-rounds">Rondas disputadas</h2>
+      {ultimas.length === 0 ? <p class="muted">Todavía no se ha disputado ninguna ronda.</p> : (
+        <ul class="results">
+          {ultimas.map((r) => (
+            <li>
+              <a href={urlRonda(r)} class="result">
+                <span class="result__n tnum">R{r.ronda}</span>
+                <span class="result__meta"><strong>{r.circuito}</strong><span>{fechaLarga(r.fecha)}{r.carrera !== 'completa' && ` · ${r.carrera === 'mitad' ? 'mitad de puntos' : 'carrera nula'}`}</span></span>
+                <span class="result__win">
+                  {ganadores(r.ronda).map(({ c, f }) => f && <span><em>{c}</em> #{f.dorsal} {f.nombre}</span>)}
+                </span>
+                <span class="result__go" aria-hidden="true">Ver</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+
+    <!-- Menciones -->
+    <section class="wrap block" id="menciones" aria-labelledby="h-men">
+      <h2 class="block__title" id="h-men">Menciones especiales</h2>
+      {ultimas.length === 0 ? <p class="muted">Aparecerán después de la primera ronda.</p> : ultimas.map((r) => (
+        <div class="men-round">
+          <h3 class="men-round__title">R{r.ronda} · {r.circuito}</h3>
+          <Mentions menciones={mencionesRonda(t, r.ronda)} />
+        </div>
+      ))}
+    </section>
+
+    <!-- Penalizaciones -->
+    <section class="wrap block" id="penalizaciones" aria-labelledby="h-pp">
+      <h2 class="block__title" id="h-pp">Puntos de penalización</h2>
+      <p class="muted block__lead">Saldo de los últimos 12 meses por dorsal. Al llegar a {PP_LIMITE}, el piloto queda suspendido para la siguiente prueba (Art. 45).</p>
+      {pp.length === 0 ? <p class="muted">Ningún piloto tiene puntos de penalización.</p> : (
+        <div class="table-scroll pp">
+          <table class="table">
+            <caption class="sr-only">Puntos de penalización por piloto</caption>
+            <thead><tr><th scope="col">Piloto</th><th scope="col" class="c-num">PP</th></tr></thead>
+            <tbody>
+              {pp.map((p) => (
+                <tr><th scope="row"><span class="dorsal tnum">#{p.dorsal}</span> {p.nombre}</th><td class="c-total tnum">{p.pp}{p.alcanzaLimite && <span class="limit"> Suspensión</span>}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+
+    <section class="wrap block cta-line">
+      <p>¿Quieres correr la siguiente ronda?</p>
+      <a class="btn btn--gold" href={whatsappUrl()} target="_blank" rel="noopener">Reservar por WhatsApp</a>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  // Próxima ronda según la fecha del navegador
+  const today = new Date().toISOString().slice(0, 10);
+  const items = [...document.querySelectorAll<HTMLElement>('[data-calendar] li')];
+  const next = items.find((li) => li.dataset.date! >= today && !li.classList.contains('is-cancelada'));
+  if (next) {
+    next.classList.add('is-next');
+    const kpi = document.querySelector('[data-next-round] strong');
+    if (kpi) kpi.textContent = next.dataset.label!;
+  }
+
+  // Pestañas de categoría (sin JS se ven las dos tablas)
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const show = (tab: HTMLButtonElement) => {
+    for (const t of tabs) {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')!)!.classList.toggle('is-on', on);
+    }
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(t));
+    t.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      n.focus(); show(n);
+    });
+  });
+  if (tabs[0]) show(tabs[0]);
+</script>
+
+<style>
+  .season { padding-top: 120px; }
+  .season__head { display: grid; gap: 18px; }
+  .season__head .lead { margin: 0; }
+  .kpis { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px 40px; color: var(--muted); font-size: 14px; }
+  .kpis li { display: grid; gap: 2px; }
+  .kpis strong { font-family: var(--font-display); font-weight: 900; font-size: 26px; color: var(--paper); }
+  .kpis strong span { color: var(--muted-2); font-size: 18px; }
+  .subnav { position: sticky; top: 64px; z-index: 5; display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; margin-top: 8px; background: var(--ink); scrollbar-width: none; }
+  .subnav a { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: 14px; font-weight: 600; text-decoration: none; color: #d8d4cb; }
+  .subnav a:hover { border-color: var(--gold); color: var(--paper); }
+
+  .block { padding-top: clamp(56px, 7vw, 88px); scroll-margin-top: 120px; }
+  .block__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .block__title { font-size: clamp(28px, 3.4vw, 44px); font-weight: 900; letter-spacing: -0.03em; margin-bottom: 20px; }
+  .block__head .block__title { margin-bottom: 0; }
+  .block__lead { margin: -8px 0 20px; }
+
+  .rounds { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .round { position: relative; display: grid; gap: 4px; align-content: start; padding: 18px; min-height: 150px; border-radius: 14px; border: 1px solid var(--line); background: rgba(246, 243, 236, 0.02); }
+  .round__n { font-family: var(--font-display); font-weight: 900; font-size: 15px; color: var(--gold); }
+  .round__date { font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+  .round__place { color: #d8d4cb; }
+  .round__note { font-size: 13px; color: var(--gold-hi); }
+  .round__state { margin-top: auto; padding-top: 10px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-2); }
+  .round__link { font-size: 13px; font-weight: 700; color: var(--gold-hi); }
+  .round.is-disputada { background: rgba(212, 166, 42, 0.05); }
+  .round.is-next { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .round.is-next .round__state { color: var(--gold-hi); }
+  .round.is-cancelada { opacity: 0.5; }
+
+  .tabs { display: inline-flex; padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
+  .tabs button { font: inherit; font-family: var(--font-display); font-weight: 800; font-size: 14px; padding: 9px 18px; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+  .tabs button[aria-selected='true'] { background: var(--grad-gold); color: #0a0a0b; }
+  .tabs button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+  .panel + .panel { margin-top: 32px; }
+  /* Con JS solo se ve la categoría elegida; sin JS, las dos */
+  :global(html.js) .panel { display: none; margin-top: 0; }
+  :global(html.js) .panel.is-on { display: block; }
+  .panel__title { font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+  .panel__title span { font-family: var(--font-body); font-weight: 400; font-size: 14px; color: var(--muted); margin-left: 6px; }
+  .rules { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 15px; }
+  .rules summary { cursor: pointer; font-weight: 700; color: var(--paper); }
+  .rules__body p { margin: 10px 0 0; }
+
+  .results { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .result { display: grid; grid-template-columns: 64px 1fr 1.4fr auto; gap: 16px; align-items: center; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); text-decoration: none; transition: border-color 0.2s; }
+  .result:hover { border-color: var(--gold); }
+  .result__n { font-family: var(--font-display); font-weight: 900; font-size: 28px; color: var(--gold); }
+  .result__meta { display: grid; gap: 2px; }
+  .result__meta span { color: var(--muted); font-size: 14px; }
+  .result__win { display: grid; gap: 4px; font-size: 15px; }
+  .result__win em { font-style: normal; color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin-right: 8px; }
+  .result__go { font-weight: 700; color: var(--gold-hi); font-size: 14px; }
+
+  .men-round + .men-round { margin-top: 28px; }
+  .men-round__title { font-size: 16px; font-weight: 700; color: var(--muted); margin-bottom: 12px; }
+  .pp { max-width: 560px; }
+  .limit { margin-left: 8px; font-family: var(--font-body); font-size: 12px; font-weight: 700; color: #ff6b6b; }
+
+  .cta-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: clamp(64px, 8vw, 112px); }
+  .cta-line p { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(22px, 2.4vw, 30px); }
+
+  @media (max-width: 900px) {
+    .rounds { grid-template-columns: repeat(2, 1fr); }
+    .result { grid-template-columns: 52px 1fr; }
+    .result__win { grid-column: 1 / -1; }
+    .result__go { display: none; }
+  }
+  @media (max-width: 420px) {
+    .round { min-height: 136px; padding: 14px; }
+    .round__date { font-size: 19px; }
+  }
+</style>

@@ -1,0 +1,17 @@
+---
+import type { Temporada } from '../../lib/season/types';
+interface Props { t: Temporada }
+const { t } = Astro.props;
+const text = t.config.aviso || (t.demo ? 'DEMO: datos de ejemplo hasta conectar la hoja de Google Sheets.' : '');
+---
+{text && (
+  <div class:list={['banner', { 'banner--demo': t.demo }]} role="note">
+    {t.demo && <strong>DEMO</strong>}
+    <span>{text.replace(/^DEMO:\s*/, '').replace(/^./, (c) => c.toUpperCase())}</span>
+  </div>
+)}
+
+<style>
+  .banner { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.4); background: rgba(212, 166, 42, 0.08); font-size: 14px; }
+  .banner strong { flex: none; font-family: var(--font-display); font-weight: 900; letter-spacing: 0.12em; font-size: 12px; padding: 4px 9px; border-radius: 6px; color: #0a0a0b; background: var(--gold); }
+</style>

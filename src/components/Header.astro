@@ -1,0 +1,53 @@
+---
+import { whatsappUrl } from '../config/site';
+const path = Astro.url.pathname;
+const links = [
+  { href: '/', label: 'Inicio' },
+  { href: '/season-2', label: 'Temporada 2' },
+];
+---
+<header class="hdr">
+  <a class="hdr__brand" href="/" aria-label="RUKC, inicio">
+    <img src="/brand/escudo-96.webp" width="36" height="35" alt="" />
+    <span>RUKC</span>
+  </a>
+  <nav class="hdr__nav" aria-label="Principal">
+    {links.map((l) => (
+      <a href={l.href} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a>
+    ))}
+  </nav>
+  <a class="hdr__cta" href={whatsappUrl()} target="_blank" rel="noopener">Correr la T2</a>
+</header>
+
+<script>
+  // Fondo sólido en cuanto se hace scroll, para que la navegación se lea sobre cualquier sección
+  const hdr = document.querySelector('.hdr')!;
+  const onScroll = () => hdr.classList.toggle('is-solid', scrollY > 24);
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+
+<style>
+  .hdr {
+    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    display: flex; align-items: center; gap: 24px;
+    padding: 14px var(--gutter);
+    background: linear-gradient(180deg, rgba(10, 10, 11, 0.85), rgba(10, 10, 11, 0));
+    transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+  }
+  .hdr.is-solid { background: rgba(10, 10, 11, 0.86); backdrop-filter: blur(10px); box-shadow: 0 1px 0 var(--line); }
+  .hdr__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-weight: 900; letter-spacing: 0.06em; }
+  .hdr__nav { display: flex; gap: 22px; margin-left: auto; font-size: 14px; font-weight: 600; }
+  .hdr__nav a { text-decoration: none; color: var(--muted); transition: color 0.2s; }
+  .hdr__nav a:hover, .hdr__nav a[aria-current='page'] { color: var(--paper); }
+  .hdr__cta {
+    font-family: var(--font-display); font-weight: 800; font-size: 14px; text-decoration: none;
+    color: #0a0a0b; background: var(--grad-gold); padding: 9px 16px; border-radius: 999px;
+  }
+  @media (max-width: 640px) {
+    .hdr { gap: 14px; }
+    .hdr__brand span { display: none; }
+    .hdr__nav { gap: 14px; font-size: 13px; }
+    .hdr__cta { font-size: 13px; padding: 8px 12px; }
+  }
+</style>

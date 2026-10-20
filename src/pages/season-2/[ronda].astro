@@ -1,0 +1,84 @@
+---
+// Una página por cada ronda disputada: /season-2/r1-karting-mijas
+import Base from '../../layouts/Base.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import DemoBanner from '../../components/season/DemoBanner.astro';
+import RoundTable from '../../components/season/RoundTable.astro';
+import Mentions from '../../components/season/Mentions.astro';
+import { cargarTemporada } from '../../lib/season/load';
+import { clasificacionRonda, mencionesRonda } from '../../lib/season/points';
+import { CATEGORIAS, type Ronda } from '../../lib/season/types';
+import { fechaLarga, urlRonda } from '../../lib/season/format';
+
+export async function getStaticPaths() {
+  const t = await cargarTemporada();
+  return t.rondas
+    .filter((r) => r.estado === 'disputada')
+    .map((r) => ({ params: { ronda: urlRonda(r).split('/').pop() }, props: { numero: r.ronda } }));
+}
+
+const t = await cargarTemporada();
+const r = t.rondas.find((x) => x.ronda === Astro.props.numero) as Ronda;
+const disputadas = t.rondas.filter((x) => x.estado === 'disputada');
+const idx = disputadas.indexOf(r);
+const prev = disputadas[idx - 1], next = disputadas[idx + 1];
+const menciones = mencionesRonda(t, r.ronda);
+const aviso = r.carrera === 'mitad'
+  ? 'La final se detuvo con bandera roja entre el 25 % y el 75 %: mitad de puntos y sin vuelta rápida ni constancia (Art. 31 quater).'
+  : r.carrera === 'nula' ? 'Carrera nula: esta ronda no reparte puntos (Art. 31 quater).' : '';
+---
+<Base
+  title={`R${r.ronda} ${r.circuito}: resultados | Temporada 2 | RUKC`}
+  description={`Resultados de la ronda ${r.ronda} de la Temporada 2 de RUKC en ${r.circuito}, ${fechaLarga(r.fecha)}: clasificación de Ligeros y Pesados, puntos y menciones.`}
+>
+  <Header />
+  <main class="round-page">
+    <section class="wrap head">
+      <a class="back" href="/season-2#rondas">Temporada 2</a>
+      <p class="eyebrow">Ronda {r.ronda} de {t.rondas.length}</p>
+      <h1 class="h2">{r.circuito}</h1>
+      <p class="lead">{fechaLarga(r.fecha)}{r.nota && ` · ${r.nota}`}</p>
+      <DemoBanner t={t} />
+      {aviso && <p class="aviso">{aviso}</p>}
+    </section>
+
+    {CATEGORIAS.map((c) => (
+      <section class="wrap block" aria-labelledby={`h-${c}`}>
+        <h2 class="block__title" id={`h-${c}`}>{c}</h2>
+        <RoundTable filas={clasificacionRonda(t, r.ronda, c)} categoria={c} mitad={r.carrera === 'mitad'} />
+      </section>
+    ))}
+
+    {menciones.length > 0 && (
+      <section class="wrap block" aria-labelledby="h-men">
+        <h2 class="block__title" id="h-men">Menciones</h2>
+        <Mentions menciones={menciones} />
+      </section>
+    )}
+
+    <nav class="wrap pager" aria-label="Otras rondas">
+      {prev ? <a href={urlRonda(prev)}>R{prev.ronda} · {prev.circuito}</a> : <span></span>}
+      <a href="/season-2#clasificacion" class="pager__mid">Clasificación general</a>
+      {next ? <a href={urlRonda(next)}>R{next.ronda} · {next.circuito}</a> : <span></span>}
+    </nav>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .round-page { padding-top: 120px; padding-bottom: clamp(64px, 8vw, 112px); }
+  .head { display: grid; gap: 14px; }
+  .head .lead { margin: 0; }
+  .back { font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; }
+  .back::before { content: '← '; }
+  .back:hover { color: var(--paper); }
+  .aviso { margin: 0; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(209, 0, 7, 0.5); background: rgba(209, 0, 7, 0.08); font-size: 14px; }
+  .block { padding-top: clamp(40px, 5vw, 64px); }
+  .block__title { font-size: clamp(24px, 2.8vw, 36px); font-weight: 900; letter-spacing: -0.02em; margin-bottom: 16px; }
+  .pager { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .pager a { color: var(--muted); text-decoration: none; }
+  .pager a:hover { color: var(--paper); }
+  .pager a:last-child { text-align: right; }
+  .pager__mid { color: var(--gold-hi) !important; }
+</style>

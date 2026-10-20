@@ -1,0 +1,88 @@
+---
+import { Picture } from 'astro:assets';
+import grid from '../../assets/t1/parrilla-comisario.jpg';
+import { cargarTemporada } from '../../lib/season/load';
+import { fechaCorta } from '../../lib/season/format';
+import { whatsappUrl } from '../../config/site';
+
+const { rondas } = await cargarTemporada();
+---
+<section class="section cta" id="temporada-2" aria-labelledby="cta-title">
+  <div class="wrap cta__grid">
+    <div class="cta__text">
+      <p class="eyebrow" data-reveal>Temporada 2 · 2026-2027</p>
+      <h2 class="h2" id="cta-title" data-reveal>Ocho rondas. <em>Una parrilla.</em> Tu sitio.</h2>
+      <p class="lead" data-reveal>
+        Puedes correr una ronda suelta o la temporada entera con precio especial. Calendario, resultados y clasificación
+        de cada categoría, en la página de la temporada.
+      </p>
+      <p class="price" data-reveal>Desde <strong class="tnum">99 €</strong> por carrera</p>
+      <div class="cta__buttons" data-reveal>
+        <a class="btn btn--gold" href={whatsappUrl()} target="_blank" rel="noopener">Reservar por WhatsApp</a>
+        <a class="btn btn--ghost" href="/season-2">Ver la Temporada 2</a>
+      </div>
+    </div>
+
+    <div class="cal" data-reveal>
+      <div class="cal__photo" aria-hidden="true">
+        <Picture src={grid} formats={['avif', 'webp']} widths={[560, 900]} sizes="(max-width: 900px) 100vw, 44vw" alt="" loading="lazy" />
+      </div>
+      <ol class="cal__list" data-calendar>
+        {rondas.map((r) => (
+          <li data-date={r.fecha}>
+            <span class="cal__r tnum">R{r.ronda}</span>
+            <span class="cal__date tnum">{fechaCorta(r.fecha)}</span>
+            <span class="cal__place">{r.circuito}{r.nota && r.nota !== 'DEMO' && <em> · {r.nota}</em>}</span>
+            <span class="cal__state"></span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Marca en el navegador las rondas ya disputadas y la siguiente, para que no dependa de la fecha de publicación
+  const today = new Date().toISOString().slice(0, 10);
+  const items = [...document.querySelectorAll<HTMLElement>('[data-calendar] li')];
+  const next = items.find((li) => li.dataset.date! >= today);
+  for (const li of items) {
+    const state = li.querySelector('.cal__state')!;
+    if (li.dataset.date! < today) { li.classList.add('is-done'); state.textContent = 'Disputada'; }
+    if (li === next) { li.classList.add('is-next'); state.textContent = li.dataset.date === today ? 'Hoy' : 'Próxima'; }
+  }
+</script>
+
+<style>
+  .cta__grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 6vw, 96px); align-items: center; }
+  .cta__text { display: grid; gap: 22px; }
+  .cta__text .lead { margin: 0; }
+  .price { margin: 4px 0 0; font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--muted); }
+  .price strong { font-weight: 900; font-size: clamp(40px, 4.4vw, 56px); color: var(--paper); margin: 0 6px; letter-spacing: -0.03em; }
+  .cta__buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .cal { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--ink-2); }
+  .cal__photo :global(img) { width: 100%; height: 160px; object-fit: cover; opacity: 0.55; filter: saturate(0.8); }
+  .cal__photo { position: relative; }
+  .cal__photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(18, 17, 16, 0) 30%, var(--ink-2) 100%); }
+  .cal__list { list-style: none; margin: 0; padding: 4px 22px 18px; }
+  .cal__list li {
+    display: grid; grid-template-columns: 44px 70px 1fr auto; align-items: center; gap: 10px;
+    padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px;
+  }
+  .cal__list li:last-child { border-bottom: 0; }
+  .cal__r { font-family: var(--font-display); font-weight: 900; color: var(--gold); }
+  .cal__date { color: var(--muted); }
+  .cal__place em { font-style: normal; color: var(--gold-hi); }
+  .cal__state { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); }
+  .cal__list li.is-done { opacity: 0.55; }
+  .cal__list li.is-next .cal__state { color: #0a0a0b; background: var(--grad-gold); padding: 4px 9px; border-radius: 999px; font-weight: 700; }
+
+  @media (max-width: 900px) {
+    .cta__grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    .cal__list { padding-inline: 16px; }
+    .cal__list li { grid-template-columns: 34px 58px 1fr auto; font-size: 14px; gap: 8px; }
+  }
+</style>

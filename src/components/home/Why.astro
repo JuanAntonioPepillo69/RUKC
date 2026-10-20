@@ -1,0 +1,91 @@
+---
+import { Picture } from 'astro:assets';
+import salida from '../../assets/t1/parrilla-salida.jpg';
+
+const answers = [
+  { t: 'Igualdad de verdad', d: 'Mismos karts, sorteo de montura y lastre kilo a kilo. Si ganas, es tuyo.' },
+  { t: 'Competición, no quedada', d: 'Reglamento, Dirección de Carrera, comisarios en pista y resultados oficiales.' },
+  { t: 'Una temporada que cuenta', d: 'Cada ronda puntúa. Vuelves, mejoras tus tiempos y peleas por un campeonato.' },
+];
+// Secuencia habitual de una jornada (reglamento, Art. 26)
+const day = [
+  { t: 'Acreditación y pesaje', d: 'Una hora antes del briefing.' },
+  { t: 'Briefing', d: 'Banderas, normas y seguridad.' },
+  { t: 'Entrenamiento', d: 'De 5 a 10 minutos para adaptarte.' },
+  { t: 'Clasificación', d: 'Tu mejor vuelta decide la parrilla.' },
+  { t: 'Final', d: 'La carrera que da los puntos.' },
+];
+---
+<section class="section why" id="por-que" aria-labelledby="why-title">
+  <div class="why__bg" aria-hidden="true">
+    <Picture src={salida} formats={['avif', 'webp']} widths={[640, 1280, 1920]} sizes="100vw" alt="" loading="lazy" />
+  </div>
+
+  <div class="wrap why__inner">
+    <p class="eyebrow" data-reveal>Por qué existe RUKC</p>
+    <h2 class="why__statement" id="why-title" data-words>
+      Diste tus vueltas y te supo a poco. Karts que corrían distinto, rivales sin nivel, y justo cuando le cogías el punto, se acababa.
+      <em>Eso no es competir. Es pasear rápido.</em>
+    </h2>
+
+    <ol class="answers">
+      {answers.map((a, i) => (
+        <li data-reveal data-reveal-delay={i * 0.08}>
+          <span class="tnum">{String(i + 1).padStart(2, '0')}</span>
+          <h3>{a.t}</h3>
+          <p>{a.d}</p>
+        </li>
+      ))}
+    </ol>
+
+    <div class="day" data-reveal>
+      <h3 class="day__title">Así es un día de carrera</h3>
+      <ol class="day__steps">
+        {day.map((s, i) => (
+          <li>
+            <span class="day__dot tnum">{i + 1}</span>
+            <strong>{s.t}</strong>
+            <span>{s.d}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</section>
+
+<style>
+  .why { overflow: hidden; isolation: isolate; }
+  .why__bg { position: absolute; inset: 0; z-index: -1; }
+  .why__bg :global(img) { width: 100%; height: 100%; object-fit: cover; opacity: 0.22; filter: grayscale(0.6) contrast(1.1); }
+  .why__bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, var(--ink) 0%, rgba(10, 10, 11, 0.7) 30%, rgba(10, 10, 11, 0.85) 70%, var(--ink) 100%); }
+
+  .why__inner { display: grid; gap: 28px; }
+  .why__statement { font-size: clamp(30px, 4.6vw, 64px); font-weight: 800; line-height: 1.08; letter-spacing: -0.025em; max-width: 22ch; }
+  .why__statement em { font-style: normal; display: block; margin-top: 0.4em; color: var(--gold-hi); }
+
+  .answers { list-style: none; margin: clamp(32px, 5vw, 64px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .answers li { padding: 28px; border-radius: 16px; background: rgba(10, 10, 11, 0.6); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+  .answers span { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.2em; color: var(--red); }
+  .answers h3 { margin-top: 14px; font-size: clamp(22px, 2vw, 28px); font-weight: 800; }
+  .answers p { margin: 10px 0 0; color: var(--muted); }
+
+  .day { margin-top: clamp(40px, 6vw, 80px); padding-top: 28px; border-top: 1px solid var(--line); }
+  .day__title { font-size: 14px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+  .day__steps { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; counter-reset: s; }
+  .day__steps li { position: relative; display: grid; gap: 6px; padding-top: 44px; }
+  .day__steps li::before { content: ''; position: absolute; left: 34px; right: -12px; top: 15px; height: 1px; background: linear-gradient(90deg, var(--gold), rgba(212, 166, 42, 0.1)); }
+  .day__steps li:last-child::before { display: none; }
+  .day__dot {
+    position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 900; font-size: 14px; color: #0a0a0b; background: var(--grad-gold);
+  }
+  .day__steps strong { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+  .day__steps span:last-child { color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .answers { grid-template-columns: 1fr; }
+    .day__steps { grid-template-columns: 1fr; gap: 0; }
+    .day__steps li { padding: 0 0 22px 46px; min-height: 52px; }
+    .day__steps li::before { left: 15px; right: auto; top: 34px; bottom: 0; width: 1px; height: auto; background: linear-gradient(180deg, var(--gold), rgba(212, 166, 42, 0.1)); }
+  }
+</style>

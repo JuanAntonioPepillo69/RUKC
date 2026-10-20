@@ -1,0 +1,57 @@
+---
+// Clasificación del campeonato de una categoría (los puntos se calculan en lib/season/points.ts)
+import type { FilaCampeonato } from '../../lib/season/points';
+import type { Ronda } from '../../lib/season/types';
+import { pts, urlRonda } from '../../lib/season/format';
+
+interface Props { filas: FilaCampeonato[]; rondas: Ronda[]; descarte: boolean; categoria: string }
+const { filas, rondas, descarte, categoria } = Astro.props;
+---
+{filas.length === 0 ? (
+  <p class="empty">Aún no hay resultados en {categoria}.</p>
+) : (
+  <div class="table-scroll" tabindex="0" role="region" aria-label={`Clasificación ${categoria}`}>
+    <table class="table standings">
+      <caption class="sr-only">Clasificación del campeonato, categoría {categoria}</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="c-pos">Pos</th>
+          <th scope="col" class="c-name">Piloto</th>
+          {rondas.map((r) => <th scope="col" class="c-round"><a href={urlRonda(r)}>R{r.ronda}</a></th>)}
+          <th scope="col" class="c-num hide-sm" title="Victorias">V</th>
+          <th scope="col" class="c-num hide-sm" title="Poles">P</th>
+          {descarte && <th scope="col" class="c-num hide-sm">Bruto</th>}
+          <th scope="col" class="c-total">Puntos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((f) => (
+          <tr class:list={[{ 'is-podium': f.pos <= 3 }]}>
+            <td class="c-pos tnum"><span class={`pos pos-${f.pos}`}>{f.pos}</span>{f.sorteo && <span class="tie" title="Empate total: se resuelve por sorteo ante el Comité (Art. 49)">*</span>}</td>
+            <th scope="row" class="c-name"><span class="dorsal tnum">#{f.dorsal}</span> {f.nombre}</th>
+            {f.porRonda.map((p, i) => (
+              <td class:list={['c-round tnum', { 'is-dropped': f.descartada === i, 'is-absent': p === null }]}>
+                {p === null ? '–' : pts(p)}
+              </td>
+            ))}
+            <td class="c-num tnum hide-sm">{f.victorias}</td>
+            <td class="c-num tnum hide-sm">{f.poles}</td>
+            {descarte && <td class="c-num tnum hide-sm">{pts(f.bruto)}</td>}
+            <td class="c-total tnum">{pts(descarte ? f.neto : f.bruto)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+<style>
+  .standings .c-pos { width: 56px; }
+  .standings .c-round { width: 52px; text-align: center; }
+  .standings .c-round a { color: inherit; text-decoration: none; }
+  .standings .c-round a:hover { color: var(--gold-hi); }
+  .standings td.is-dropped { text-decoration: line-through; color: var(--muted-2); }
+  .standings td.is-absent { color: var(--muted-2); }
+  .tie { color: var(--gold); margin-left: 2px; }
+  .empty { color: var(--muted); padding: 24px 0; }
+</style>

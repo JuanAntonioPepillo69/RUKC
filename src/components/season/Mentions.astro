@@ -1,0 +1,26 @@
+---
+import type { MencionRonda } from '../../lib/season/points';
+interface Props { menciones: MencionRonda[] }
+const { menciones } = Astro.props;
+---
+{menciones.length > 0 && (
+  <ul class="mentions">
+    {menciones.map((m) => (
+      <li class:list={['mention', { 'mention--manual': !m.auto }]}>
+        <p class="mention__title">{m.titulo}{m.categoria && <span> · {m.categoria}</span>}</p>
+        {m.pilotos.length > 0 && <p class="mention__who">{m.pilotos.map((p) => `#${p.dorsal} ${p.nombre}`).join(', ')}</p>}
+        {m.texto && <p class="mention__text">{m.texto}</p>}
+      </li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .mentions { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .mention { padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: rgba(246, 243, 236, 0.02); }
+  .mention--manual { border-color: rgba(212, 166, 42, 0.5); background: rgba(212, 166, 42, 0.06); }
+  .mention__title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+  .mention__title span { color: var(--muted); }
+  .mention__who { margin: 8px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+  .mention__text { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+</style>

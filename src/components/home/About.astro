@@ -1,0 +1,69 @@
+---
+import { Picture } from 'astro:assets';
+import paddock from '../../assets/t1/paddock-pilotos.jpg';
+
+const pillars = [
+  { n: '01', t: 'Meritocracia', d: 'Karts iguales asignados por sorteo, lastre y categorías por peso. Aquí solo cuenta cómo pilotas.' },
+  { n: '02', t: 'Comunidad', d: 'Una parrilla que respeta el volante. Pilotos que vuelven cada ronda y se pican limpio.' },
+  { n: '03', t: 'Contenido', d: 'Fotos y vídeo de cada carrera. Lo que pasa en pista se cuenta, y se cuenta bien.' },
+];
+---
+<section class="section about" id="quienes-somos" aria-labelledby="about-title">
+  <div class="wrap about__grid">
+    <div class="about__text">
+      <p class="eyebrow" data-reveal>Quiénes somos</p>
+      <h2 class="h2" id="about-title" data-reveal>Gente del motor cuidando una liga, <em>no un negocio para llenar karts.</em></h2>
+      <p class="lead" data-reveal>
+        Montamos RUKC con una idea fija: que cualquiera pudiera competir en igualdad, en serio y sin arruinarse.
+        Ni karts dispares, ni pachanga, ni tener que ser rico para vivir una carrera de nivel.
+      </p>
+      <p class="lead muted" data-reveal>
+        Elitista en la exigencia: reglamento, comisarios y resultados oficiales. Accesible en todo lo demás: sin kart propio,
+        sin mecánico y desde 99 € por carrera.
+      </p>
+    </div>
+
+    <figure class="about__media" data-reveal>
+      <Picture src={paddock} formats={['avif', 'webp']} widths={[480, 800, 1200]} sizes="(max-width: 900px) 100vw, 46vw"
+        alt="Pilotos y familias en el paddock durante una carrera de la Temporada 1" />
+      <figcaption>Paddock, Temporada 1</figcaption>
+    </figure>
+  </div>
+
+  <ol class="wrap pillars">
+    {pillars.map((p, i) => (
+      <li class="pillar" data-reveal data-reveal-delay={i * 0.08}>
+        <span class="pillar__n tnum">{p.n}</span>
+        <h3>{p.t}</h3>
+        <p>{p.d}</p>
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .about__grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(32px, 6vw, 96px); align-items: center; }
+  .about__text { display: grid; gap: 22px; }
+  .about__text .lead { margin: 0; }
+  .about__media { margin: 0; position: relative; border-radius: 18px; overflow: hidden; }
+  .about__media :global(img) { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; filter: saturate(0.85) contrast(1.05); }
+  .about__media figcaption {
+    position: absolute; left: 16px; bottom: 14px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--paper); background: rgba(10, 10, 11, 0.6); padding: 6px 10px; border-radius: 999px; backdrop-filter: blur(4px);
+  }
+  .about__media::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgba(246, 243, 236, 0.08); border-radius: inherit; pointer-events: none; }
+
+  .pillars { list-style: none; margin-top: clamp(56px, 8vw, 104px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; }
+  .pillar { padding: 28px 28px 32px 0; border-top: 1px solid var(--line); }
+  .pillar + .pillar { padding-left: 28px; border-left: 1px solid var(--line); }
+  .pillar__n { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.2em; color: var(--red); }
+  .pillar h3 { margin-top: 14px; font-size: clamp(24px, 2.4vw, 32px); font-weight: 800; }
+  .pillar p { margin: 10px 0 0; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .about__grid { grid-template-columns: 1fr; }
+    .about__media :global(img) { aspect-ratio: 4 / 3; }
+    .pillars { grid-template-columns: 1fr; }
+    .pillar, .pillar + .pillar { padding: 24px 0; border-left: 0; }
+  }
+</style>

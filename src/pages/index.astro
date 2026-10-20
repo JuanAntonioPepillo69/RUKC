@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import About from '../components/home/About.astro';
+import Journey from '../components/home/Journey.astro';
+import Why from '../components/home/Why.astro';
+import SeasonCta from '../components/home/SeasonCta.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base
+  title="RUKC | RaceUp Karting Championship, liga de karting de alquiler en la Costa del Sol"
+  description="La primera liga de karting de alquiler de la Costa del Sol. Mismos karts, lastre y categorías por peso. Temporada 2: ocho rondas del 17 de octubre de 2026 al 3 de julio de 2027."
+>
+  <Header />
+  <main>
+    <Hero />
+    <About />
+    <Journey />
+    <Why />
+    <SeasonCta />
+  </main>
+  <Footer />
+  <script>
+    import '../scripts/reveal';
+  </script>
+</Base>

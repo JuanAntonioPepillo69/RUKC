@@ -1,0 +1,46 @@
+---
+import Doc from '../layouts/Doc.astro';
+---
+<Doc
+  title="Política de cookies | RUKC"
+  description="Qué cookies y almacenamiento usa la web de RUKC y cómo cambiar tus preferencias."
+  eyebrow="Legal"
+  heading="Política de cookies"
+  updated="20 de octubre de 2026"
+>
+  <h2>Web de la liga</h2>
+  <p>La web de RUKC (inicio, temporada, resultados, reglamento y textos legales) <strong>no instala cookies</strong> de analítica, de publicidad ni de terceros. Las tipografías se sirven desde nuestro propio dominio.</p>
+
+  <h2>Página de campaña</h2>
+  <p>La página a la que llegan los anuncios de RUKC usa el <strong>píxel de Meta</strong> para medir qué anuncios funcionan. El píxel se carga al abrir la página. Al entrar te mostramos un aviso con dos opciones:</p>
+  <ul>
+    <li><strong>Aceptar:</strong> el píxel registra la visita y, si envías el formulario, la solicitud de información.</li>
+    <li><strong>Rechazar:</strong> el píxel deja de enviar eventos a Meta y la solicitud del formulario no se comunica a Meta. Tu elección se recuerda en este navegador.</li>
+  </ul>
+
+  <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th scope="col">Nombre</th><th scope="col">Quién la instala</th><th scope="col">Para qué</th><th scope="col">Duración</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">_fbp</th><td>Meta (raceupkc.com)</td><td>Identificar el navegador para medir los anuncios</td><td>3 meses</td></tr>
+        <tr><th scope="row">_fbc</th><td>Meta (raceupkc.com)</td><td>Guardar el clic en el anuncio del que vienes</td><td>3 meses</td></tr>
+        <tr><th scope="row">fr</th><td>Meta (facebook.com)</td><td>Publicidad y medición de Meta</td><td>3 meses</td></tr>
+        <tr><th scope="row">rukc_consent</th><td>RUKC (almacenamiento local)</td><td>Recordar si aceptaste o rechazaste</td><td>Hasta que lo borres</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Cambiar tu elección</h2>
+  <p>Pulsa el botón para olvidar tu elección. La próxima vez que entres en la página de campaña volverás a ver el aviso.</p>
+  <p><button type="button" class="btn btn--ghost" data-reset-consent>Cambiar mis preferencias</button> <span class="muted" data-reset-msg role="status"></span></p>
+  <p>También puedes borrar las cookies desde la configuración de tu navegador. Más información sobre cómo usa Meta los datos: <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener">política de privacidad de Meta</a>.</p>
+  <p>Consulta también nuestra <a href="/privacidad">política de privacidad</a>.</p>
+</Doc>
+
+<script>
+  document.querySelector('[data-reset-consent]')?.addEventListener('click', () => {
+    try { localStorage.removeItem('rukc_consent'); } catch {}
+    const msg = document.querySelector('[data-reset-msg]');
+    if (msg) msg.textContent = 'Hecho. Verás el aviso de nuevo en la página de campaña.';
+  });
+</script>
