@@ -43,7 +43,7 @@ Corrígelo y vuelve a pulsar **Publicar web**.
 
 ### Reglas que aplica la web (reglamento v1.1)
 
-- Puntos por posición en la categoría: 25-18-15-12-10-8-6-4-2-1 y 1 punto del 11.º en adelante si finaliza (Art. 46).
+- Puntos por posición en la categoría (Art. 46): 25-20-16-13-11-10-9-8-7-6-5-4-3-2-1 del 1.º al 15.º y 1 punto del 16.º en adelante; solo puntúa quien finaliza. Si el reglamento cambia la escala, actualiza `PUNTOS_POSICION` y `PUNTOS_FINALIZAR` en `src/lib/season/points.ts`: un test avisa si la web y la tabla del reglamento no coinciden.
 - Bonus: pole +2, vuelta rápida +2, constancia +3 (Art. 47); se pierden con `pierde_bonus` (Art. 23 quinquies).
 - Bandera roja: `mitad` = mitad de puntos sin vuelta rápida ni constancia; `nula` = no puntúa (Art. 31 quater).
 - Descarte de la peor ronda al final de la temporada; una ronda con DSQ no se descarta (Art. 48). Pestaña **Config**, `descarte`: `auto`, `si` o `no`.

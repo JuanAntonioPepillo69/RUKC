@@ -6,7 +6,7 @@ import DemoBanner from '../../components/season/DemoBanner.astro';
 import Standings from '../../components/season/Standings.astro';
 import Mentions from '../../components/season/Mentions.astro';
 import { cargarTemporada } from '../../lib/season/load';
-import { campeonato, clasificacionRonda, mencionesRonda, pasaporte, rondasPuntuables, PUNTOS_POSICION, BONUS, PP_LIMITE } from '../../lib/season/points';
+import { campeonato, clasificacionRonda, mencionesRonda, pasaporte, rondasPuntuables, PUNTOS_POSICION, PUNTOS_FINALIZAR, BONUS, PP_LIMITE } from '../../lib/season/points';
 import { CATEGORIAS } from '../../lib/season/types';
 import { ESTADO, fechaCorta, fechaLarga, urlRonda } from '../../lib/season/format';
 import { whatsappUrl } from '../../config/site';
@@ -84,7 +84,7 @@ const proxima = t.rondas.find((r) => r.fecha >= hoy && r.estado !== 'cancelada')
       <details class="rules">
         <summary>Cómo se puntúa</summary>
         <div class="rules__body">
-          <p>Puntos por posición en la clasificación de cada categoría: {PUNTOS_POSICION.map((p, i) => `${i + 1}.º ${p}`).join(' · ')} · del 11.º en adelante, 1 punto por finalizar.</p>
+          <p>Puntos por posición en la clasificación de cada categoría: {PUNTOS_POSICION.map((p, i) => `${i + 1}.º ${p}`).join(' · ')}. Del {PUNTOS_POSICION.length + 1}.º en adelante, {PUNTOS_FINALIZAR} punto. Solo puntúa quien finaliza la carrera.</p>
           <p>Bonificaciones: pole +{BONUS.pole}, vuelta rápida +{BONUS.vueltaRapida}, constancia +{BONUS.constancia}. Con bandera roja entre el 25 % y el 75 % de la carrera, mitad de puntos y sin vuelta rápida ni constancia.</p>
           <p>Al terminar la temporada se descarta la ronda con menos puntos de cada piloto (no se puede descartar una descalificación). No hay clasificación general absoluta: cada categoría tiene su campeón. Reglamento, Arts. 46 a 50.</p>
         </div>

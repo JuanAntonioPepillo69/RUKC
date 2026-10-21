@@ -14,8 +14,8 @@ const root = path.resolve(here, '../..');
 const OUT = path.join(here, 'out');
 
 export const VARIANTS = {
-  desktop: { w: 1920, h: 1080, frames: 220 },
-  mobile: { w: 600, h: 1240, frames: 150 },
+  desktop: { w: 1920, h: 1080, frames: 330 },
+  mobile: { w: 600, h: 1240, frames: 240 },
 };
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));

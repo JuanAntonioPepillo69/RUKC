@@ -17,10 +17,10 @@ const temporada = (rondas: Ronda[], resultados: Resultado[], extra: Partial<Temp
   sanciones: [], menciones: [], demo: false, ...extra,
 });
 
-test('puntos por posición del Art. 46, incluido 1 punto del 11.º en adelante', () => {
-  const rs = Array.from({ length: 12 }, (_, i) => res(1, i + 1, i + 1));
+test('puntos del Art. 46: escala hasta el 15.º y 1 punto por finalizar del 16.º en adelante', () => {
+  const rs = Array.from({ length: 17 }, (_, i) => res(1, i + 1, i + 1));
   const f = clasificacionRonda(temporada([ronda(1)], rs), 1, 'Ligeros');
-  assert.deepEqual(f.map((x) => x.puntos), [25, 18, 15, 12, 10, 8, 6, 4, 2, 1, 1, 1]);
+  assert.deepEqual(f.map((x) => x.puntos), [25, 20, 16, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1, 1]);
 });
 
 test('quien no finaliza no suma puntos de posición', () => {
@@ -40,7 +40,7 @@ test('constancia solo si finaliza; pierde bonus las anula todas', () => {
   ]);
   const f = clasificacionRonda(t, 1, 'Ligeros');
   assert.equal(f.find((x) => x.dorsal === 1)!.bonus.constancia, 0);
-  assert.equal(f.find((x) => x.dorsal === 2)!.puntos, 18);
+  assert.equal(f.find((x) => x.dorsal === 2)!.puntos, 20);
 });
 
 test('la posición se recalcula dentro de la categoría y sin los descalificados', () => {
@@ -64,10 +64,10 @@ test('bandera roja: media carrera da la mitad y sin vuelta rápida ni constancia
 });
 
 test('campeonato suma rondas y ordena por puntos', () => {
-  // R1: 1-2-3 · R2: 1-3-2 -> dorsal 1 = 50; dorsales 2 y 3 = 33. Desempata la R2 (última común): el 3 fue 2.º
+  // R1: 1-2-3 · R2: 1-3-2 -> dorsal 1 = 50; dorsales 2 y 3 = 36. Desempata la R2 (última común): el 3 fue 2.º
   const t = temporada([ronda(1), ronda(2)], [res(1, 1, 1), res(1, 2, 2), res(1, 3, 3), res(2, 1, 1), res(2, 2, 3), res(2, 3, 2)]);
   const { filas } = campeonato(t, 'Ligeros');
-  assert.deepEqual(filas.map((f) => [f.pos, f.dorsal, f.bruto]), [[1, 1, 50], [2, 3, 33], [3, 2, 33]]);
+  assert.deepEqual(filas.map((f) => [f.pos, f.dorsal, f.bruto]), [[1, 1, 50], [2, 3, 36], [3, 2, 36]]);
 });
 
 test('desempate del Art. 49: a igualdad de puntos, gana el mejor resultado en la última ronda común', () => {
@@ -121,4 +121,17 @@ test('menciones automáticas: pole y mayor remontada', () => {
   assert.equal(m.find((x) => x.titulo === 'Pole position')!.pilotos[0].dorsal, 1);
   const r = m.find((x) => x.titulo === 'Mayor remontada')!;
   assert.equal(r.pilotos[0].dorsal, 2);
+});
+
+test('la tabla del Art. 46 de /reglamento coincide con el cálculo de la web', async () => {
+  const fs = await import('node:fs');
+  const { PUNTOS_POSICION, PUNTOS_FINALIZAR } = await import('../src/lib/season/points.ts');
+  const html = fs.readFileSync('src/content/reglamento.html', 'utf8');
+  const tabla = html.slice(html.indexOf('id="art-46"'), html.indexOf('id="art-46-bis"'));
+  const celdas = [...tabla.matchAll(/<td><p>([^<]*)<\/p><\/td><td><p>([^<]*)<\/p><\/td>/g)].map((m) => [m[1], m[2]]);
+  const esperado = [
+    ...PUNTOS_POSICION.map((p, i) => [`${i + 1}.º`, `${p} ${p === 1 ? 'punto' : 'puntos'}`]),
+    [`${PUNTOS_POSICION.length + 1}.º en adelante`, `${PUNTOS_FINALIZAR} punto por finalizar`],
+  ];
+  assert.deepEqual(celdas, esperado);
 });

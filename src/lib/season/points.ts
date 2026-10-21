@@ -2,8 +2,8 @@
 // Funciones puras: reciben la temporada leída de la hoja y devuelven tablas listas para pintar.
 import type { Categoria, Resultado, Ronda, Temporada } from './types.ts';
 
-/** Art. 46: puntos por posición del 1.º al 10.º. Del 11.º en adelante, 1 punto por finalizar. */
-export const PUNTOS_POSICION = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+/** Art. 46: escala del 1.º al 15.º; del 16.º en adelante, 1 punto por finalizar. Solo puntúa quien finaliza (Art. 46 bis b). */
+export const PUNTOS_POSICION = [25, 20, 16, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 export const PUNTOS_FINALIZAR = 1;
 /** Art. 47: bonificaciones. */
 export const BONUS = { pole: 2, vueltaRapida: 2, constancia: 3 };
@@ -66,7 +66,7 @@ export function clasificacionRonda(t: Temporada, ronda: number, categoria: Categ
     const pos = rank.get(x) ?? null;
     let puntosPosicion = 0;
     if (pos !== null && x.finaliza && carrera !== 'nula') {
-      puntosPosicion = pos <= PUNTOS_POSICION.length ? PUNTOS_POSICION[pos - 1] : PUNTOS_FINALIZAR;
+      puntosPosicion = PUNTOS_POSICION[pos - 1] ?? PUNTOS_FINALIZAR;
       if (carrera === 'mitad') puntosPosicion /= 2; // Art. 31 quater
     }
     const conBonus = !x.dsq && !x.pierdeBonus && carrera !== 'nula';

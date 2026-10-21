@@ -9,7 +9,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 const PUB = path.join(root, 'public', 'hero');
 
-const VARIANTS = { desktop: { dir: 'd', quality: 70 }, mobile: { dir: 'm', quality: 64 } };
+const VARIANTS = { desktop: { dir: 'd', quality: 64 }, mobile: { dir: 'm', quality: 60 } };
 const manifest = { version: Date.now().toString(36), variants: {} };
 
 for (const [name, v] of Object.entries(VARIANTS)) {

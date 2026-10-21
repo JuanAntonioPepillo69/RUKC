@@ -1,6 +1,6 @@
 ---
 import { Picture } from 'astro:assets';
-import paddock from '../../assets/t1/paddock-pilotos.jpg';
+import briefing from '../../assets/t2/briefing.jpg';
 
 const pillars = [
   { n: '01', t: 'Meritocracia', d: 'Karts iguales asignados por sorteo, lastre y categorías por peso. Aquí solo cuenta cómo pilotas.' },
@@ -18,15 +18,15 @@ const pillars = [
         Ni karts dispares, ni pachanga, ni tener que ser rico para vivir una carrera de nivel.
       </p>
       <p class="lead muted" data-reveal>
-        Elitista en la exigencia: reglamento, comisarios y resultados oficiales. Accesible en todo lo demás: sin kart propio,
-        sin mecánico y desde 99 € por carrera.
+        En pista, todo se toma en serio: reglamento, comisarios y resultados oficiales. Fuera de ella, nada te frena:
+        sin kart propio, sin mecánico y desde 99 € por carrera.
       </p>
     </div>
 
     <figure class="about__media" data-reveal>
-      <Picture src={paddock} formats={['avif', 'webp']} widths={[480, 800, 1200]} sizes="(max-width: 900px) 100vw, 46vw"
-        alt="Pilotos y familias en el paddock durante una carrera de la Temporada 1" />
-      <figcaption>Paddock, Temporada 1</figcaption>
+      <Picture src={briefing} formats={['avif', 'webp']} widths={[480, 800, 1200]} sizes="(max-width: 900px) 100vw, 46vw"
+        alt="Pilotos atendiendo al briefing antes de salir a pista" />
+      <figcaption>Briefing de pilotos</figcaption>
     </figure>
   </div>
 

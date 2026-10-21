@@ -27,9 +27,14 @@ export function initHero(root: HTMLElement) {
   const canvas = root.querySelector<HTMLCanvasElement>('.hero__canvas')!;
   const ctx = canvas.getContext('2d', { alpha: false })!;
   const frames: (HTMLImageElement | undefined)[] = new Array(v.frames);
+  // Posición en la secuencia como número con decimales: target la marca el scroll y pos la sigue amortiguada.
+  // Entre dos frames se mezclan las dos imágenes, así el movimiento no va a saltos aunque los frames estén separados.
   let target = 0;
-  let drawn = -1;
+  let pos = 0;
+  let synced = false;
+  let drawnKey = '';
   let raf = 0;
+  let last = 0;
   let anchors: Anchors | null = null;
 
   // ---- tamaño del canvas: nunca más píxeles de los que tiene el frame ----
@@ -45,7 +50,7 @@ export function initHero(root: HTMLElement) {
     const s = scale * k;
     fit = { s, dx: (canvas.width - v.width * s) / 2, dy: (canvas.height - v.height * s) / 2, k };
     layoutTags();
-    drawn = -1;
+    drawnKey = '';
     schedule();
   }
 
@@ -57,18 +62,39 @@ export function initHero(root: HTMLElement) {
     }
     return -1;
   }
-  function draw() {
-    raf = 0;
-    const i = nearest(target);
-    if (i < 0 || i === drawn) return;
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(frames[i]!, fit.dx, fit.dy, v.width * fit.s, v.height * fit.s);
-    drawn = i;
-    placeTags(i);
-    if (!root.classList.contains('is-live')) root.classList.add('is-live');
+  function render(p: number) {
+    const i0 = Math.floor(p), f = p - i0, i1 = Math.min(i0 + 1, v.frames - 1);
+    const a = frames[i0] ? i0 : nearest(i0);
+    if (a < 0) return;
+    const b = f > 0.02 && i1 !== a && frames[i1] ? i1 : -1;
+    const alpha = Math.round(f * 24) / 24; // 24 niveles de mezcla bastan y evitan repintar sin cambios
+    const key = b < 0 ? `${a}` : `${a}:${b}:${alpha}`;
+    if (key !== drawnKey) {
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(frames[a]!, fit.dx, fit.dy, v.width * fit.s, v.height * fit.s);
+      if (b >= 0) {
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(frames[b]!, fit.dx, fit.dy, v.width * fit.s, v.height * fit.s);
+        ctx.globalAlpha = 1;
+      }
+      drawnKey = key;
+      if (!root.classList.contains('is-live')) root.classList.add('is-live');
+    }
+    placeTags(p);
   }
-  function schedule() { if (!raf) raf = requestAnimationFrame(draw); }
+  const SMOOTH_MS = 90; // cuánto tarda la imagen en alcanzar al scroll (más alto = más suave, más retraso)
+  function tick(now: number) {
+    raf = 0;
+    const dt = last ? Math.min(64, now - last) : 16;
+    last = now;
+    pos += (target - pos) * (1 - Math.exp(-dt / SMOOTH_MS));
+    if (Math.abs(target - pos) < 0.003) pos = target;
+    render(pos);
+    if (pos !== target) schedule(); else last = 0;
+  }
+  function schedule() { if (!raf) raf = requestAnimationFrame(tick); }
 
   // ---- etiquetas ancladas ----
   const tags = [...root.querySelectorAll<HTMLElement>('[data-tag]')].map((el) => ({
@@ -89,11 +115,14 @@ export function initHero(root: HTMLElement) {
       box.style.transform = `translate(${dx < 0 ? '-100%' : '0'}, ${dy < 0 ? '-100%' : '0'})`;
     }
   }
-  function placeTags(i: number) {
+  function placeTags(p: number) {
     if (!anchors) return;
+    const i0 = Math.floor(p), i1 = Math.min(i0 + 1, v.frames - 1), f = p - i0;
     for (const t of tags) {
       const a = anchors[t.name];
-      const x = a?.[i * 2] ?? -1, y = a?.[i * 2 + 1] ?? -1;
+      let x = a?.[i0 * 2] ?? -1, y = a?.[i0 * 2 + 1] ?? -1;
+      const x1 = a?.[i1 * 2] ?? -1, y1 = a?.[i1 * 2 + 1] ?? -1;
+      if (x >= 0 && x1 >= 0) { x += (x1 - x) * f; y += (y1 - y) * f; } // la etiqueta se mueve sin saltos entre frames
       const off = x < 0;
       t.el.classList.toggle('is-off', off);
       if (off) continue;
@@ -140,7 +169,8 @@ export function initHero(root: HTMLElement) {
   ScrollTrigger.create({
     ...st,
     onUpdate: (self) => {
-      target = Math.round(self.progress * (v.frames - 1));
+      target = self.progress * (v.frames - 1);
+      if (!synced) { pos = target; synced = true; } // al recargar a mitad de página no recorre la secuencia desde el principio
       for (const { el, subAt } of subTags) el.classList.toggle('has-sub', self.progress >= subAt);
       schedule();
     },
@@ -171,7 +201,7 @@ export function initHero(root: HTMLElement) {
   resize();
   fetch(`/hero/anchors-${key}.json?v=${manifest.version}`).then((r) => r.json()).then((a: Anchors) => {
     anchors = a;
-    if (drawn >= 0) placeTags(drawn);
+    placeTags(pos);
   }).catch(() => {});
   load(0).then(() => {
     const start = () => loadAll();
