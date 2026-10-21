@@ -2,7 +2,7 @@
 import { Picture } from 'astro:assets';
 import salida from '../../assets/t1/salida-paralelo.jpg';
 import boxes from '../../assets/t1/boxes-karts.jpg';
-import podioMijas from '../../assets/t1/podio-mijas.jpg';
+import podioR1 from '../../assets/t2/r1-podio-cerca.jpg';
 import parrilla from '../../assets/t1/parrilla-comisario.jpg';
 import pianos from '../../assets/t1/pianos.jpg';
 import publico from '../../assets/t1/publico.jpg';
@@ -22,7 +22,7 @@ const r1 = [
 
 const strip = [
   { src: salida, alt: 'Cuatro karts en paralelo tras la salida, Temporada 1' },
-  { src: podioMijas, alt: 'Podio de RUKC con la bandera de la liga en Karting Mijas' },
+  { src: podioR1, alt: 'Podio de la R1 de la Temporada 2 en Karting Mijas con la bandera de RUKC 2026' },
   { src: boxes, alt: 'Karts alineados en el pit lane antes de una manga' },
   { src: pianos, alt: 'Karts trazando una curva junto a los pianos' },
   { src: publico, alt: 'Público siguiendo la carrera desde la grada' },
@@ -73,7 +73,7 @@ const nuevo = [
     </ul>
   </div>
 
-  <div class="strip" aria-label="Fotos de la Temporada 1">
+  <div class="strip" aria-label="Fotos de la liga">
     <ul class="strip__track" data-drift="-18">
       {strip.map((p) => (
         <li>
