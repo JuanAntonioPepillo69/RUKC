@@ -44,3 +44,21 @@ test('la plantilla de Google Sheets se lee y valida (sin resultados todavía)', 
   assert.equal(t.rondas[0].estado, 'programada'); // sin resultados, aún no cuenta como disputada
   assert.equal(t.config.descarte, 'auto');
 });
+
+test('un piloto puede competir en las dos categorías en la misma ronda y puntúa en cada una', () => {
+  const tabs = demoTabs();
+  tabs.Pilotos.push({ dorsal: '50', nombre: 'Doble', categoria: 'Ligeros y Pesados' });
+  tabs.Resultados.push({ ronda: '1', categoria: 'Ligeros', dorsal: '50', posicion: '15' });
+  tabs.Resultados.push({ ronda: '1', categoria: 'Pesados', dorsal: '50', posicion: '11' });
+  const t = construirTemporada(tabs, true);
+  assert.equal(t.pilotos.find((p) => p.dorsal === 50)!.categoria, 'Ambas');
+  assert.ok(campeonato(t, 'Ligeros').filas.some((f) => f.dorsal === 50));
+  assert.ok(campeonato(t, 'Pesados').filas.some((f) => f.dorsal === 50));
+});
+
+test('si compite en las dos categorías, la categoría del resultado es obligatoria', () => {
+  const tabs = demoTabs();
+  tabs.Pilotos.push({ dorsal: '50', nombre: 'Doble', categoria: 'Ambas' });
+  tabs.Resultados.push({ ronda: '1', categoria: '', dorsal: '50', posicion: '15' });
+  assert.throws(() => construirTemporada(tabs, true), /el dorsal 50 compite en las dos categorías/);
+});

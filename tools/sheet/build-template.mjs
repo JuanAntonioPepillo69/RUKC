@@ -46,7 +46,7 @@ sheet('Rondas', [['ronda', 8], ['fecha', 13], ['circuito', 24], ['estado', 14], 
 });
 
 sheet('Pilotos', [['dorsal', 8], ['nombre', 28], ['categoria', 12]], [], {
-  categoria: LIST(['Ligeros', 'Pesados']),
+  categoria: LIST(['Ligeros', 'Pesados', 'Ambas']),
 });
 
 const X = LIST(['x']);
@@ -77,7 +77,7 @@ const lines = [
   ['PESTAÑA', 'COLUMNAS'],
   ['Config', 'descarte: auto (se aplica al final de la temporada), si o no. aviso: texto opcional que sale arriba en la página de la temporada.'],
   ['Rondas', 'ronda, fecha (17/10/2026), circuito, estado (vacío = disputada si tiene resultados), carrera (vacío = completa; mitad o nula con bandera roja, Art. 31 quater), nota.'],
-  ['Pilotos', 'dorsal, nombre tal y como se publicará (por ejemplo "Carlos M."), categoria (Ligeros o Pesados).'],
+  ['Pilotos', 'dorsal, nombre tal y como se publicará (por ejemplo "Carlos M."), categoria (Ligeros, Pesados o Ambas si compite en las dos; en ese caso, en Resultados indica siempre la categoría).'],
   ['Resultados', 'ronda, categoria (vacío = la del piloto), dorsal, posicion (vacía si no clasifica), finaliza (vacío = sí si tiene posición), pole, vuelta_rapida, constancia, pierde_bonus, dsq (marca con x), salida (posición de salida, opcional, para la mayor remontada), mejor_vuelta (opcional).'],
   ['', 'La posición puede ser la de la clasificación conjunta: la web la recalcula dentro de cada categoría. Los puntos se calculan solos.'],
   ['Sanciones', 'fecha (o deja la fecha vacía y pon la ronda), ronda, dorsal, pp (puntos de penalización del Art. 44), motivo.'],

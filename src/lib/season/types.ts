@@ -19,7 +19,8 @@ export interface Ronda {
 export interface Piloto {
   dorsal: number;
   nombre: string;
-  categoria: Categoria;
+  /** 'Ambas' = compite en Ligeros y en Pesados; puntúa por separado en cada una. */
+  categoria: Categoria | 'Ambas';
 }
 
 export interface Resultado {

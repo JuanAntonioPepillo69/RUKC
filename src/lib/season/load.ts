@@ -137,6 +137,12 @@ const categoria = (v: string | undefined): Categoria | null => {
   const s = clave(v ?? '');
   return s.startsWith('lig') ? 'Ligeros' : s.startsWith('pes') ? 'Pesados' : null;
 };
+// Pilotos: además de Ligeros o Pesados, "Ambas" o "Ligeros y Pesados" para quien compite en las dos
+const categoriaPiloto = (v: string | undefined): Piloto['categoria'] | null => {
+  const s = clave(v ?? '');
+  if (s.startsWith('amb') || (s.includes('lig') && s.includes('pes'))) return 'Ambas';
+  return categoria(v);
+};
 
 export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean): Temporada {
   const e = new Errores();
@@ -167,10 +173,10 @@ export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean)
 
   const pilotos: Piloto[] = [];
   tabs.Pilotos.forEach((f, i) => {
-    const d = int(f.dorsal), c = categoria(f.categoria);
+    const d = int(f.dorsal), c = categoriaPiloto(f.categoria);
     if (!d || Number.isNaN(d)) return e.add('Pilotos', i, `dorsal no válido "${f.dorsal}"`);
     if (!f.nombre) e.add('Pilotos', i, `falta el nombre del dorsal ${d}`);
-    if (!c) e.add('Pilotos', i, `categoría "${f.categoria}" no válida (Ligeros o Pesados)`);
+    if (!c) e.add('Pilotos', i, `categoría "${f.categoria}" no válida (Ligeros, Pesados o Ambas)`);
     if (pilotos.some((p) => p.dorsal === d)) e.add('Pilotos', i, `el dorsal ${d} está repetido`);
     pilotos.push({ dorsal: d, nombre: f.nombre, categoria: c ?? 'Ligeros' });
   });
@@ -184,11 +190,12 @@ export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean)
     if (Number.isNaN(pos) || (pos !== null && pos < 1)) e.add('Resultados', i, `posición no válida "${f.posicion}"`);
     if (Number.isNaN(salida)) e.add('Resultados', i, `salida no válida "${f.salida}"`);
     // La categoría de la fila manda; si está vacía, la del piloto (los puntos no pasan de una categoría a otra, Art. 18 bis)
-    const cat = f.categoria ? categoria(f.categoria) : piloto.categoria;
-    if (!cat) e.add('Resultados', i, `categoría "${f.categoria}" no válida`);
-    if (resultados.some((x) => x.ronda === r && x.dorsal === d)) e.add('Resultados', i, `el dorsal ${d} aparece dos veces en la ronda ${r}`);
+    // Quien compite en las dos categorías puede tener una fila en cada una por ronda; ahí la categoría es obligatoria
+    const cat = f.categoria ? categoria(f.categoria) : piloto.categoria === 'Ambas' ? null : piloto.categoria;
+    if (!cat) e.add('Resultados', i, f.categoria ? `categoría "${f.categoria}" no válida` : `el dorsal ${d} compite en las dos categorías: indica en qué categoría es este resultado`);
+    if (cat && resultados.some((x) => x.ronda === r && x.dorsal === d && x.categoria === cat)) e.add('Resultados', i, `el dorsal ${d} aparece dos veces en ${cat} en la ronda ${r}`);
     resultados.push({
-      ronda: r, categoria: cat ?? piloto.categoria, dorsal: d, posicion: Number.isNaN(pos) ? null : pos,
+      ronda: r, categoria: cat ?? 'Ligeros', dorsal: d, posicion: Number.isNaN(pos) ? null : pos,
       finaliza: f.finaliza === undefined || f.finaliza === '' ? pos !== null : bool(f.finaliza),
       pole: bool(f.pole), vueltaRapida: bool(f.vuelta_rapida), constancia: bool(f.constancia),
       pierdeBonus: bool(f.pierde_bonus), dsq: bool(f.dsq),
