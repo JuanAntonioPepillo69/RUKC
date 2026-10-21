@@ -1,7 +1,7 @@
 // Tests del lector de la hoja: datos DEMO válidos y mensajes de error claros.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { construirTemporada, leerLibro, parseCsv } from '../src/lib/season/load.ts';
+import { carpetaDrive, construirTemporada, leerLibro, parseCsv, youtube } from '../src/lib/season/load.ts';
 import { campeonato } from '../src/lib/season/points.ts';
 import fs from 'node:fs';
 
@@ -61,4 +61,25 @@ test('si compite en las dos categorías, la categoría del resultado es obligato
   tabs.Pilotos.push({ dorsal: '50', nombre: 'Doble', categoria: 'Ambas' });
   tabs.Resultados.push({ ronda: '1', categoria: '', dorsal: '50', posicion: '15' });
   assert.throws(() => construirTemporada(tabs, true), /el dorsal 50 compite en las dos categorías/);
+});
+
+test('enlaces de Drive y YouTube', () => {
+  assert.equal(carpetaDrive('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQ?usp=sharing'), '1AbCdEfGhIjKlMnOpQ');
+  assert.equal(carpetaDrive('https://drive.google.com/drive/u/0/folders/1AbCdEfGhIjKlMnOpQ'), '1AbCdEfGhIjKlMnOpQ');
+  assert.equal(carpetaDrive('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQ/view'), null);
+  assert.deepEqual(youtube('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10'), { tipo: 'video', id: 'dQw4w9WgXcQ' });
+  assert.deepEqual(youtube('https://youtu.be/dQw4w9WgXcQ'), { tipo: 'video', id: 'dQw4w9WgXcQ' });
+  assert.deepEqual(youtube('https://youtube.com/shorts/dQw4w9WgXcQ'), { tipo: 'video', id: 'dQw4w9WgXcQ' });
+  assert.deepEqual(youtube('https://www.youtube.com/playlist?list=PLabcdefghij1234'), { tipo: 'lista', id: 'PLabcdefghij1234' });
+  assert.equal(youtube('https://vimeo.com/123'), null);
+});
+
+test('fotos y vídeos: columnas de Rondas y pestaña Media', () => {
+  const tabs = { ...demoTabs(), Media: [{ ronda: '1', id: 'abc123', nombre: 'IMG_1.jpg', tipo: 'foto' }, { ronda: '1', id: 'def456', nombre: 'v.mp4', tipo: 'video' }] };
+  tabs.Rondas[0] = { ...tabs.Rondas[0], fotos: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQ', videos: 'https://youtu.be/dQw4w9WgXcQ' };
+  const t = construirTemporada(tabs, true);
+  assert.equal(t.rondas[0].videos[0].id, 'dQw4w9WgXcQ');
+  assert.deepEqual(t.media.map((m) => m.tipo), ['foto', 'video']);
+  tabs.Rondas[0] = { ...tabs.Rondas[0], fotos: 'https://drive.google.com/file/d/xyz/view' };
+  assert.throws(() => construirTemporada(tabs, true), /"fotos" tiene que ser el enlace a una carpeta de Google Drive/);
 });

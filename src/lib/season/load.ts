@@ -5,10 +5,14 @@ import fs from 'node:fs/promises';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import path from 'node:path';
-import type { Carrera, Categoria, Config, EstadoRonda, Mencion, Piloto, Resultado, Ronda, Sancion, Temporada } from './types.ts';
+import type { Carrera, Categoria, Config, EstadoRonda, Media, Mencion, Piloto, Resultado, Ronda, Sancion, Temporada, VideoYoutube } from './types.ts';
 
 export const PESTANAS = ['Config', 'Rondas', 'Pilotos', 'Resultados', 'Sanciones', 'Menciones'] as const;
-type Pestana = (typeof PESTANAS)[number];
+/** Pestañas que pueden no existir: Media la crea y rellena el botón Publicar web. */
+export const OPCIONALES = ['Media'] as const;
+type Pestana = (typeof PESTANAS)[number] | (typeof OPCIONALES)[number];
+const TODAS: Pestana[] = [...PESTANAS, ...OPCIONALES];
+const esOpcional = (t: string) => (OPCIONALES as readonly string[]).includes(t);
 type Fila = Record<string, string>;
 
 // ---------- CSV ----------
@@ -43,7 +47,26 @@ function aFilas(rows: string[][]): Fila[] {
 // Datos DEMO: un CSV por pestaña en data/demo
 async function leerDemo(tab: Pestana): Promise<Fila[]> {
   const file = path.join(process.cwd(), 'data', 'demo', `${tab.toLowerCase()}.csv`);
-  return aFilas(parseCsv(await fs.readFile(file, 'utf8')));
+  try {
+    return aFilas(parseCsv(await fs.readFile(file, 'utf8')));
+  } catch (err) {
+    if (esOpcional(tab)) return [];
+    throw err;
+  }
+}
+
+// ---------- enlaces de fotos y vídeos ----------
+/** ID de una carpeta de Drive a partir de su enlace (https://drive.google.com/drive/folders/ID...). */
+export function carpetaDrive(url: string): string | null {
+  return url.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([\w-]{10,})/)?.[1] ?? null;
+}
+/** Vídeo o lista de YouTube a partir de cualquier enlace habitual (watch, youtu.be, shorts, live, playlist). */
+export function youtube(url: string): VideoYoutube | null {
+  const video = url.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})/)?.[1];
+  if (video) return { tipo: 'video', id: video };
+  const lista = url.match(/[?&]list=([\w-]{10,})/)?.[1];
+  if (lista) return { tipo: 'lista', id: lista };
+  return null;
 }
 
 // Hoja real: se descarga entera como Excel en una sola petición. Así no hay que publicar cada pestaña
@@ -97,8 +120,9 @@ export async function leerLibro(buf: ArrayBuffer): Promise<Record<Pestana, Fila[
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await sinTablas(buf));
   const out = {} as Record<Pestana, Fila[]>;
-  for (const tab of PESTANAS) {
+  for (const tab of TODAS) {
     const ws = wb.getWorksheet(tab);
+    if (!ws && esOpcional(tab)) { out[tab] = []; continue; }
     if (!ws) throw new Error(`Falta la pestaña "${tab}" en la hoja (el nombre tiene que ser exactamente ese).`);
     const rows: string[][] = [];
     ws.eachRow({ includeEmpty: false }, (row) => {
@@ -167,7 +191,14 @@ export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean)
     const carrera = (clave(f.carrera) || 'completa') as Carrera;
     if (!['completa', 'mitad', 'nula'].includes(carrera)) e.add('Rondas', i, `carrera "${f.carrera}" no válida (completa, mitad o nula)`);
     if (rondas.some((r) => r.ronda === n)) e.add('Rondas', i, `la ronda ${n} está repetida`);
-    rondas.push({ ronda: n, fecha: d, circuito: f.circuito, estado, carrera, nota: f.nota ?? '' });
+    const fotos = (f.fotos ?? '').trim();
+    if (fotos && !carpetaDrive(fotos)) e.add('Rondas', i, `"fotos" tiene que ser el enlace a una carpeta de Google Drive (está "${fotos}")`);
+    const videos: VideoYoutube[] = [];
+    for (const enlace of (f.videos ?? '').split(/[\s,;]+/).filter(Boolean)) {
+      const v = youtube(enlace);
+      if (v) videos.push(v); else e.add('Rondas', i, `"${enlace}" no es un enlace de YouTube válido`);
+    }
+    rondas.push({ ronda: n, fecha: d, circuito: f.circuito, estado, carrera, nota: f.nota ?? '', fotos, videos });
   });
   rondas.sort((a, b) => a.ronda - b.ronda);
 
@@ -230,8 +261,17 @@ export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean)
     menciones.push({ ronda: r, titulo: f.titulo, dorsal: d, texto: f.texto ?? '' });
   });
 
+  // Pestaña Media: la escribe el botón Publicar web leyendo la carpeta de Drive de cada ronda
+  const media: Media[] = [];
+  (tabs.Media ?? []).forEach((f, i) => {
+    const r = int(f.ronda);
+    if (!f.id) return;
+    if (!r || !rondas.some((x) => x.ronda === r)) return e.add('Media', i, `la ronda "${f.ronda}" no está en Rondas`);
+    media.push({ ronda: r, id: f.id, nombre: f.nombre ?? '', tipo: clave(f.tipo ?? '').startsWith('vid') ? 'video' : 'foto' });
+  });
+
   if (e.list.length) throw new Error(`La hoja de la temporada tiene errores:\n- ${e.list.join('\n- ')}`);
-  return { config, rondas, pilotos, resultados, sanciones, menciones, demo };
+  return { config, rondas, pilotos, resultados, sanciones, menciones, media, demo };
 }
 
 let cache: Promise<Temporada> | null = null;
@@ -241,7 +281,7 @@ export function cargarTemporada(): Promise<Temporada> {
     const sheetId = (import.meta.env?.RUKC_SHEET_ID as string | undefined) || process.env.RUKC_SHEET_ID || undefined;
     const tabs = sheetId
       ? await leerHoja(sheetId)
-      : (Object.fromEntries(await Promise.all(PESTANAS.map(async (t) => [t, await leerDemo(t)]))) as Record<Pestana, Fila[]>);
+      : (Object.fromEntries(await Promise.all(TODAS.map(async (t) => [t, await leerDemo(t)]))) as Record<Pestana, Fila[]>);
     return construirTemporada(tabs, !sheetId);
   })();
   return cache;

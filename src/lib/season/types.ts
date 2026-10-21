@@ -14,6 +14,23 @@ export interface Ronda {
   estado: EstadoRonda;
   carrera: Carrera;
   nota: string;
+  /** Enlace a la carpeta de Google Drive con las fotos y vídeos de la ronda (vacío si aún no hay). */
+  fotos: string;
+  /** Vídeos de YouTube de la ronda: vídeos sueltos o listas de reproducción. */
+  videos: VideoYoutube[];
+}
+
+export interface VideoYoutube {
+  tipo: 'video' | 'lista';
+  id: string;
+}
+
+/** Archivo de la carpeta de Drive de una ronda (lo escribe el botón Publicar web en la pestaña Media). */
+export interface Media {
+  ronda: number;
+  id: string;
+  nombre: string;
+  tipo: 'foto' | 'video';
 }
 
 export interface Piloto {
@@ -70,6 +87,7 @@ export interface Temporada {
   resultados: Resultado[];
   sanciones: Sancion[];
   menciones: Mencion[];
+  media: Media[];
   /** true cuando no hay hoja conectada y se usan los datos de ejemplo. */
   demo: boolean;
 }

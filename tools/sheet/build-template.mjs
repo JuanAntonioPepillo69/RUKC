@@ -31,7 +31,7 @@ sheet('Config', [['clave', 18], ['valor', 70]], [
   ['aviso', ''],
 ], { valor: undefined });
 
-sheet('Rondas', [['ronda', 8], ['fecha', 13], ['circuito', 24], ['estado', 14], ['carrera', 12], ['nota', 30]], [
+sheet('Rondas', [['ronda', 8], ['fecha', 13], ['circuito', 24], ['estado', 14], ['carrera', 12], ['nota', 30], ['fotos', 50], ['videos', 50]], [
   [1, '17/10/2026', 'Karting Mijas', '', '', ''],
   [2, '21/11/2026', 'Karting Campillos', '', '', ''],
   [3, '12/12/2026', 'Kart&Fun Málaga', '', '', ''],
@@ -82,6 +82,10 @@ const lines = [
   ['', 'La posición puede ser la de la clasificación conjunta: la web la recalcula dentro de cada categoría. Los puntos se calculan solos.'],
   ['Sanciones', 'fecha (o deja la fecha vacía y pon la ronda), ronda, dorsal, pp (puntos de penalización del Art. 44), motivo.'],
   ['Menciones', 'ronda, titulo (por ejemplo "Piloto del día"), dorsal (opcional), texto. Pole, vuelta rápida, constancia y mayor remontada salen solas.'],
+  ['', ''],
+  ['FOTOS Y VÍDEOS', 'En Rondas, columna "fotos": enlace a la carpeta de Google Drive de la ronda (compartida como "Cualquier persona con el enlace"). Puede tener subcarpetas. Mejor JPG que RAW o HEIC.'],
+  ['', 'Columna "videos": enlaces de YouTube (vídeos o listas), separados por espacios o saltos de línea.'],
+  ['Media', 'La crea y rellena sola el botón RUKC > Publicar web con los archivos de cada carpeta. No hace falta tocarla.'],
 ];
 for (const l of lines) help.addRow(l);
 for (const r of [1, 9]) help.getRow(r).font = { bold: true, color: { argb: GOLD } };

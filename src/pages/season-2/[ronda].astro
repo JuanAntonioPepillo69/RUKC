@@ -6,6 +6,7 @@ import Footer from '../../components/Footer.astro';
 import DemoBanner from '../../components/season/DemoBanner.astro';
 import RoundTable from '../../components/season/RoundTable.astro';
 import Mentions from '../../components/season/Mentions.astro';
+import Gallery from '../../components/season/Gallery.astro';
 import { cargarTemporada } from '../../lib/season/load';
 import { clasificacionRonda, mencionesRonda } from '../../lib/season/points';
 import { CATEGORIAS, type Ronda } from '../../lib/season/types';
@@ -56,6 +57,8 @@ const aviso = r.carrera === 'mitad'
         <Mentions menciones={menciones} />
       </section>
     )}
+
+    <Gallery ronda={r} media={t.media.filter((m) => m.ronda === r.ronda)} />
 
     <nav class="wrap pager" aria-label="Otras rondas">
       {prev ? <a href={urlRonda(prev)}>R{prev.ronda} · {prev.circuito}</a> : <span></span>}

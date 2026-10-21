@@ -17,6 +17,7 @@ const puntuables = rondasPuntuables(t);
 const tablas = CATEGORIAS.map((c) => ({ categoria: c, ...campeonato(t, c) }));
 const pp = pasaporte(t);
 const ultimas = [...disputadas].reverse();
+const nMedia = (r: { ronda: number; videos: unknown[] }) => t.media.filter((m) => m.ronda === r.ronda).length + r.videos.length;
 const ganadores = (ronda: number) => CATEGORIAS.map((c) => ({ c, f: clasificacionRonda(t, ronda, c).find((x) => x.pos === 1) }));
 const primera = t.rondas[0], ultima = t.rondas[t.rondas.length - 1];
 const hoy = new Date().toISOString().slice(0, 10);
@@ -100,7 +101,7 @@ const proxima = t.rondas.find((r) => r.fecha >= hoy && r.estado !== 'cancelada')
             <li>
               <a href={urlRonda(r)} class="result">
                 <span class="result__n tnum">R{r.ronda}</span>
-                <span class="result__meta"><strong>{r.circuito}</strong><span>{fechaLarga(r.fecha)}{r.carrera !== 'completa' && ` · ${r.carrera === 'mitad' ? 'mitad de puntos' : 'carrera nula'}`}</span></span>
+                <span class="result__meta"><strong>{r.circuito}</strong><span>{fechaLarga(r.fecha)}{r.carrera !== 'completa' && ` · ${r.carrera === 'mitad' ? 'mitad de puntos' : 'carrera nula'}`}{nMedia(r) > 0 && ` · ${nMedia(r)} fotos y vídeos`}</span></span>
                 <span class="result__win">
                   {ganadores(r.ronda).map(({ c, f }) => f && <span><em>{c}</em> #{f.dorsal} {f.nombre}</span>)}
                 </span>

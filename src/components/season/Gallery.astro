@@ -1,0 +1,190 @@
+---
+// Galería de fotos y vídeos de una ronda.
+// Fotos y vídeos: carpeta de Google Drive de la ronda (pestaña Media, la rellena el botón Publicar web).
+// Vídeos de YouTube: columna "videos" de la pestaña Rondas.
+import type { Media, Ronda } from '../../lib/season/types';
+import { SITE } from '../../config/site';
+
+interface Props { ronda: Ronda; media: Media[] }
+const { ronda, media } = Astro.props;
+const PRIMERAS = 24; // las primeras se pintan ya en el HTML; el resto se añade con "Ver más"
+const thumb = (id: string) => `https://lh3.googleusercontent.com/d/${id}=w640`;
+const fotos = media.filter((m) => m.tipo === 'foto').length;
+const videosDrive = media.length - fotos;
+const resumen = [fotos && `${fotos} fotos`, (videosDrive + ronda.videos.length) && `${videosDrive + ronda.videos.length} vídeos`].filter(Boolean).join(' · ');
+---
+{(media.length > 0 || ronda.videos.length > 0) && (
+  <section class="wrap gallery" aria-labelledby="h-gal" data-gallery data-items={JSON.stringify(media.map((m) => [m.id, m.tipo === 'video' ? 1 : 0, m.nombre]))}>
+    <div class="gallery__head">
+      <h2 class="gallery__title" id="h-gal">Fotos y vídeos</h2>
+      <p class="muted">{resumen}{ronda.fotos && <> · <a href={ronda.fotos} target="_blank" rel="noopener">Abrir la carpeta completa en Drive</a></>}</p>
+    </div>
+
+    {ronda.videos.length > 0 && (
+      <ul class="yt">
+        {ronda.videos.map((v) => (
+          <li>
+            <button type="button" class="yt__btn" data-yt={v.id} data-yt-tipo={v.tipo} aria-label={v.tipo === 'lista' ? 'Reproducir la lista de vídeos' : 'Reproducir el vídeo'}>
+              {v.tipo === 'video'
+                ? <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt="" loading="lazy" width="480" height="360" />
+                : <span class="yt__list">Lista de reproducción</span>}
+              <span class="play" aria-hidden="true"></span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {media.length > 0 && (
+      <>
+        <ul class="grid" data-grid>
+          {media.slice(0, PRIMERAS).map((m, i) => (
+            <li>
+              <button type="button" class="grid__btn" data-i={i} aria-label={`${m.tipo === 'video' ? 'Ver vídeo' : 'Ver foto'} ${i + 1} de ${media.length}`}>
+                <img src={thumb(m.id)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                {m.tipo === 'video' && <span class="play" aria-hidden="true"></span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {media.length > PRIMERAS && <button type="button" class="btn btn--ghost more" data-more>Ver más ({media.length - PRIMERAS})</button>}
+      </>
+    )}
+
+    <p class="gallery__note muted">¿Sales en alguna foto y prefieres que la quitemos? Escríbenos a <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+
+    <dialog class="lb" data-lightbox aria-label="Visor de fotos y vídeos">
+      <div class="lb__stage" data-stage></div>
+      <div class="lb__bar">
+        <span class="lb__count tnum" data-count></span>
+        <a class="lb__dl" data-download target="_blank" rel="noopener">Descargar</a>
+        <button type="button" class="lb__close" data-close aria-label="Cerrar">✕</button>
+      </div>
+      <button type="button" class="lb__nav lb__nav--prev" data-prev aria-label="Anterior">‹</button>
+      <button type="button" class="lb__nav lb__nav--next" data-next aria-label="Siguiente">›</button>
+    </dialog>
+  </section>
+)}
+
+<script>
+  type Item = [string, 0 | 1, string];
+  const LOTE = 48;
+  const thumb = (id: string) => `https://lh3.googleusercontent.com/d/${id}=w640`;
+  const full = (id: string) => `https://lh3.googleusercontent.com/d/${id}=w2000`;
+
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((root) => {
+    const items: Item[] = JSON.parse(root.dataset.items || '[]');
+    const grid = root.querySelector<HTMLUListElement>('[data-grid]');
+    const more = root.querySelector<HTMLButtonElement>('[data-more]');
+    const dlg = root.querySelector<HTMLDialogElement>('[data-lightbox]')!;
+    const stage = dlg.querySelector<HTMLElement>('[data-stage]')!;
+    const count = dlg.querySelector<HTMLElement>('[data-count]')!;
+    const dl = dlg.querySelector<HTMLAnchorElement>('[data-download]')!;
+    let cur = 0;
+
+    // "Ver más": añade el siguiente bloque de miniaturas
+    more?.addEventListener('click', () => {
+      const desde = grid!.children.length;
+      items.slice(desde, desde + LOTE).forEach(([id, video], k) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<button type="button" class="grid__btn" data-i="${desde + k}" aria-label="${video ? 'Ver vídeo' : 'Ver foto'} ${desde + k + 1} de ${items.length}"><img src="${thumb(id)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">${video ? '<span class="play" aria-hidden="true"></span>' : ''}</button>`;
+        grid!.appendChild(li);
+      });
+      const quedan = items.length - grid!.children.length;
+      if (quedan > 0) more.textContent = `Ver más (${quedan})`; else more.remove();
+    });
+
+    // Visor
+    const show = (i: number) => {
+      cur = (i + items.length) % items.length;
+      const [id, video, nombre] = items[cur];
+      stage.innerHTML = video
+        ? `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay; fullscreen" allowfullscreen title="${nombre || 'Vídeo'}"></iframe>`
+        : `<img src="${full(id)}" alt="${nombre ? nombre.replace(/"/g, '') : 'Foto de la ronda'}" referrerpolicy="no-referrer">`;
+      count.textContent = `${cur + 1} / ${items.length}`;
+      dl.href = `https://drive.google.com/uc?export=download&id=${id}`;
+      // precarga la siguiente foto
+      const next = items[(cur + 1) % items.length];
+      if (next && !next[1]) new Image().src = full(next[0]);
+    };
+    grid?.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-i]');
+      if (!b) return;
+      dlg.showModal();
+      show(Number(b.dataset.i));
+    });
+    dlg.querySelector('[data-prev]')!.addEventListener('click', () => show(cur - 1));
+    dlg.querySelector('[data-next]')!.addEventListener('click', () => show(cur + 1));
+    dlg.querySelector('[data-close]')!.addEventListener('click', () => dlg.close());
+    dlg.addEventListener('close', () => { stage.innerHTML = ''; });
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') show(cur - 1);
+      if (e.key === 'ArrowRight') show(cur + 1);
+    });
+    // Deslizar en móvil
+    let x0: number | null = null;
+    dlg.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    dlg.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1));
+      x0 = null;
+    });
+
+    // YouTube: la miniatura se cambia por el reproductor al pulsar (no carga YouTube hasta entonces)
+    root.querySelectorAll<HTMLButtonElement>('[data-yt]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const id = b.dataset.yt!, lista = b.dataset.ytTipo === 'lista';
+        const src = lista ? `https://www.youtube-nocookie.com/embed/videoseries?list=${id}&autoplay=1` : `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+        b.outerHTML = `<iframe class="yt__frame" src="${src}" title="Vídeo de la ronda" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+      });
+    });
+  });
+</script>
+
+<style>
+  .gallery { padding-top: clamp(40px, 5vw, 64px); }
+  .gallery__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 18px; }
+  .gallery__head p { margin: 0; font-size: 14px; }
+  .gallery__head a { color: var(--gold-hi); }
+  .gallery__title { font-size: clamp(24px, 2.8vw, 36px); font-weight: 900; letter-spacing: -0.02em; }
+
+  .yt { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .yt__btn, :global(.yt__frame) { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; overflow: hidden; background: var(--ink-3); cursor: pointer; padding: 0; }
+  .yt__btn img { width: 100%; height: 100%; object-fit: cover; }
+  .yt__list { display: grid; place-items: center; height: 100%; font-family: var(--font-display); font-weight: 800; color: var(--paper); }
+
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  :global(.grid__btn) { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--ink-3); cursor: zoom-in; }
+  :global(.grid__btn img) { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+  :global(.grid__btn:hover img) { transform: scale(1.04); }
+  :global(.grid__btn:focus-visible), .yt__btn:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+  :global(.gallery .play) {
+    position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; translate: -50% -50%; border-radius: 50%;
+    background: rgba(10, 10, 11, 0.7); border: 2px solid var(--gold-hi);
+  }
+  :global(.gallery .play)::after { content: ''; position: absolute; left: 20px; top: 15px; border-left: 16px solid var(--gold-hi); border-top: 10px solid transparent; border-bottom: 10px solid transparent; }
+  .more { margin: 18px auto 0; display: flex; }
+  .gallery__note { margin-top: 18px; font-size: 13px; }
+  .gallery__note a { color: var(--gold-hi); }
+
+  .lb { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: rgba(5, 5, 6, 0.96); color: var(--paper); }
+  .lb::backdrop { background: rgba(0, 0, 0, 0.85); }
+  .lb__stage { position: absolute; inset: 56px 0 0; display: grid; place-items: center; padding: 0 56px 24px; }
+  .lb__stage :global(img) { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .lb__stage :global(iframe) { width: min(100%, 1280px); aspect-ratio: 16 / 9; max-height: 100%; border: 0; }
+  .lb__bar { position: absolute; inset: 0 0 auto; height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 16px; }
+  .lb__count { margin-right: auto; color: var(--muted); font-size: 14px; }
+  .lb__dl { color: var(--gold-hi); font-weight: 700; font-size: 14px; }
+  .lb__close, .lb__nav { border: 0; background: none; color: var(--paper); cursor: pointer; font-size: 28px; line-height: 1; padding: 8px 12px; }
+  .lb__nav { position: absolute; top: 50%; translate: 0 -50%; font-size: 56px; opacity: 0.8; }
+  .lb__nav:hover, .lb__close:hover { color: var(--gold-hi); opacity: 1; }
+  .lb__nav--prev { left: 4px; }
+  .lb__nav--next { right: 4px; }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    :global(.grid__btn) { border-radius: 6px; aspect-ratio: 1; }
+    .lb__stage { padding: 0 0 16px; }
+    .lb__nav { display: none; }
+  }
+</style>

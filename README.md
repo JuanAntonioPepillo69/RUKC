@@ -41,6 +41,18 @@ Corrígelo y vuelve a pulsar **Publicar web**.
 
 > La hoja es visible para cualquiera con el enlace: **nunca** pongas pesos, teléfonos ni correos.
 
+### Fotos y vídeos de cada ronda
+
+Cada ronda disputada tiene una galería en su página (`/season-2/r1-karting-mijas`…). Las fotos se quedan en tu Google Drive; la web solo las enlaza.
+
+1. En Google Drive, crea una carpeta por ronda (por ejemplo "RUKC T2 · R1 Mijas") y sube ahí las fotos y vídeos. Puede tener subcarpetas. Mejor JPG que RAW (.dng) o HEIC.
+2. Compártela: **Compartir → Cualquier persona con el enlace → Lector**.
+3. En la hoja, pestaña **Rondas**, columna `fotos`: pega el enlace de la carpeta.
+4. Opcional, columna `videos`: enlaces de YouTube (vídeos sueltos o listas de reproducción), separados por espacios. Para vídeos largos (resúmenes, on-boards) YouTube va mucho mejor que Drive.
+5. **RUKC → Publicar web.** El botón recorre las carpetas, escribe la lista en la pestaña **Media** y publica. Si una carpeta no está compartida, te avisa antes.
+
+La galería carga 24 miniaturas y el resto con "Ver más"; el visor tiene flechas, deslizar en móvil y botón **Descargar**. Las miniaturas se sirven desde Google (`lh3.googleusercontent.com`) a tamaño reducido, así que no gastan tráfico de Vercel. Si algún día el tráfico creciera mucho y Google limitara las imágenes, la alternativa es un servicio de imágenes (Cloudinary o similar).
+
 ### Reglas que aplica la web (reglamento v1.1)
 
 - Puntos por posición en la categoría (Art. 46): 25-20-16-13-11-10-9-8-7-6-5-4-3-2-1 del 1.º al 15.º y 1 punto del 16.º en adelante; solo puntúa quien finaliza. Si el reglamento cambia la escala, actualiza `PUNTOS_POSICION` y `PUNTOS_FINALIZAR` en `src/lib/season/points.ts`: un test avisa si la web y la tabla del reglamento no coinciden.
