@@ -3,6 +3,7 @@
 // Su ID va en la variable de entorno RUKC_SHEET_ID (en Vercel: Settings > Environment Variables).
 import fs from 'node:fs/promises';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import path from 'node:path';
 import type { Carrera, Categoria, Config, EstadoRonda, Mencion, Piloto, Resultado, Ronda, Sancion, Temporada } from './types.ts';
 
@@ -68,9 +69,33 @@ async function leerHoja(sheetId: string): Promise<Record<Pestana, Fila[]>> {
 }
 
 /** Convierte el Excel de la hoja en filas por pestaña. */
+/**
+ * Quita del Excel las "tablas" (Insertar tabla / Dar formato como tabla en Google Sheets o Excel).
+ * Solo son formato, no datos, y exceljs falla al leer las que exporta Google.
+ */
+async function sinTablas(buf: ArrayBuffer): Promise<ArrayBuffer> {
+  const zip = await JSZip.loadAsync(buf);
+  const tablas = Object.keys(zip.files).filter((n) => /^xl\/tables\//.test(n));
+  if (!tablas.length) return buf;
+  for (const n of tablas) zip.remove(n);
+  for (const n of Object.keys(zip.files)) {
+    if (/^xl\/worksheets\/sheet\d+\.xml$/.test(n)) {
+      const x = await zip.file(n)!.async('string');
+      zip.file(n, x.replace(/<tableParts[\s\S]*?<\/tableParts>|<tableParts[^>]*\/>/g, ''));
+    } else if (/^xl\/worksheets\/_rels\/.*\.rels$/.test(n)) {
+      const x = await zip.file(n)!.async('string');
+      zip.file(n, x.replace(/<Relationship [^>]*Target="[^"]*tables\/[^"]*"[^>]*\/>/g, ''));
+    } else if (n === '[Content_Types].xml') {
+      const x = await zip.file(n)!.async('string');
+      zip.file(n, x.replace(/<Override [^>]*PartName="\/xl\/tables\/[^"]*"[^>]*\/>/g, ''));
+    }
+  }
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
 export async function leerLibro(buf: ArrayBuffer): Promise<Record<Pestana, Fila[]>> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
+  await wb.xlsx.load(await sinTablas(buf));
   const out = {} as Record<Pestana, Fila[]>;
   for (const tab of PESTANAS) {
     const ws = wb.getWorksheet(tab);
