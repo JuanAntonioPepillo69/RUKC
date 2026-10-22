@@ -1,0 +1,23 @@
+---
+// Página a la que vuelve Stripe después de pagar la reserva. No se indexa.
+import Doc from '../../layouts/Doc.astro';
+import { SITE, whatsappUrl } from '../../config/site';
+import { RESERVA } from '../../config/reserva.js';
+---
+<Doc
+  title="Reserva confirmada | RUKC"
+  description="Tu reserva de plaza en la Temporada 2 de RUKC."
+  eyebrow="Temporada 2"
+  heading="Plaza reservada"
+  noindex
+>
+  <p><strong>Gracias, ya tienes tu sitio en la parrilla.</strong> Hemos recibido el pago de la reserva ({RESERVA.importe} €) y te llegará el justificante de Stripe a tu correo.</p>
+  <p>Te escribimos por WhatsApp para cerrar las carreras que vas a correr. Si prefieres adelantarte, escríbenos tú:</p>
+  <p><a class="btn btn--gold" href={whatsappUrl('Hola, acabo de pagar la reserva de plaza de la Temporada 2 de RUKC.')} target="_blank" rel="noopener">Escribir por WhatsApp</a></p>
+  <p>Mientras tanto, echa un vistazo al <a href="/reglamento">reglamento</a> y al <a href="/season-2">calendario de la temporada</a>. Para cualquier duda sobre el pago: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+</Doc>
+
+<script>
+  // Los datos del formulario ya no hacen falta en este navegador
+  try { sessionStorage.removeItem('rukc_reserva'); } catch {}
+</script>

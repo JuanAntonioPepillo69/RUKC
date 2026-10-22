@@ -1,5 +1,4 @@
 ---
-import { whatsappUrl } from '../config/site';
 const path = Astro.url.pathname;
 const links = [
   { href: '/', label: 'Inicio' },
@@ -16,7 +15,7 @@ const links = [
       <a href={l.href} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a>
     ))}
   </nav>
-  <a class="hdr__cta" href={whatsappUrl()} target="_blank" rel="noopener">Correr la T2</a>
+  <a class="hdr__cta" href="/inscripcion">Reservar plaza</a>
 </header>
 
 <script>

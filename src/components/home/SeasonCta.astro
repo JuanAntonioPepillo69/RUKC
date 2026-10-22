@@ -4,6 +4,7 @@ import grid from '../../assets/t2/parrilla-lateral.jpg';
 import { cargarTemporada } from '../../lib/season/load';
 import { fechaCorta } from '../../lib/season/format';
 import { whatsappUrl } from '../../config/site';
+import { RESERVA } from '../../config/reserva.js';
 
 const { rondas } = await cargarTemporada();
 ---
@@ -18,9 +19,10 @@ const { rondas } = await cargarTemporada();
       </p>
       <p class="price" data-reveal>Desde <strong class="tnum">99 €</strong> por carrera</p>
       <div class="cta__buttons" data-reveal>
-        <a class="btn btn--gold" href={whatsappUrl()} target="_blank" rel="noopener">Reservar por WhatsApp</a>
-        <a class="btn btn--ghost" href="/season-2">Ver la Temporada 2</a>
+        <a class="btn btn--gold" href="/inscripcion">Reservar plaza · {RESERVA.importe} €</a>
+        <a class="btn btn--ghost" href={whatsappUrl()} target="_blank" rel="noopener">Preguntar por WhatsApp</a>
       </div>
+      <p class="cta__more" data-reveal>Reserva con tarjeta o Bizum. <a href="/season-2">Ver la Temporada 2</a></p>
     </div>
 
     <div class="cal" data-reveal>
@@ -60,6 +62,8 @@ const { rondas } = await cargarTemporada();
   .price { margin: 4px 0 0; font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--muted); }
   .price strong { font-weight: 900; font-size: clamp(40px, 4.4vw, 56px); color: var(--paper); margin: 0 6px; letter-spacing: -0.03em; }
   .cta__buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+  .cta__more { margin: -6px 0 0; font-size: 14px; color: var(--muted); }
+  .cta__more a { color: var(--gold-hi); }
 
   .cal { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--ink-2); }
   .cal__photo :global(img) { width: 100%; height: 160px; object-fit: cover; opacity: 0.55; filter: saturate(0.8); }

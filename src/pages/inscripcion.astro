@@ -1,0 +1,145 @@
+---
+// Reserva de plaza con pago online (Stripe Checkout: tarjeta y Bizum).
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { whatsappUrl } from '../config/site';
+import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
+---
+<Base
+  title="Reserva tu plaza | Temporada 2 | RUKC"
+  description={`Reserva tu plaza en la Temporada 2 de RUKC por ${RESERVA.importe} €. Pago seguro con tarjeta o Bizum.`}
+>
+  <Header />
+  <main class="res">
+    <div class="wrap res__grid">
+      <section class="res__intro">
+        <p class="eyebrow">Temporada 2 · 2026-2027</p>
+        <h1 class="h2">Reserva tu <em>plaza</em></h1>
+        <p class="lead">Asegura tu sitio en la parrilla de la Temporada 2. Después te escribimos por WhatsApp para cerrar las carreras que vas a correr.</p>
+        <ol class="res__steps">
+          <li><span class="tnum">1</span>Rellena tus datos.</li>
+          <li><span class="tnum">2</span>Paga la reserva con tarjeta o Bizum en la pantalla segura de Stripe.</li>
+          <li><span class="tnum">3</span>Recibes el justificante por correo y te contactamos por WhatsApp.</li>
+        </ol>
+        <p class="res__help">¿Dudas antes de reservar? <a href={whatsappUrl()} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>.</p>
+      </section>
+
+      <form class="card" id="reserva" novalidate>
+        <p class="card__notice" id="cancelado" hidden>Has vuelto sin pagar. No se ha hecho ningún cobro: puedes intentarlo de nuevo.</p>
+        <div class="card__sum">
+          <span>{RESERVA.concepto}</span>
+          <strong class="tnum">{RESERVA.importe} €</strong>
+        </div>
+
+        <label class="field"><span>Nombre y apellidos</span>
+          <input name="nombre" type="text" autocomplete="name" required maxlength="80" />
+        </label>
+        <label class="field"><span>Correo electrónico</span>
+          <input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="120" />
+        </label>
+        <label class="field"><span>WhatsApp</span>
+          <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34 600 00 00 00" required maxlength="30" />
+        </label>
+        <label class="field"><span>Categoría</span>
+          <select name="categoria" required>
+            <option value="" disabled selected>Elige una opción</option>
+            {CATEGORIAS_RESERVA.map((c) => <option value={c}>{c}</option>)}
+          </select>
+          <small>La categoría depende del peso con el equipo. Si dudas, elige "Aún no lo sé" y lo vemos contigo.</small>
+        </label>
+
+        <label class="check">
+          <input name="acepta" type="checkbox" required />
+          <span>He leído y acepto las <a href="/condiciones-reserva" target="_blank" rel="noopener">condiciones de la reserva</a> (los {RESERVA.importe} € no se reembolsan) y la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span>
+        </label>
+
+        <button class="btn btn--gold card__btn" type="submit">Pagar {RESERVA.importe} € y reservar</button>
+        <p class="card__err" id="error" role="alert"></p>
+        <p class="card__foot">Pago seguro con Stripe. Tarjeta o Bizum. RUKC no ve ni guarda los datos de tu tarjeta.</p>
+      </form>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  // Envía los datos a /api/checkout y abre la pantalla de pago de Stripe.
+  // Los datos se guardan en la sesión del navegador para no tener que repetirlos si el piloto vuelve sin pagar.
+  const form = document.getElementById('reserva') as HTMLFormElement;
+  const err = document.getElementById('error')!;
+  const btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  const CAMPOS = ['nombre', 'email', 'telefono', 'categoria'] as const;
+  const leer = (k: string) => { try { return sessionStorage.getItem(k) ?? localStorage.getItem(k); } catch { return null; } };
+  const cookie = (n: string) => document.cookie.match(new RegExp(`(?:^|; )${n}=([^;]+)`))?.[1];
+
+  try {
+    const prev = JSON.parse(sessionStorage.getItem('rukc_reserva') || '{}');
+    for (const k of CAMPOS) if (prev[k]) (form.elements.namedItem(k) as HTMLInputElement).value = prev[k];
+  } catch {}
+  if (new URLSearchParams(location.search).has('cancelado')) document.getElementById('cancelado')!.hidden = false;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const datos = Object.fromEntries(CAMPOS.map((k) => [k, (form.elements.namedItem(k) as HTMLInputElement).value.trim()]));
+    const acepta = (form.elements.namedItem('acepta') as HTMLInputElement).checked;
+    try { sessionStorage.setItem('rukc_reserva', JSON.stringify(datos)); } catch {}
+
+    // Medición en Meta solo para quien llegó desde la landing de anuncios y no rechazó sus cookies
+    const fbp = cookie('_fbp'), fbc = cookie('_fbc');
+    const meta = leer('rukc_consent') !== 'no' && (fbp || leer('rukc_consent') === 'yes') ? 'si' : 'no';
+
+    err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Abriendo el pago…';
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...datos, acepta, meta, fbp, fbc, origen: leer('rukc_origen') === 'landing' ? 'landing' : 'web' }),
+      });
+      const r = await res.json().catch(() => ({}));
+      if (res.ok && r.url) { location.href = r.url; return; }
+      err.textContent = r.error || 'No se ha podido abrir el pago. Inténtalo de nuevo en un momento.';
+    } catch {
+      err.textContent = 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
+    }
+    btn.disabled = false;
+    btn.textContent = btn.dataset.label!;
+  });
+  btn.dataset.label = btn.textContent!;
+</script>
+
+<style>
+  .res { padding-top: 120px; padding-bottom: clamp(64px, 8vw, 112px); }
+  .res__grid { display: grid; grid-template-columns: 1fr minmax(0, 480px); gap: clamp(32px, 6vw, 96px); align-items: start; }
+  .res__intro { display: grid; gap: 22px; }
+  .res__intro .lead { margin: 0; }
+  .res__steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 14px; }
+  .res__steps li { display: flex; gap: 14px; align-items: baseline; color: #dcd8cf; }
+  .res__steps span { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--grad-gold); color: #0a0a0b; font-family: var(--font-display); font-weight: 900; font-size: 14px; transform: translateY(8px); }
+  .res__help { margin: 0; color: var(--muted); }
+  .res__help a { color: var(--gold-hi); }
+
+  .card { display: grid; gap: 18px; padding: clamp(22px, 3vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); }
+  .card__notice { margin: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); font-size: 14px; }
+  .card__sum { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .card__sum strong { font-family: var(--font-display); font-weight: 900; font-size: 32px; letter-spacing: -0.02em; white-space: nowrap; }
+  .field { display: grid; gap: 7px; font-size: 14px; font-weight: 600; }
+  .field input, .field select {
+    min-height: 50px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18);
+    background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-weight: 500; font-size: 16px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+  .field small { font-weight: 400; font-size: 13px; color: var(--muted); }
+  .check { display: flex; gap: 11px; align-items: flex-start; font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+  .check a { color: var(--gold-hi); }
+  .card__btn { width: 100%; border: 0; cursor: pointer; }
+  .card__btn:disabled { opacity: 0.7; cursor: progress; }
+  .card__err { margin: 0; min-height: 1em; color: #ff6b6b; font-size: 14px; }
+  .card__err:empty { display: none; }
+  .card__foot { margin: 0; font-size: 13px; color: var(--muted-2); text-align: center; }
+
+  @media (max-width: 900px) { .res__grid { grid-template-columns: 1fr; } }
+</style>

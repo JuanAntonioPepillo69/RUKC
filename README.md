@@ -10,7 +10,8 @@ Hecha con [Astro](https://astro.build) (web estática), GSAP + ScrollTrigger y L
 | `/season-2` | Calendario, clasificación de Ligeros y Pesados, rondas, menciones y penalizaciones |
 | `/season-2/r1-karting-mijas`… | Resultado de cada ronda disputada (se crean solas) |
 | `/reglamento` | Reglamento deportivo (generado desde el .docx) |
-| `/aviso-legal`, `/privacidad`, `/cookies` | Textos legales |
+| `/inscripcion` | Reserva de plaza con pago (Stripe: tarjeta y Bizum) |
+| `/aviso-legal`, `/privacidad`, `/cookies`, `/condiciones-reserva` | Textos legales |
 | `/acceso-t2-c7e594` | Landing de anuncios: oculta, con noindex, fuera del sitemap y sin enlaces internos |
 
 ---
@@ -80,7 +81,29 @@ Mientras `RUKC_SHEET_ID` no esté puesto, la web usa los datos de ejemplo de `da
 
 ---
 
-## 2. Cambiar el slug de la landing
+## 2. Reserva de plaza con pago online (Stripe)
+
+`/inscripcion` cobra la reserva de plaza (30 €, no reembolsable) con **Stripe Checkout**: el piloto rellena nombre, correo, WhatsApp y categoría, acepta las condiciones y paga en la pantalla de Stripe con tarjeta o Bizum. Después vuelve a `/inscripcion/confirmada`. Las condiciones están en `/condiciones-reserva`.
+
+- **Importe, concepto y categorías:** `src/config/reserva.js`. Si cambias el importe, revisa también los textos de `/condiciones-reserva`.
+- **Dónde se enlaza:** botón "Reservar plaza" de la cabecera, la home, la Temporada 2, el pie y, en la landing, el botón "Reserva ya tu plaza" debajo del formulario (lleva lo que el piloto ya haya escrito).
+- **Los pagos** se ven en Stripe → Pagos, con el nombre, el WhatsApp y la categoría en los metadatos. Stripe envía el justificante al piloto si está activado en *Settings → Customer emails*.
+- **Medición en Meta:** cuando el pago se completa, `api/stripe-webhook.js` envía el evento `Purchase` (30 €) a la API de conversiones, solo si el piloto llegó desde la landing y no rechazó sus cookies.
+- Si `STRIPE_SECRET_KEY` no está puesta, la página no cobra y pide escribir por WhatsApp.
+
+### Activarlo (una sola vez)
+
+1. Crea la cuenta de Stripe a nombre de RUKC y completa la verificación.
+2. **Settings → Payment methods**: activa **Cards** y **Bizum** (y si quieres Apple Pay y Google Pay). La web muestra lo que esté activado ahí.
+3. **Developers → API keys**: copia la **Secret key**.
+4. **Developers → Webhooks → Add endpoint**: URL `https://raceupkc.com/api/stripe-webhook`, eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`. Copia el **Signing secret** (`whsec_...`).
+5. En Vercel, **Settings → Environment Variables** (Production): `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`. Vuelve a desplegar.
+
+Haz primero todo en **modo prueba** de Stripe (claves `sk_test_...`, tarjeta de prueba `4242 4242 4242 4242`, cualquier fecha futura y CVC). Cuando funcione, repite los pasos 3 a 5 en modo real (`sk_live_...` y un webhook nuevo en modo real) y vuelve a desplegar.
+
+---
+
+## 3. Cambiar el slug de la landing
 
 El slug actual es `acceso-t2-c7e594` → `https://raceupkc.com/acceso-t2-c7e594`.
 
@@ -93,7 +116,7 @@ Los textos de la landing están en `src/landing/landing.html`. Arriba del archiv
 
 ---
 
-## 3. Pixel de Meta y API de conversiones
+## 4. Pixel de Meta y API de conversiones
 
 - **Pixel ID**: `src/config/landing.ts` → `pixelId` (ahora `1960101698031451`).
 - **CAPI**: la función `api/lead.js` envía el evento `Lead` del formulario con email y teléfono cifrados (SHA-256) y el mismo `eventID` que el Pixel, para que Meta no lo duplique. Necesita en Vercel la variable `META_CAPI_TOKEN` (token de acceso de la API de conversiones, en el Administrador de eventos de Meta).
@@ -105,7 +128,7 @@ La web principal no carga el Pixel ni usa cookies.
 
 ---
 
-## 4. Deploy
+## 5. Deploy
 
 El repositorio está conectado al proyecto **raceupkc** de Vercel: cada `git push` a `main` publica en producción y cada rama genera una URL de prueba.
 
@@ -115,7 +138,9 @@ Variables de entorno en Vercel:
 |---|---|
 | `RUKC_SHEET_ID` | ID de la hoja de la temporada |
 | `META_CAPI_TOKEN` | Token de la API de conversiones de Meta |
-| `META_PIXEL_ID` | Opcional. Si no está, `api/lead.js` usa el del código |
+| `META_PIXEL_ID` | Opcional. Si no está, la API de conversiones usa el del código |
+| `STRIPE_SECRET_KEY` | Clave secreta de Stripe para cobrar la reserva |
+| `STRIPE_WEBHOOK_SECRET` | Firma del webhook de Stripe (`whsec_...`) |
 
 Deploy manual desde tu equipo (si hiciera falta):
 
@@ -129,7 +154,7 @@ npx vercel deploy --prod
 
 ---
 
-## 5. Trabajar en local
+## 6. Trabajar en local
 
 ```bash
 npm ci
@@ -180,7 +205,7 @@ src/
   landing/          HTML de la landing de anuncios
   config/           site.ts (WhatsApp, Instagram, email) y landing.ts (slug y Pixel)
   content/          reglamento generado
-api/lead.js         función de Vercel para la API de conversiones de Meta
+api/               funciones de Vercel: lead.js (Meta), checkout.js y stripe-webhook.js (Stripe)
 data/demo/          datos DEMO de la temporada
 public/hero/        frames del hero
 tools/              hero, plantilla de la hoja, reglamento y QA

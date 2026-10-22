@@ -1,0 +1,37 @@
+---
+import Doc from '../layouts/Doc.astro';
+import { SITE } from '../config/site';
+import { RESERVA } from '../config/reserva.js';
+---
+<Doc
+  title="Condiciones de la reserva | RUKC"
+  description="Condiciones de la reserva de plaza online en la Temporada 2 de RUKC: precio, pago, reembolsos y contacto."
+  eyebrow="Legal"
+  heading="Condiciones de la reserva"
+  updated="22 de octubre de 2026"
+>
+  <h2>Quién vende</h2>
+  <p><strong>RUKC (RaceUp Karting Championship)</strong>, organizadora de la liga de karting de alquiler del mismo nombre. Contacto: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
+
+  <h2>Qué compras</h2>
+  <p>La <strong>reserva de una plaza</strong> en la parrilla de la Temporada 2 (2026-2027). La reserva asegura tu sitio. Después de pagarla te contactamos por WhatsApp para cerrar las carreras que vas a correr y sus condiciones.</p>
+  <p>Para competir tienes que cumplir el <a href="/reglamento">reglamento</a> de la liga, incluidos los requisitos de inscripción y pesaje.</p>
+
+  <h2>Precio y pago</h2>
+  <ul>
+    <li><strong>Precio:</strong> {RESERVA.importe} €, precio final.</li>
+    <li><strong>Formas de pago:</strong> tarjeta o Bizum, en la pantalla de pago de Stripe. Stripe procesa el pago; RUKC no ve ni guarda los datos de tu tarjeta.</li>
+    <li><strong>Justificante:</strong> te llega por correo electrónico en cuanto se completa el pago.</li>
+  </ul>
+
+  <h2>Reembolsos</h2>
+  <p><strong>La reserva no es reembolsable.</strong> Si después de pagarla decides no participar o no puedes acudir, no se devuelve el importe.</p>
+  <p>La reserva es un servicio de esparcimiento ligado a fechas concretas (el calendario de la Temporada 2), por lo que no se aplica el derecho de desistimiento de 14 días, según el artículo 103, letra l), de la Ley General para la Defensa de los Consumidores y Usuarios.</p>
+  <p>Si RUKC cancelara la Temporada 2 antes de su inicio, te devolveríamos la reserva íntegra.</p>
+
+  <h2>Datos personales</h2>
+  <p>Usamos tu nombre, correo, WhatsApp y categoría para gestionar la reserva y contactarte. Más información en la <a href="/privacidad">política de privacidad</a>.</p>
+
+  <h2>Dudas y reclamaciones</h2>
+  <p>Escríbenos a <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Estas condiciones se rigen por la legislación española.</p>
+</Doc>

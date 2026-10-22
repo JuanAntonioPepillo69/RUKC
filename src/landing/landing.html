@@ -252,6 +252,12 @@ section{position:relative;z-index:1;padding:84px 0}
 .consent a{color:var(--gold)}
 .form-card .cta{width:100%;margin-top:22px;font-size:17px}
 .form-err{color:var(--red-soft);font-size:13.5px;margin-top:12px;text-align:center;min-height:18px}
+.or{display:flex;align-items:center;gap:12px;margin-top:14px;color:var(--muted-2);font-size:12.5px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
+.pay{display:flex;align-items:center;justify-content:center;min-height:54px;margin-top:14px;padding:12px 18px;border:1px solid var(--gold);border-radius:12px;
+  color:var(--paper);font-family:"Archivo";font-weight:800;font-size:15.5px;text-align:center;text-decoration:none;transition:background-color .2s ease}
+.pay:hover{background:rgba(212,166,42,.12)}
+.pay small{display:block;font-family:"Inter";font-weight:500;font-size:12.5px;color:var(--muted);margin-top:2px}
 .form-foot{margin-top:14px;text-align:center;font-size:12.5px;color:var(--muted-2)}
 .form-foot b{color:var(--red-soft)}
 
@@ -592,6 +598,8 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
       <label class="consent"><input id="f-consent" type="checkbox" /><span>Acepto que RaceUp me contacte por WhatsApp y email sobre la Temporada 2 y he leído la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span></label>
       <button class="cta" id="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.2s-.7 1-.9 1.1c-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3M12 21.5a9.4 9.4 0 0 1-4.8-1.3l-.3-.2-3.5.9.9-3.4-.2-.4A9.5 9.5 0 1 1 12 21.5m0-20.9C6 .6 1.1 5.5 1.1 11.5c0 1.9.5 3.7 1.4 5.3L1 23l6.3-1.6a10.8 10.8 0 0 0 4.7 1.1c6 0 10.9-4.9 10.9-10.9S18 .6 12 .6"/></svg>Solicitar y abrir WhatsApp</button>
       <div class="form-err" id="formErr"></div>
+      <div class="or">o, si ya lo tienes claro</div>
+      <a class="pay" href="/inscripcion" data-reserva><span>Reserva ya tu plaza por %%RESERVA%%€<small>Pago seguro con tarjeta o Bizum</small></span></a>
       <p class="form-foot">Quedan <b class="tnum" data-quedan>13</b> plazas de 100 · Nos vemos en pista.</p>
     </div>
   </div>
@@ -727,6 +735,14 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     var msg="Hola, soy "+nombre+". Quiero mi plaza en la Temporada 2 de RaceUp (acceso anticipado). Nivel: "+nivel+".";
     window.open(waBase+encodeURIComponent(msg),'_blank','noopener');
   });
+
+  // Reserva con pago online: lleva lo que ya haya escrito a /inscripcion (en la sesión del navegador, nunca en la URL)
+  try{localStorage.setItem('rukc_origen','landing');}catch(e){}
+  document.querySelectorAll('[data-reserva]').forEach(function(a){a.addEventListener('click',function(){
+    var d={nombre:document.getElementById('f-nombre').value.trim(),telefono:document.getElementById('f-tel').value.trim(),email:document.getElementById('f-email').value.trim()};
+    try{sessionStorage.setItem('rukc_reserva',JSON.stringify(d));}catch(e){}
+    try{if(window.fbq)fbq('track','InitiateCheckout',{value:%%RESERVA%%,currency:'EUR',content_name:'Reserva T2'});}catch(e){}
+  });});
 
   // pixel + consent
   function loadPixel(){if(window._px)return;window._px=1;

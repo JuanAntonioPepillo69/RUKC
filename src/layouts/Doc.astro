@@ -4,10 +4,10 @@ import Base from './Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
-interface Props { title: string; description: string; eyebrow: string; heading: string; updated?: string }
-const { title, description, eyebrow, heading, updated } = Astro.props;
+interface Props { title: string; description: string; eyebrow: string; heading: string; updated?: string; noindex?: boolean }
+const { title, description, eyebrow, heading, updated, noindex } = Astro.props;
 ---
-<Base title={title} description={description}>
+<Base title={title} description={description} noindex={noindex}>
   <Header />
   <main class="doc">
     <header class="wrap doc__head">
