@@ -90,6 +90,7 @@ Mientras `RUKC_SHEET_ID` no esté puesto, la web usa los datos de ejemplo de `da
 - **Los pagos** se ven en Stripe → Pagos, con el nombre, el WhatsApp y la categoría en los metadatos. Stripe envía el justificante al piloto si está activado en *Settings → Customer emails*.
 - **Medición en Meta:** cuando el pago se completa, `api/stripe-webhook.js` envía el evento `Purchase` (30 €) a la API de conversiones, solo si el piloto llegó desde la landing y no rechazó sus cookies.
 - Si `STRIPE_SECRET_KEY` no está puesta, la página no cobra y pide escribir por WhatsApp.
+- **Bizum manual:** mientras Stripe no permita Bizum en la cuenta, el formulario ofrece "Tarjeta" o "Bizum". Con Bizum la web muestra el número, el titular, el importe y el concepto ("Reserva T2" + nombre), y un botón que abre WhatsApp con los datos del piloto para mandar el justificante. Esas reservas no pasan por Stripe: compruébalas en el banco y confirma la plaza por WhatsApp. El número y el titular están en `BIZUM`, en `src/config/reserva.js`; si lo dejas vacío, la opción desaparece.
 
 ### Activarlo (una sola vez)
 

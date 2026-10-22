@@ -9,3 +9,10 @@ export const RESERVA = {
 };
 
 export const CATEGORIAS_RESERVA = ['Ligeros', 'Pesados', 'Aún no lo sé'];
+
+// Bizum manual (mientras Stripe no permita Bizum): el piloto lo envía a este número y manda el justificante por WhatsApp.
+// Para quitar la opción, deja `numero` vacío.
+export const BIZUM = {
+  numero: '659 69 85 05',
+  titular: 'John R.F', // nombre que verá el piloto en su app al enviar el Bizum
+};

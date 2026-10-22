@@ -1,14 +1,16 @@
 ---
-// Reserva de plaza con pago online (Stripe Checkout: tarjeta y Bizum).
+// Reserva de plaza con pago online: tarjeta con Stripe Checkout o Bizum manual al número de RUKC.
 import Base from '../layouts/Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { whatsappUrl } from '../config/site';
-import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
+import { SITE, whatsappUrl } from '../config/site';
+import { BIZUM, CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
+
+const conBizum = Boolean(BIZUM.numero);
 ---
 <Base
   title="Reserva tu plaza | Temporada 2 | RUKC"
-  description={`Reserva tu plaza en la Temporada 2 de RUKC por ${RESERVA.importe} €. Pago seguro con tarjeta o Bizum.`}
+  description={`Reserva tu plaza en la Temporada 2 de RUKC por ${RESERVA.importe} €. Paga con tarjeta${conBizum ? ' o Bizum' : ''}.`}
 >
   <Header />
   <main class="res">
@@ -19,65 +21,149 @@ import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
         <p class="lead">Asegura tu sitio en la parrilla de la Temporada 2. Después te escribimos por WhatsApp para cerrar las carreras que vas a correr.</p>
         <ol class="res__steps">
           <li><span class="tnum">1</span>Rellena tus datos.</li>
-          <li><span class="tnum">2</span>Paga la reserva con tarjeta o Bizum en la pantalla segura de Stripe.</li>
-          <li><span class="tnum">3</span>Recibes el justificante por correo y te contactamos por WhatsApp.</li>
+          <li><span class="tnum">2</span>{conBizum ? 'Paga la reserva con tarjeta en la pantalla segura de Stripe, o con Bizum.' : 'Paga la reserva con tarjeta en la pantalla segura de Stripe.'}</li>
+          <li><span class="tnum">3</span>Te confirmamos la plaza por WhatsApp.</li>
         </ol>
         <p class="res__help">¿Dudas antes de reservar? <a href={whatsappUrl()} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>.</p>
       </section>
 
-      <form class="card" id="reserva" novalidate>
-        <p class="card__notice" id="cancelado" hidden>Has vuelto sin pagar. No se ha hecho ningún cobro: puedes intentarlo de nuevo.</p>
-        <div class="card__sum">
-          <span>{RESERVA.concepto}</span>
-          <strong class="tnum">{RESERVA.importe} €</strong>
-        </div>
+      <div class="res__side">
+        <form class="card" id="reserva" novalidate data-wa={SITE.whatsapp.number} data-importe={RESERVA.importe}>
+          <p class="card__notice" id="cancelado" hidden>Has vuelto sin pagar. No se ha hecho ningún cobro: puedes intentarlo de nuevo.</p>
+          <div class="card__sum">
+            <span>{RESERVA.concepto}</span>
+            <strong class="tnum">{RESERVA.importe} €</strong>
+          </div>
 
-        <label class="field"><span>Nombre y apellidos</span>
-          <input name="nombre" type="text" autocomplete="name" required maxlength="80" />
-        </label>
-        <label class="field"><span>Correo electrónico</span>
-          <input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="120" />
-        </label>
-        <label class="field"><span>WhatsApp</span>
-          <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34 600 00 00 00" required maxlength="30" />
-        </label>
-        <label class="field"><span>Categoría</span>
-          <select name="categoria" required>
-            <option value="" disabled selected>Elige una opción</option>
-            {CATEGORIAS_RESERVA.map((c) => <option value={c}>{c}</option>)}
-          </select>
-          <small>La categoría depende del peso con el equipo. Si dudas, elige "Aún no lo sé" y lo vemos contigo.</small>
-        </label>
+          <label class="field"><span>Nombre y apellidos</span>
+            <input name="nombre" type="text" autocomplete="name" required maxlength="80" />
+          </label>
+          <label class="field"><span>Correo electrónico</span>
+            <input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="120" />
+          </label>
+          <label class="field"><span>WhatsApp</span>
+            <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34 600 00 00 00" required maxlength="30" />
+          </label>
+          <label class="field"><span>Categoría</span>
+            <select name="categoria" required>
+              <option value="" disabled selected>Elige una opción</option>
+              {CATEGORIAS_RESERVA.map((c) => <option value={c}>{c}</option>)}
+            </select>
+            <small>La categoría depende del peso con el equipo. Si dudas, elige "Aún no lo sé" y lo vemos contigo.</small>
+          </label>
 
-        <label class="check">
-          <input name="acepta" type="checkbox" required />
-          <span>He leído y acepto las <a href="/condiciones-reserva" target="_blank" rel="noopener">condiciones de la reserva</a> (los {RESERVA.importe} € no se reembolsan) y la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span>
-        </label>
+          {conBizum && (
+            <fieldset class="pay">
+              <legend>Forma de pago</legend>
+              <label class="pay__opt">
+                <input type="radio" name="metodo" value="tarjeta" checked />
+                <span><strong>Tarjeta</strong><small>Pago seguro con Stripe</small></span>
+              </label>
+              <label class="pay__opt">
+                <input type="radio" name="metodo" value="bizum" />
+                <span><strong>Bizum</strong><small>Al {BIZUM.numero}</small></span>
+              </label>
+            </fieldset>
+          )}
 
-        <button class="btn btn--gold card__btn" type="submit">Pagar {RESERVA.importe} € y reservar</button>
-        <p class="card__err" id="error" role="alert"></p>
-        <p class="card__foot">Pago seguro con Stripe. Tarjeta o Bizum. RUKC no ve ni guarda los datos de tu tarjeta.</p>
-      </form>
+          <label class="check">
+            <input name="acepta" type="checkbox" required />
+            <span>He leído y acepto las <a href="/condiciones-reserva" target="_blank" rel="noopener">condiciones de la reserva</a> (los {RESERVA.importe} € no se reembolsan) y la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span>
+          </label>
+
+          <button class="btn btn--gold card__btn" type="submit">Pagar {RESERVA.importe} € y reservar</button>
+          <p class="card__err" id="error" role="alert"></p>
+          <p class="card__foot" id="foot">Pago seguro con Stripe. RUKC no ve ni guarda los datos de tu tarjeta.</p>
+        </form>
+
+        {conBizum && (
+          <section class="card bizum" id="bizum" hidden aria-labelledby="bizum-title" tabindex="-1">
+            <h2 class="bizum__title" id="bizum-title">Envía el Bizum</h2>
+            <ol class="bizum__steps">
+              <li>
+                <span>Abre la app de tu banco y envía un Bizum a este número:</span>
+                <span class="bizum__num">
+                  <strong class="tnum">{BIZUM.numero}</strong>
+                  <button type="button" class="bizum__copy" data-copy={BIZUM.numero.replace(/\s/g, '')}>Copiar</button>
+                </span>
+                <small>Te aparecerá a nombre de <strong>{BIZUM.titular}</strong>.</small>
+              </li>
+              <li><span>Importe: <strong class="tnum">{RESERVA.importe} €</strong></span></li>
+              <li><span>Concepto: <strong id="bizum-concepto">Reserva T2</strong></span></li>
+              <li><span>Haz una captura del Bizum enviado y mándanosla por WhatsApp con el botón de abajo.</span></li>
+            </ol>
+            <a class="btn btn--gold card__btn" id="bizum-wa" href={whatsappUrl()} target="_blank" rel="noopener">Enviar justificante por WhatsApp</a>
+            <p class="card__foot">Tu plaza queda confirmada cuando comprobemos el Bizum. Te avisamos por WhatsApp.</p>
+            <button type="button" class="bizum__back" id="bizum-back">Cambiar mis datos o pagar con tarjeta</button>
+          </section>
+        )}
+      </div>
     </div>
   </main>
   <Footer />
 </Base>
 
 <script>
-  // Envía los datos a /api/checkout y abre la pantalla de pago de Stripe.
+  // Tarjeta: envía los datos a /api/checkout y abre la pantalla de pago de Stripe.
+  // Bizum: comprueba los datos y muestra el número, el concepto y el botón para mandar el justificante por WhatsApp.
   // Los datos se guardan en la sesión del navegador para no tener que repetirlos si el piloto vuelve sin pagar.
   const form = document.getElementById('reserva') as HTMLFormElement;
   const err = document.getElementById('error')!;
   const btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  const foot = document.getElementById('foot')!;
+  const bizum = document.getElementById('bizum');
   const CAMPOS = ['nombre', 'email', 'telefono', 'categoria'] as const;
+  const IMPORTE = form.dataset.importe;
+  const TEXTO = {
+    tarjeta: { btn: `Pagar ${IMPORTE} € y reservar`, foot: 'Pago seguro con Stripe. RUKC no ve ni guarda los datos de tu tarjeta.' },
+    bizum: { btn: 'Continuar con Bizum', foot: 'Te mostramos el número y el concepto para enviar el Bizum.' },
+  };
   const leer = (k: string) => { try { return sessionStorage.getItem(k) ?? localStorage.getItem(k); } catch { return null; } };
   const cookie = (n: string) => document.cookie.match(new RegExp(`(?:^|; )${n}=([^;]+)`))?.[1];
+  const metodo = () => (form.elements.namedItem('metodo') as RadioNodeList | null)?.value === 'bizum' ? 'bizum' : 'tarjeta';
+  const pintarMetodo = () => { btn.textContent = TEXTO[metodo()].btn; foot.textContent = TEXTO[metodo()].foot; };
 
   try {
     const prev = JSON.parse(sessionStorage.getItem('rukc_reserva') || '{}');
     for (const k of CAMPOS) if (prev[k]) (form.elements.namedItem(k) as HTMLInputElement).value = prev[k];
   } catch {}
   if (new URLSearchParams(location.search).has('cancelado')) document.getElementById('cancelado')!.hidden = false;
+  form.addEventListener('change', (e) => { if ((e.target as HTMLInputElement).name === 'metodo') pintarMetodo(); });
+  form.addEventListener('input', () => { err.textContent = ''; });
+  pintarMetodo();
+
+  function validar(d: Record<string, string>, acepta: boolean) {
+    if (d.nombre.length < 2) return 'Escribe tu nombre y apellidos.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return 'Revisa tu correo.';
+    if (d.telefono.replace(/\D/g, '').length < 9) return 'Revisa tu número de WhatsApp.';
+    if (!d.categoria) return 'Elige tu categoría.';
+    if (!acepta) return 'Tienes que aceptar las condiciones de la reserva.';
+    return '';
+  }
+
+  function mostrarBizum(d: Record<string, string>) {
+    const concepto = `Reserva T2 ${d.nombre}`.slice(0, 35);
+    document.getElementById('bizum-concepto')!.textContent = concepto;
+    const msg = `Hola, he enviado un Bizum de ${IMPORTE} € para reservar plaza en la Temporada 2 de RUKC.\n`
+      + `Nombre: ${d.nombre}\nCorreo: ${d.email}\nWhatsApp: ${d.telefono}\nCategoría: ${d.categoria}\nConcepto: ${concepto}\n`
+      + 'Te adjunto el justificante.';
+    (document.getElementById('bizum-wa') as HTMLAnchorElement).href = `https://wa.me/${form.dataset.wa}?text=${encodeURIComponent(msg)}`;
+    form.hidden = true;
+    bizum!.hidden = false;
+    bizum!.focus({ preventScroll: true });
+    bizum!.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  bizum?.querySelector<HTMLButtonElement>('[data-copy]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    try { await navigator.clipboard.writeText(b.dataset.copy!); b.textContent = 'Copiado'; } catch { b.textContent = b.dataset.copy!; }
+    setTimeout(() => { b.textContent = 'Copiar'; }, 2000);
+  });
+  document.getElementById('bizum-back')?.addEventListener('click', () => {
+    bizum!.hidden = true;
+    form.hidden = false;
+    form.scrollIntoView({ block: 'start' });
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -85,11 +171,15 @@ import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
     const acepta = (form.elements.namedItem('acepta') as HTMLInputElement).checked;
     try { sessionStorage.setItem('rukc_reserva', JSON.stringify(datos)); } catch {}
 
+    const fallo = validar(datos, acepta);
+    err.textContent = fallo;
+    if (fallo) return;
+    if (metodo() === 'bizum') { mostrarBizum(datos); return; }
+
     // Medición en Meta solo para quien llegó desde la landing de anuncios y no rechazó sus cookies
     const fbp = cookie('_fbp'), fbc = cookie('_fbc');
     const meta = leer('rukc_consent') !== 'no' && (fbp || leer('rukc_consent') === 'yes') ? 'si' : 'no';
 
-    err.textContent = '';
     btn.disabled = true;
     btn.textContent = 'Abriendo el pago…';
     try {
@@ -105,9 +195,8 @@ import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
       err.textContent = 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
     }
     btn.disabled = false;
-    btn.textContent = btn.dataset.label!;
+    pintarMetodo();
   });
-  btn.dataset.label = btn.textContent!;
 </script>
 
 <style>
@@ -121,7 +210,8 @@ import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
   .res__help { margin: 0; color: var(--muted); }
   .res__help a { color: var(--gold-hi); }
 
-  .card { display: grid; gap: 18px; padding: clamp(22px, 3vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); }
+  .card { display: grid; gap: 18px; padding: clamp(22px, 3vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); scroll-margin-top: 90px; }
+  .card[hidden] { display: none; }
   .card__notice { margin: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); font-size: 14px; }
   .card__sum { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); font-weight: 600; }
   .card__sum strong { font-family: var(--font-display); font-weight: 900; font-size: 32px; letter-spacing: -0.02em; white-space: nowrap; }
@@ -132,14 +222,37 @@ import { CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
   }
   .field input:focus, .field select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
   .field small { font-weight: 400; font-size: 13px; color: var(--muted); }
+
+  .pay { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; }
+  .pay legend { padding: 0; margin-bottom: 7px; font-size: 14px; font-weight: 600; }
+  .pay__opt { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18); cursor: pointer; transition: border-color 0.2s, background-color 0.2s; }
+  .pay__opt:has(input:checked) { border-color: var(--gold); background: rgba(212, 166, 42, 0.08); }
+  .pay__opt:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+  .pay__opt input { margin-top: 3px; accent-color: var(--gold); }
+  .pay__opt span { display: grid; gap: 2px; font-size: 15px; }
+  .pay__opt small { font-size: 13px; color: var(--muted); }
+
   .check { display: flex; gap: 11px; align-items: flex-start; font-size: 14px; color: var(--muted); line-height: 1.5; }
   .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
   .check a { color: var(--gold-hi); }
-  .card__btn { width: 100%; border: 0; cursor: pointer; }
+  .card__btn { width: 100%; border: 0; cursor: pointer; text-align: center; line-height: 1.25; padding-block: 12px; }
   .card__btn:disabled { opacity: 0.7; cursor: progress; }
   .card__err { margin: 0; min-height: 1em; color: #ff6b6b; font-size: 14px; }
   .card__err:empty { display: none; }
   .card__foot { margin: 0; font-size: 13px; color: var(--muted-2); text-align: center; }
 
+  .bizum:focus { outline: none; }
+  .bizum__title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.02em; }
+  .bizum__steps { margin: 0; padding-left: 1.2em; display: grid; gap: 16px; color: #dcd8cf; }
+  .bizum__steps li > * { display: block; }
+  .bizum__steps small { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .bizum__num { display: flex !important; align-items: center; gap: 12px; margin-top: 8px; padding: 10px 10px 10px 16px; border-radius: 12px; border: 1px solid var(--gold); background: rgba(212, 166, 42, 0.08); }
+  .bizum__num strong { flex: 1; font-family: var(--font-display); font-weight: 900; font-size: 24px; letter-spacing: 0.02em; color: var(--paper); }
+  .bizum__copy { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(246, 243, 236, 0.28); background: transparent; color: var(--paper); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .bizum__copy:hover { border-color: var(--gold); }
+  .bizum__back { justify-self: center; padding: 6px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+  .bizum__back:hover { color: var(--paper); }
+
   @media (max-width: 900px) { .res__grid { grid-template-columns: 1fr; } }
+  @media (max-width: 380px) { .pay { grid-template-columns: 1fr; } }
 </style>
