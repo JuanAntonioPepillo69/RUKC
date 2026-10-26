@@ -113,7 +113,11 @@ El slug actual es `acceso-t2-c7e594` → `https://raceupkc.com/acceso-t2-c7e594`
 3. `npm test` comprueba que los dos coinciden y que ninguna página enlaza a la landing.
 4. Despliega y **actualiza la URL de destino en los anuncios de Meta**. El slug antiguo dejará de existir (404).
 
-Los textos de la landing están en `src/landing/landing.html`. Arriba del archivo, en `window.RUKC`, están las plazas totales y ocupadas, el precio y el mensaje de WhatsApp.
+Los textos de la landing están en `src/landing/landing.html`. Arriba del archivo, en `window.RUKC`, están las plazas totales y ocupadas (el contador "quedan N" se calcula con ellas), el precio y el mensaje de WhatsApp para dudas.
+
+Todos los botones de la landing ("Reservar mi plaza · 30 €") llevan a `/inscripcion?ronda=2`, que abre el formulario con la R2 elegida. La landing no tiene formulario propio: WhatsApp queda solo como enlace de dudas. **Cuando pase la R2**, cambia en `landing.html` el bloque "PRÓXIMA RONDA", la ficha del final (`rfacts`), la barra fija del móvil, los pasos, la FAQ y el `?ronda=2` de los enlaces por los datos de la siguiente ronda.
+
+En `/inscripcion` el desplegable de ronda se rellena solo con las rondas programadas de la hoja cuya inscripción sigue abierta (cierra el martes anterior a la carrera, `DIAS_CIERRE` en `src/config/reserva.js`).
 
 ---
 

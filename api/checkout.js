@@ -16,11 +16,13 @@ export function validarReserva(body) {
     email: corta(body?.email, 120).toLowerCase(),
     telefono: corta(body?.telefono, 30),
     categoria: corta(body?.categoria, 20),
+    ronda: corta(body?.ronda, 80),
     origen: body?.origen === 'landing' ? 'landing' : 'web',
     meta: body?.meta === 'si' ? 'si' : 'no',
     fbp: corta(body?.fbp, 200),
     fbc: corta(body?.fbc, 400),
   };
+  if (!/^R\d+\b/.test(datos.ronda)) return { error: 'Elige la ronda que quieres reservar.' };
   if (datos.nombre.length < 2) return { error: 'Escribe tu nombre y apellidos.' };
   if (!EMAIL.test(datos.email)) return { error: 'Revisa tu correo.' };
   if (datos.telefono.replace(/\D/g, '').length < 9) return { error: 'Revisa tu número de WhatsApp.' };
@@ -38,9 +40,9 @@ export function parametrosCheckout(datos, origen, cliente = {}) {
     'line_items[0][quantity]': '1',
     'line_items[0][price_data][currency]': 'eur',
     'line_items[0][price_data][unit_amount]': String(RESERVA.importe * 100),
-    'line_items[0][price_data][product_data][name]': RESERVA.concepto,
+    'line_items[0][price_data][product_data][name]': `${RESERVA.concepto} · ${datos.ronda}`,
     'line_items[0][price_data][product_data][description]': 'Reserva no reembolsable. Condiciones en raceupkc.com/condiciones-reserva',
-    'payment_intent_data[description]': `${RESERVA.concepto} · ${datos.nombre}`,
+    'payment_intent_data[description]': `${RESERVA.concepto} · ${datos.ronda.split(' ·')[0]} · ${datos.nombre}`,
     'payment_intent_data[receipt_email]': datos.email,
     success_url: `${origen}/inscripcion/confirmada?pago={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origen}/inscripcion?cancelado=1`,
@@ -50,6 +52,7 @@ export function parametrosCheckout(datos, origen, cliente = {}) {
     nombre: datos.nombre,
     telefono: datos.telefono,
     categoria: datos.categoria,
+    ronda: datos.ronda,
     origen: datos.origen,
     meta: datos.meta,
     // Solo para medir la compra en Meta si el piloto no ha rechazado las cookies de la landing

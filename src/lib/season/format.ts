@@ -8,6 +8,12 @@ const partes = (iso: string) => iso.split('-').map(Number);
 export const fechaLarga = (iso: string) => { const [y, m, d] = partes(iso); return `${d} de ${MESES[m - 1]} de ${y}`; };
 export const fechaCorta = (iso: string) => { const [, m, d] = partes(iso); return `${d} ${MESES_CORTOS[m - 1]}`; };
 
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+/** "2026-11-21" -> "sábado" */
+export const diaSemana = (iso: string) => DIAS[new Date(`${iso}T12:00:00Z`).getUTCDay()];
+/** "2026-11-21", 4 -> "2026-11-17" */
+export const restarDias = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+
 export const slug = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, '-').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 

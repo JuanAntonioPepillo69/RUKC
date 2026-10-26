@@ -10,6 +10,9 @@ export const RESERVA = {
 
 export const CATEGORIAS_RESERVA = ['Ligeros', 'Pesados', 'Aún no lo sé'];
 
+// La inscripción de cada ronda cierra este número de días antes de la carrera (sábado -> martes anterior).
+export const DIAS_CIERRE = 4;
+
 // Bizum manual (mientras Stripe no permita Bizum): el piloto lo envía a este número y manda el justificante por WhatsApp.
 // Para quitar la opción, deja `numero` vacío.
 export const BIZUM = {

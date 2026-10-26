@@ -30,7 +30,7 @@ export function eventoCompra(sesion) {
     action_source: 'website',
     event_source_url: 'https://raceupkc.com/inscripcion',
     user_data: userData({ email: sesion.customer_details?.email || sesion.customer_email, telefono: m.telefono, ip: m.ip, ua: m.ua, fbp: m.fbp, fbc: m.fbc }),
-    custom_data: { currency: 'EUR', value: sesion.amount_total / 100, content_name: RESERVA.concepto, origen: m.origen },
+    custom_data: { currency: 'EUR', value: sesion.amount_total / 100, content_name: RESERVA.concepto, ronda: m.ronda, origen: m.origen },
   };
 }
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>RaceUp Karting Championship — Temporada 2 · Costa del Sol</title>
-<meta name="description" content="La única liga mensual de karting de alquiler de la Costa del Sol. Mismos karts, parrillas igualadas y formato Fórmula 1 en un día. Solicita tu plaza en la Temporada 2." />
+<meta name="description" content="La única liga mensual de karting de alquiler de la Costa del Sol. Mismos karts, parrillas igualadas y formato Fórmula 1 en un día. Reserva tu plaza en la R2, el 21 de noviembre en Karting Campillos." />
 <meta name="facebook-domain-verification" content="6thmzwmzppqn4j2ny5voyeeletsd5w" />
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -18,13 +18,12 @@
 <script>
 window.RUKC = {
   WHATSAPP_NUMERO: "%%WHATSAPP%%",
-  WHATSAPP_MENSAJE: "Hola, quiero mi plaza en la Temporada 2 de RaceUp — acceso anticipado.",
+  WHATSAPP_MENSAJE: "Hola, tengo una duda sobre la R2 de RaceUp en Karting Campillos.",
   PLAZAS_TOTAL: 100,
-  PLAZAS_OCUPADAS: 87,
+  PLAZAS_OCUPADAS: 82,
   PRECIO_DESDE: 99,
   PIXEL_ID: "%%PIXEL_ID%%",
   VSL_EMBED: "",            // src del iframe (YouTube/Vimeo). Vacío = muestra el póster.
-  FORM_WEBHOOK: "",         // URL del webhook de n8n para guardar el contacto. Vacío = no envía datos, solo redirige.
   CONSENT_GATE: false       // false = Pixel al entrar. true = espera "Aceptar".
 };
 </script>
@@ -238,28 +237,31 @@ section{position:relative;z-index:1;padding:84px 0}
 @media(max-width:640px){.lights .l{width:20px;height:20px}.lights{gap:10px}}
 .form-card{margin:30px auto 0;max-width:560px;border:1px solid var(--line);border-radius:18px;padding:30px;
   background:linear-gradient(180deg,var(--ink-2),rgba(16,14,10,.5));box-shadow:var(--shadow),var(--glow)}
-.field{margin-top:16px;text-align:left}
-.field:first-child{margin-top:0}
-.field label{display:block;font-family:"Archivo";font-weight:700;font-size:12px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.field input,.field select{width:100%;background:rgba(10,10,11,.7);border:1px solid var(--line-n);border-radius:11px;
-  padding:14px 15px;color:var(--paper);font-family:"Inter";font-size:16px;transition:border-color .2s ease,box-shadow .2s ease}
-.field input::placeholder{color:var(--muted-2)}
-.field input:focus,.field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,166,42,.15)}
-.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d4a62a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center}
-.consent{margin-top:18px;display:flex;gap:11px;align-items:flex-start;text-align:left;font-size:13px;color:var(--muted)}
-.consent input{margin-top:3px;width:17px;height:17px;flex:none;accent-color:var(--gold)}
-.consent a{color:var(--gold)}
-.form-card .cta{width:100%;margin-top:22px;font-size:17px}
-.form-err{color:var(--red-soft);font-size:13.5px;margin-top:12px;text-align:center;min-height:18px}
-.or{display:flex;align-items:center;gap:12px;margin-top:14px;color:var(--muted-2);font-size:12.5px}
-.or::before,.or::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
-.pay{display:flex;align-items:center;justify-content:center;min-height:54px;margin-top:14px;padding:12px 18px;border:1px solid var(--gold);border-radius:12px;
-  color:var(--paper);font-family:"Archivo";font-weight:800;font-size:15.5px;text-align:center;text-decoration:none;transition:background-color .2s ease}
-.pay:hover{background:rgba(212,166,42,.12)}
-.pay small{display:block;font-family:"Inter";font-weight:500;font-size:12.5px;color:var(--muted);margin-top:2px}
+.form-card .cta{width:100%;font-size:17px}
+.rfacts{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:10px;text-align:left}
+.rfacts li{display:flex;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:1px solid var(--line-n);font-size:15px;color:var(--muted)}
+.rfacts li:last-child{border-bottom:0;padding-bottom:0}
+.rfacts b{color:var(--paper);font-weight:700;text-align:right}
+.pay-note{margin-top:12px;text-align:center;font-size:13px;color:var(--muted)}
+.doubts{margin-top:18px;text-align:center;font-size:14px;color:var(--muted)}
+.doubts a{color:var(--gold)}
 .form-foot{margin-top:14px;text-align:center;font-size:12.5px;color:var(--muted-2)}
 .form-foot b{color:var(--red-soft)}
+
+/* ---------- próxima ronda ---------- */
+.r2{padding:22px 0 0}
+.r2-card{max-width:940px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:18px 28px;align-items:center;
+  border:1px solid var(--gold);border-radius:var(--r);padding:20px 24px;
+  background:radial-gradient(120% 140% at 0% 0%,rgba(212,166,42,.16),transparent 60%),var(--ink-2);box-shadow:var(--shadow)}
+.r2-tag{display:inline-flex;align-items:center;gap:9px;font-family:"Archivo";font-weight:800;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.r2-tag .pulse{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 2.2s infinite}
+.r2-title{margin-top:8px;font-family:"Archivo";font-weight:900;font-size:clamp(21px,3vw,28px);line-height:1.15}
+.r2-title b{background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;color:transparent}
+.r2-facts{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.r2-facts li{font-size:13.5px;color:var(--muted);border:1px solid var(--line-n);border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.02)}
+.r2-facts b{color:var(--paper);font-weight:700}
+.r2-card .cta{white-space:nowrap}
+@media(max-width:760px){.r2-card{grid-template-columns:1fr;padding:18px}.r2-card .cta{width:100%;white-space:normal}}
 
 /* ---------- footer ---------- */
 footer{border-top:1px solid var(--line-n);padding:32px 0 120px;position:relative;z-index:1}
@@ -289,7 +291,7 @@ html,body{overflow-x:clip}
 .cookie button.ghost{background:none;color:var(--paper);border:1px solid rgba(246,243,236,.3)}
 .cookie button{flex:none;font-family:"Archivo";font-weight:800;font-size:13px;color:#0a0a0b;background:var(--grad-gold);
   border:0;border-radius:9px;padding:9px 15px;cursor:pointer}
-@media(max-width:640px){.cookie{bottom:auto;top:70px;flex-direction:column;align-items:stretch;text-align:center}}
+@media(max-width:640px){.cookie{bottom:calc(122px + env(safe-area-inset-bottom));flex-direction:column;align-items:stretch;text-align:center}}
 
 /* ---------- beginner band ---------- */
 .beginner{background:linear-gradient(180deg,var(--ink),#0d0c0a)}
@@ -356,9 +358,27 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
 <header class="hdr">
   <div class="wrap">
     <img src="/lp/escudo.webp" alt="RaceUp Karting Championship" width="92" height="38" />
-    <button type="button" class="cta" data-goform>Solicita tu plaza</button>
+    <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
   </div>
 </header>
+
+<!-- PRÓXIMA RONDA -->
+<section class="r2" aria-labelledby="r2-title">
+  <div class="wrap">
+    <div class="r2-card">
+      <div>
+        <span class="r2-tag"><span class="pulse"></span>Inscripción abierta · Próxima ronda</span>
+        <p class="r2-title" id="r2-title"><b>R2</b> · Sábado 21 de noviembre · Karting Campillos</p>
+        <ul class="r2-facts">
+          <li><b>99 €</b> la carrera</li>
+          <li>Reserva con <b>%%RESERVA%% €</b></li>
+          <li>Cierre: <b>martes 17 nov</b></li>
+        </ul>
+      </div>
+      <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
+    </div>
+  </div>
+</section>
 
 <!-- HERO -->
 <section class="hero center">
@@ -383,8 +403,8 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     </div>
 
     <div class="hero-under">
-      <button type="button" class="cta" data-goform>Solicita tu plaza</button>
-      <span class="scarce-chip"><span class="pulse"></span>Solo <b class="tnum">&nbsp;100&nbsp;</b> plazas · quedan <b class="tnum" data-quedan>&nbsp;13&nbsp;</b></span>
+      <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
+      <span class="scarce-chip"><span class="pulse"></span>Solo <b class="tnum">&nbsp;100&nbsp;</b> plazas · quedan <b class="tnum" data-quedan>&nbsp;18&nbsp;</b></span>
       <span class="miniproof"><b>6</b> carreras · <b>6</b> circuitos · <b>+100</b> pilotos en la Temporada 1</span>
     </div>
   </div>
@@ -494,8 +514,8 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
 
     <div class="parrilla-wrap reveal" data-trig="grid">
       <div class="parrilla-top">
-        <div class="big tnum"><span class="countup" data-to="87">0</span><span>/100 ocupadas</span></div>
-        <div class="left"><span class="pulse"></span>Quedan <span class="tnum" data-quedan>13</span> plazas</div>
+        <div class="big tnum"><span class="countup" data-to="82" data-ocupadas>0</span><span>/100 ocupadas</span></div>
+        <div class="left"><span class="pulse"></span>Quedan <span class="tnum" data-quedan>18</span> plazas</div>
       </div>
       <div class="parrilla" id="parrilla" aria-hidden="true"></div>
       <div class="parrilla-legend">
@@ -503,8 +523,8 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
         <span><i style="border:1px solid var(--gold)"></i><b>Libre</b> · disponible ahora</span>
       </div>
       <div class="offer-row">
-        <div class="price">Desde <b class="tnum">99€</b> por carrera<small>Y precio exclusivo si te metes toda la temporada, solo en el acceso anticipado. Arranca el 17 de octubre en Mijas.</small></div>
-        <button type="button" class="cta" data-goform><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 21.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>Solicita tu plaza</button>
+        <div class="price"><b class="tnum">99€</b> por carrera<small>Reserva tu plaza con %%RESERVA%% €. Próxima: R2, sábado 21 de noviembre en Karting Campillos. Cierre de inscripción: martes 17 de noviembre.</small></div>
+        <a class="cta" href="/inscripcion?ronda=2" data-reserva><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 21.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>Reservar mi plaza · %%RESERVA%% €</a>
       </div>
     </div>
   </div>
@@ -542,11 +562,11 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     </div>
     <div class="list reveal">
       <details><summary>No he competido nunca, ¿es para mí?<span class="plus"></span></summary><div class="a">Sí. Las parrillas se organizan por nivel, así que corres con gente de tu misma experiencia, y te formamos para que mejores en cada carrera.</div></details>
-      <details><summary>¿Cuándo y cada cuánto son las carreras?<span class="plus"></span></summary><div class="a">De octubre a julio, con parada en enero. Ocho carreras a lo largo de la temporada. Arrancamos el 17 de octubre en Mijas.</div></details>
+      <details><summary>¿Cuándo y cada cuánto son las carreras?<span class="plus"></span></summary><div class="a">De octubre a julio, con parada en enero. Ocho carreras a lo largo de la temporada. La próxima es la R2: sábado 21 de noviembre en Karting Campillos.</div></details>
       <details><summary>¿Cuánto dura?<span class="plus"></span></summary><div class="a">Media jornada. El horario exacto depende del circuito, y te lo confirmamos antes de cada carrera.</div></details>
       <details><summary>¿Cómo es un día de carrera?<span class="plus"></span></summary><div class="a">Entrenamientos libres, clasificación y dos carreras por jornada, con la final decidiéndolo todo. Formato Fórmula 1, en un solo día.</div></details>
       <details><summary>¿Dónde se corre?<span class="plus"></span></summary><div class="a">Rotamos entre los mejores circuitos de la zona: Campillos, Mijas, KartFun Málaga, KartFun Estepona, Karting del Sol y Karting Granada. Todos a menos de 90 km de Málaga, de Granada a Estepona.</div></details>
-      <details><summary>¿Cuánto cuesta?<span class="plus"></span></summary><div class="a">Desde 99€ por carrera. Las condiciones de temporada, con mejores precios en el acceso anticipado, te las contamos por WhatsApp al reservar.</div></details>
+      <details><summary>¿Cuánto cuesta?<span class="plus"></span></summary><div class="a">99€ por carrera. Para asegurar tu plaza pagas una reserva de %%RESERVA%% € con tarjeta o Bizum. Las condiciones de temporada completa, con mejores precios en el acceso anticipado, te las contamos por WhatsApp después de reservar.</div></details>
       <details><summary>¿Tengo que hacer toda la temporada?<span class="plus"></span></summary><div class="a">No. Puedes empezar por una sola carrera desde 99€. Y si vas a por la temporada entera, tienes un precio exclusivo que solo abrimos ahora, en el acceso anticipado.</div></details>
       <details><summary>¿Qué necesito llevar?<span class="plus"></span></summary><div class="a">El kart lo ponemos nosotros. Ven con ropa cómoda y ganas; del equipo de seguridad te informamos al confirmar tu plaza.</div></details>
       <details><summary>¿Es seguro? ¿Y si hay un toque?<span class="plus"></span></summary><div class="a">Hay comisarios en pista y un reglamento con penalizaciones por contacto. Se pelea duro, pero limpio: la seguridad y el juego limpio van primero.</div></details>
@@ -564,9 +584,9 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
       <h2 style="font-weight:900;font-size:clamp(28px,4.6vw,44px)">Tres pasos. Y estás en la parrilla.</h2>
     </div>
     <div class="steps">
-      <div class="step reveal d1"><div class="n">1</div><p>Rellena la <b>solicitud</b> de abajo. Un minuto.</p></div>
-      <div class="step reveal d2"><div class="n">2</div><p>Se abre <b>WhatsApp</b> contigo y te contamos las condiciones.</p></div>
-      <div class="step reveal d3"><div class="n">3</div><p>Confirmas y <b>aseguras tu plaza</b> en la Temporada 2.</p></div>
+      <div class="step reveal d1"><div class="n">1</div><p>Pulsa <b>Reservar mi plaza</b> y paga la reserva de %%RESERVA%% € con tarjeta o Bizum. Un minuto.</p></div>
+      <div class="step reveal d2"><div class="n">2</div><p>Te escribimos por <b>WhatsApp</b> para confirmar tu plaza y cerrar los detalles.</p></div>
+      <div class="step reveal d3"><div class="n">3</div><p>El <b>sábado 21 de noviembre</b> corres la R2 en Karting Campillos.</p></div>
     </div>
   </div>
 </section>
@@ -579,28 +599,22 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     </div>
     <div class="shead reveal">
       <span class="eyebrow solo">Empieza aquí</span>
-      <h2 style="font-weight:900;font-size:clamp(30px,5.2vw,50px)">Solicita tu plaza en la parrilla</h2>
-      <p class="body" style="margin-top:14px;color:var(--muted)">Cuéntanos quién eres. Seguimos por WhatsApp y aseguras tu sitio. Quedan <b class="tnum" data-quedan style="color:var(--paper)">13</b> de 100.</p>
+      <h2 style="font-weight:900;font-size:clamp(30px,5.2vw,50px)">Reserva tu plaza en la parrilla</h2>
+      <p class="body" style="margin-top:14px;color:var(--muted)">Asegura tu sitio en la R2 con %%RESERVA%% €. Quedan <b class="tnum" data-quedan style="color:var(--paper)">18</b> de 100.</p>
     </div>
 
     <div class="form-card reveal">
-      <div class="field"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" autocomplete="name" placeholder="Tu nombre" /></div>
-      <div class="field"><label for="f-tel">WhatsApp</label><input id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34 600 00 00 00" /></div>
-      <div class="field"><label for="f-email">Tu mejor correo</label><input id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="tucorreo@email.com" /></div>
-      <div class="field"><label for="f-nivel">¿Has competido antes?</label>
-        <select id="f-nivel">
-          <option value="" disabled selected>Elige una opción</option>
-          <option value="Nunca, pero quiero empezar">Nunca, pero quiero empezar</option>
-          <option value="Alguna vez en karting de alquiler">Alguna vez en karting de alquiler</option>
-          <option value="Sí, compito o he competido">Sí, compito o he competido</option>
-        </select>
-      </div>
-      <label class="consent"><input id="f-consent" type="checkbox" /><span>Acepto que RaceUp me contacte por WhatsApp y email sobre la Temporada 2 y he leído la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span></label>
-      <button class="cta" id="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.7.2s-.7 1-.9 1.1c-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3M12 21.5a9.4 9.4 0 0 1-4.8-1.3l-.3-.2-3.5.9.9-3.4-.2-.4A9.5 9.5 0 1 1 12 21.5m0-20.9C6 .6 1.1 5.5 1.1 11.5c0 1.9.5 3.7 1.4 5.3L1 23l6.3-1.6a10.8 10.8 0 0 0 4.7 1.1c6 0 10.9-4.9 10.9-10.9S18 .6 12 .6"/></svg>Solicitar y abrir WhatsApp</button>
-      <div class="form-err" id="formErr"></div>
-      <div class="or">o, si ya lo tienes claro</div>
-      <a class="pay" href="/inscripcion" data-reserva><span>Reserva ya tu plaza por %%RESERVA%%€<small>Pago seguro con tarjeta o Bizum</small></span></a>
-      <p class="form-foot">Quedan <b class="tnum" data-quedan>13</b> plazas de 100 · Nos vemos en pista.</p>
+      <ul class="rfacts">
+        <li>Ronda <b>R2 · Karting Campillos</b></li>
+        <li>Fecha <b>Sábado 21 de noviembre</b></li>
+        <li>Precio de la carrera <b class="tnum">99 €</b></li>
+        <li>Reserva <b class="tnum">%%RESERVA%% €</b></li>
+        <li>Cierre de inscripción <b>Martes 17 de noviembre</b></li>
+      </ul>
+      <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
+      <p class="pay-note">Pago seguro con tarjeta o Bizum. La reserva no es reembolsable.</p>
+      <p class="doubts">¿Dudas? <a href="#" data-wa target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
+      <p class="form-foot">Quedan <b class="tnum" data-quedan>18</b> plazas de 100 · Nos vemos en pista.</p>
     </div>
   </div>
 </section>
@@ -614,8 +628,8 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
 </footer>
 
 <div class="sticky">
-  <div class="mini">Quedan <b class="tnum" data-quedan>13</b> de 100 plazas · Temporada 2</div>
-  <button type="button" class="cta" data-goform>Solicita tu plaza</button>
+  <div class="mini">R2 · sáb 21 nov · Campillos · Quedan <b class="tnum" data-quedan>18</b> plazas</div>
+  <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
 </div>
 
 <div class="cookie" id="cookie" hidden>
@@ -628,24 +642,12 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
   var C=window.RUKC, RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
   var quedan=C.PLAZAS_TOTAL-C.PLAZAS_OCUPADAS;
 
-  // CTA -> SIEMPRE baja al formulario. Delegado y blindado: intercepta el clic
-  // (aunque caiga sobre un icono/SVG del botón) y nunca deja que el ancla navegue fuera.
-  function scrollToForm(){
-    var t=document.getElementById('solicitar'); if(!t)return;
-    var top=t.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-58;
-    try{window.scrollTo({top:top,behavior:RM?'auto':'smooth'});}catch(e){window.scrollTo(0,top);}
-    setTimeout(function(){var n=document.getElementById('f-nombre'); if(n){try{n.focus({preventScroll:true});}catch(e){n.focus();}}}, RM?0:640);
-  }
-  document.addEventListener('click',function(e){
-    var el=e.target;
-    while(el&&el.nodeType===1){
-      if(el.hasAttribute&&el.hasAttribute('data-goform')){ e.preventDefault(); scrollToForm(); return; }
-      el=el.parentNode;
-    }
-  },true);
+  // Todos los botones de reserva llevan a /inscripcion (pago). WhatsApp queda solo para dudas.
   document.querySelectorAll('[data-quedan]').forEach(function(el){el.textContent=quedan;});
+  document.querySelectorAll('[data-ocupadas]').forEach(function(el){el.dataset.to=C.PLAZAS_OCUPADAS;});
   var y=document.getElementById('year'); if(y)y.textContent=new Date().getFullYear();
-  var waBase="https://wa.me/"+C.WHATSAPP_NUMERO+"?text=";
+  var waUrl="https://wa.me/"+C.WHATSAPP_NUMERO+"?text="+encodeURIComponent(C.WHATSAPP_MENSAJE);
+  document.querySelectorAll('[data-wa]').forEach(function(a){a.href=waUrl;});
 
   // hero entrance
   requestAnimationFrame(function(){ setTimeout(function(){document.body.classList.add('loaded');},60); });
@@ -707,41 +709,10 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     else play.querySelector('.lbl').innerHTML='Pega el VSL en la variable VSL_EMBED<small>(arriba del archivo)</small>';
   });
 
-  // form submit -> Lead + webhook + WhatsApp
-  var btn=document.getElementById('submit'), err=document.getElementById('formErr');
-  if(btn)btn.addEventListener('click',function(){
-    var nombre=document.getElementById('f-nombre').value.trim();
-    var tel=document.getElementById('f-tel').value.trim();
-    var email=document.getElementById('f-email').value.trim();
-    var nivel=document.getElementById('f-nivel').value;
-    var ok=document.getElementById('f-consent').checked;
-    if(!nombre){err.textContent='Escribe tu nombre.';return;}
-    if(tel.replace(/\D/g,'').length<9){err.textContent='Revisa tu número de WhatsApp.';return;}
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='Revisa tu correo.';return;}
-    if(!nivel){err.textContent='Dinos si has competido antes.';return;}
-    if(!ok){err.textContent='Marca la casilla para poder contactarte.';return;}
-    err.textContent='';
-    var eventId='lead_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    try{if(window.fbq)fbq('track','Lead',{content_name:'Solicitud T2'},{eventID:eventId});}catch(e){}
-    if(!denied())try{
-      var fbpMatch=document.cookie.match(/(?:^|; )_fbp=([^;]+)/);
-      var fbcMatch=document.cookie.match(/(?:^|; )_fbc=([^;]+)/);
-      fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({nombre:nombre,email:email,telefono:tel,nivel:nivel,event_id:eventId,url:location.origin+location.pathname,
-          fbp:fbpMatch?fbpMatch[1]:undefined,fbc:fbcMatch?fbcMatch[1]:undefined})});
-    }catch(e){}
-    if(C.FORM_WEBHOOK){try{fetch(C.FORM_WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nombre:nombre,telefono:tel,email:email,nivel:nivel,origen:'landing_t2',ts:Date.now()})});}catch(e){}}
-    var msg="Hola, soy "+nombre+". Quiero mi plaza en la Temporada 2 de RaceUp (acceso anticipado). Nivel: "+nivel+".";
-    window.open(waBase+encodeURIComponent(msg),'_blank','noopener');
-  });
-
-  // Reserva con pago online: lleva lo que ya haya escrito a /inscripcion (en la sesión del navegador, nunca en la URL)
+  // Reserva con pago online: marca que viene de la landing (para medir la compra en Meta) e InitiateCheckout en el píxel
   try{localStorage.setItem('rukc_origen','landing');}catch(e){}
   document.querySelectorAll('[data-reserva]').forEach(function(a){a.addEventListener('click',function(){
-    var d={nombre:document.getElementById('f-nombre').value.trim(),telefono:document.getElementById('f-tel').value.trim(),email:document.getElementById('f-email').value.trim()};
-    try{sessionStorage.setItem('rukc_reserva',JSON.stringify(d));}catch(e){}
-    try{if(window.fbq)fbq('track','InitiateCheckout',{value:%%RESERVA%%,currency:'EUR',content_name:'Reserva T2'});}catch(e){}
+    try{if(window.fbq)fbq('track','InitiateCheckout',{value:%%RESERVA%%,currency:'EUR',content_name:'Reserva T2 R2'});}catch(e){}
   });});
 
   // pixel + consent

@@ -4,9 +4,28 @@ import Base from '../layouts/Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { SITE, whatsappUrl } from '../config/site';
-import { BIZUM, CATEGORIAS_RESERVA, RESERVA } from '../config/reserva.js';
+import { BIZUM, CATEGORIAS_RESERVA, DIAS_CIERRE, RESERVA } from '../config/reserva.js';
+import { cargarTemporada } from '../lib/season/load';
+import { diaSemana, fechaCorta, restarDias } from '../lib/season/format';
 
 const conBizum = Boolean(BIZUM.numero);
+
+// Rondas con la inscripción abierta: programadas y con el cierre (martes anterior) aún por llegar.
+// El navegador vuelve a filtrar por fecha, por si la web lleva días sin publicarse.
+const hoy = new Date().toISOString().slice(0, 10);
+const abiertas = (await cargarTemporada()).rondas
+  .filter((r) => r.estado === 'programada')
+  .map((r) => {
+    const cierre = restarDias(r.fecha, DIAS_CIERRE);
+    return {
+      ronda: r.ronda,
+      cierre,
+      etiqueta: `R${r.ronda} · ${diaSemana(r.fecha)} ${fechaCorta(r.fecha)} · ${r.circuito}`,
+      corta: `R${r.ronda} ${r.circuito}`,
+      cierreTxt: `${diaSemana(cierre)} ${fechaCorta(cierre)}`,
+    };
+  })
+  .filter((r) => r.cierre >= hoy);
 ---
 <Base
   title="Reserva tu plaza | Temporada 2 | RUKC"
@@ -18,9 +37,9 @@ const conBizum = Boolean(BIZUM.numero);
       <section class="res__intro">
         <p class="eyebrow">Temporada 2 · 2026-2027</p>
         <h1 class="h2">Reserva tu <em>plaza</em></h1>
-        <p class="lead">Asegura tu sitio en la parrilla de la Temporada 2. Después te escribimos por WhatsApp para cerrar las carreras que vas a correr.</p>
+        <p class="lead">Elige la ronda, paga la reserva y asegura tu sitio en la parrilla. Después te escribimos por WhatsApp para cerrar los detalles.</p>
         <ol class="res__steps">
-          <li><span class="tnum">1</span>Rellena tus datos.</li>
+          <li><span class="tnum">1</span>Elige la ronda y rellena tus datos.</li>
           <li><span class="tnum">2</span>{conBizum ? 'Paga la reserva con tarjeta en la pantalla segura de Stripe, o con Bizum.' : 'Paga la reserva con tarjeta en la pantalla segura de Stripe.'}</li>
           <li><span class="tnum">3</span>Te confirmamos la plaza por WhatsApp.</li>
         </ol>
@@ -31,9 +50,19 @@ const conBizum = Boolean(BIZUM.numero);
         <form class="card" id="reserva" novalidate data-wa={SITE.whatsapp.number} data-importe={RESERVA.importe}>
           <p class="card__notice" id="cancelado" hidden>Has vuelto sin pagar. No se ha hecho ningún cobro: puedes intentarlo de nuevo.</p>
           <div class="card__sum">
-            <span>{RESERVA.concepto}</span>
+            <span id="sum">Reserva de plaza{abiertas[0] && ` · ${abiertas[0].corta}`}</span>
             <strong class="tnum">{RESERVA.importe} €</strong>
           </div>
+
+          <p class="card__notice" id="sin-rondas" hidden={abiertas.length > 0}>Ahora mismo no hay ninguna ronda con la inscripción abierta. <a href={whatsappUrl()} target="_blank" rel="noopener">Escríbenos por WhatsApp</a> y te avisamos de la siguiente.</p>
+          <label class="field"><span>Ronda</span>
+            <select name="ronda" required>
+              {abiertas.map((r, i) => (
+                <option value={r.ronda} selected={i === 0} data-etiqueta={r.etiqueta} data-corta={r.corta} data-cierre={r.cierre} data-cierre-txt={r.cierreTxt}>{r.etiqueta}</option>
+              ))}
+            </select>
+            <small id="cierre">{abiertas[0] && `Cierre de inscripción: ${abiertas[0].cierreTxt}`}</small>
+          </label>
 
           <label class="field"><span>Nombre y apellidos</span>
             <input name="nombre" type="text" autocomplete="name" required maxlength="80" />
@@ -128,11 +157,32 @@ const conBizum = Boolean(BIZUM.numero);
     for (const k of CAMPOS) if (prev[k]) (form.elements.namedItem(k) as HTMLInputElement).value = prev[k];
   } catch {}
   if (new URLSearchParams(location.search).has('cancelado')) document.getElementById('cancelado')!.hidden = false;
-  form.addEventListener('change', (e) => { if ((e.target as HTMLInputElement).name === 'metodo') pintarMetodo(); });
+  // Ronda: quita las que ya han cerrado según la fecha del navegador y respeta ?ronda=2 si viene en el enlace
+  const selRonda = form.elements.namedItem('ronda') as HTMLSelectElement;
+  const hoy = new Date().toLocaleDateString('sv-SE');
+  for (const o of [...selRonda.options]) if (o.dataset.cierre! < hoy) o.remove();
+  const pedida = new URLSearchParams(location.search).get('ronda');
+  if (pedida && [...selRonda.options].some((o) => o.value === pedida)) selRonda.value = pedida;
+  const rondaElegida = () => selRonda.selectedOptions[0];
+  const pintarRonda = () => {
+    const o = rondaElegida();
+    document.getElementById('sum')!.textContent = o ? `Reserva de plaza · ${o.dataset.corta}` : 'Reserva de plaza';
+    document.getElementById('cierre')!.textContent = o ? `Cierre de inscripción: ${o.dataset.cierreTxt}` : '';
+    document.getElementById('sin-rondas')!.hidden = Boolean(o);
+    btn.disabled = !o;
+  };
+  pintarRonda();
+
+  form.addEventListener('change', (e) => {
+    const name = (e.target as HTMLInputElement).name;
+    if (name === 'metodo') pintarMetodo();
+    if (name === 'ronda') pintarRonda();
+  });
   form.addEventListener('input', () => { err.textContent = ''; });
   pintarMetodo();
 
   function validar(d: Record<string, string>, acepta: boolean) {
+    if (!rondaElegida()) return 'No hay ninguna ronda con la inscripción abierta.';
     if (d.nombre.length < 2) return 'Escribe tu nombre y apellidos.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return 'Revisa tu correo.';
     if (d.telefono.replace(/\D/g, '').length < 9) return 'Revisa tu número de WhatsApp.';
@@ -142,10 +192,11 @@ const conBizum = Boolean(BIZUM.numero);
   }
 
   function mostrarBizum(d: Record<string, string>) {
-    const concepto = `Reserva T2 ${d.nombre}`.slice(0, 35);
+    const o = rondaElegida()!;
+    const concepto = `Reserva R${o.value} ${d.nombre}`.slice(0, 35);
     document.getElementById('bizum-concepto')!.textContent = concepto;
-    const msg = `Hola, he enviado un Bizum de ${IMPORTE} € para reservar plaza en la Temporada 2 de RUKC.\n`
-      + `Nombre: ${d.nombre}\nCorreo: ${d.email}\nWhatsApp: ${d.telefono}\nCategoría: ${d.categoria}\nConcepto: ${concepto}\n`
+    const msg = `Hola, he enviado un Bizum de ${IMPORTE} € para reservar plaza en la ${o.dataset.corta} de RUKC.\n`
+      + `Ronda: ${o.dataset.etiqueta}\nNombre: ${d.nombre}\nCorreo: ${d.email}\nWhatsApp: ${d.telefono}\nCategoría: ${d.categoria}\nConcepto: ${concepto}\n`
       + 'Te adjunto el justificante.';
     (document.getElementById('bizum-wa') as HTMLAnchorElement).href = `https://wa.me/${form.dataset.wa}?text=${encodeURIComponent(msg)}`;
     form.hidden = true;
@@ -174,11 +225,20 @@ const conBizum = Boolean(BIZUM.numero);
     const fallo = validar(datos, acepta);
     err.textContent = fallo;
     if (fallo) return;
-    if (metodo() === 'bizum') { mostrarBizum(datos); return; }
+    const ronda = rondaElegida()!.dataset.etiqueta!;
 
-    // Medición en Meta solo para quien llegó desde la landing de anuncios y no rechazó sus cookies
+    // Medición en Meta solo para quien llegó desde la landing de anuncios y no rechazó sus cookies:
+    // Lead al enviar el formulario (tarjeta o Bizum) y Purchase cuando Stripe confirma el pago con tarjeta.
     const fbp = cookie('_fbp'), fbc = cookie('_fbc');
     const meta = leer('rukc_consent') !== 'no' && (fbp || leer('rukc_consent') === 'yes') ? 'si' : 'no';
+    if (meta === 'si') {
+      fetch('/api/lead', {
+        method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: datos.email, telefono: datos.telefono, nivel: `${ronda} · ${metodo()}`, event_id: `lead_${Date.now()}_${Math.random().toString(36).slice(2)}`, url: location.origin + location.pathname, fbp, fbc }),
+      }).catch(() => {});
+    }
+
+    if (metodo() === 'bizum') { mostrarBizum(datos); return; }
 
     btn.disabled = true;
     btn.textContent = 'Abriendo el pago…';
@@ -186,7 +246,7 @@ const conBizum = Boolean(BIZUM.numero);
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...datos, acepta, meta, fbp, fbc, origen: leer('rukc_origen') === 'landing' ? 'landing' : 'web' }),
+        body: JSON.stringify({ ...datos, ronda, acepta, meta, fbp, fbc, origen: leer('rukc_origen') === 'landing' ? 'landing' : 'web' }),
       });
       const r = await res.json().catch(() => ({}));
       if (res.ok && r.url) { location.href = r.url; return; }

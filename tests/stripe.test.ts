@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { POST as checkout, parametrosCheckout, validarReserva } from '../api/checkout.js';
 import { POST as webhook, eventoCompra, firmaValida } from '../api/stripe-webhook.js';
-import { RESERVA } from '../src/config/reserva.js';
+import { DIAS_CIERRE, RESERVA } from '../src/config/reserva.js';
+import { diaSemana, restarDias } from '../src/lib/season/format.ts';
 
-const OK = { nombre: 'Carlos Martín', email: 'Carlos@Mail.com ', telefono: '+34 600 11 22 33', categoria: 'Ligeros', acepta: true };
+const OK = { nombre: 'Carlos Martín', email: 'Carlos@Mail.com ', telefono: '+34 600 11 22 33', categoria: 'Ligeros', ronda: 'R2 · sábado 21 nov · Karting Campillos', acepta: true };
 const firmar = (payload: string, secreto: string, t = Math.floor(Date.now() / 1000)) =>
   `t=${t},v1=${crypto.createHmac('sha256', secreto).update(`${t}.${payload}`).digest('hex')}`;
 
@@ -16,6 +17,7 @@ test('reserva: valida nombre, correo, teléfono, categoría y condiciones', () =
   assert.match(validarReserva({ ...OK, telefono: '123' }).error!, /WhatsApp/);
   assert.match(validarReserva({ ...OK, categoria: 'Otra' }).error!, /categoría/);
   assert.match(validarReserva({ ...OK, acepta: 'true' }).error!, /condiciones/);
+  assert.match(validarReserva({ ...OK, ronda: '' }).error!, /ronda/);
 });
 
 test('reserva: la sesión de Checkout cobra el importe en euros y lleva los datos en metadata', () => {
@@ -26,6 +28,9 @@ test('reserva: la sesión de Checkout cobra el importe en euros y lleva los dato
   assert.equal(p.get('success_url'), 'https://raceupkc.com/inscripcion/confirmada?pago={CHECKOUT_SESSION_ID}');
   assert.equal(p.get('metadata[producto]'), RESERVA.id);
   assert.equal(p.get('metadata[categoria]'), 'Ligeros');
+  assert.equal(p.get('metadata[ronda]'), 'R2 · sábado 21 nov · Karting Campillos');
+  assert.equal(p.get('line_items[0][price_data][product_data][name]'), `${RESERVA.concepto} · R2 · sábado 21 nov · Karting Campillos`);
+  assert.equal(p.get('payment_intent_data[description]'), `${RESERVA.concepto} · R2 · Carlos Martín`);
   assert.equal(p.has('payment_method_types[0]'), false); // los métodos se eligen en el panel de Stripe
   assert.equal(p.has('metadata[ip]'), false); // sin consentimiento de medición no se guardan datos para Meta
 });
@@ -56,6 +61,12 @@ test('reserva: con clave llama a Stripe y devuelve la URL de pago', async () => 
     globalThis.fetch = prevFetch;
     if (prevKey) process.env.STRIPE_SECRET_KEY = prevKey; else delete process.env.STRIPE_SECRET_KEY;
   }
+});
+
+test('cierre de inscripción: el martes anterior a la carrera del sábado', () => {
+  assert.equal(diaSemana('2026-11-21'), 'sábado');
+  assert.equal(restarDias('2026-11-21', DIAS_CIERRE), '2026-11-17');
+  assert.equal(diaSemana(restarDias('2026-11-21', DIAS_CIERRE)), 'martes');
 });
 
 test('webhook: acepta solo firmas válidas y recientes', () => {
