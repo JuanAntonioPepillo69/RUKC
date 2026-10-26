@@ -12,7 +12,7 @@ import { RESERVA } from '../../config/reserva.js';
   noindex
 >
   <p><strong>Gracias, ya tienes tu sitio en la parrilla.</strong> Hemos recibido el pago de la reserva ({RESERVA.importe} €) y te llegará el justificante de Stripe a tu correo.</p>
-  <p>Te escribimos por WhatsApp para cerrar las carreras que vas a correr. Si prefieres adelantarte, escríbenos tú:</p>
+  <p>Los {RESERVA.importe} € se descuentan del precio de la carrera: te quedan {RESERVA.precioCarrera - RESERVA.importe} €. Te escribimos por WhatsApp para confirmar tu plaza y cerrar los detalles. Si prefieres adelantarte, escríbenos tú:</p>
   <p><a class="btn btn--gold" href={whatsappUrl('Hola, acabo de pagar la reserva de plaza de la Temporada 2 de RUKC.')} target="_blank" rel="noopener">Escribir por WhatsApp</a></p>
   <p>Mientras tanto, echa un vistazo al <a href="/reglamento">reglamento</a> y al <a href="/season-2">calendario de la temporada</a>. Para cualquier duda sobre el pago: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
 </Doc>

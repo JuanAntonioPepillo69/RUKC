@@ -14,6 +14,7 @@ export const GET: APIRoute = async () => {
   const html = (await fs.readFile(path.join(process.cwd(), 'src', 'landing', 'landing.html'), 'utf8'))
     .replaceAll('%%PIXEL_ID%%', LANDING.pixelId)
     .replaceAll('%%WHATSAPP%%', LANDING.whatsapp)
-    .replaceAll('%%RESERVA%%', String(RESERVA.importe));
+    .replaceAll('%%RESERVA%%', String(RESERVA.importe))
+    .replaceAll('%%RESTO%%', String(RESERVA.precioCarrera - RESERVA.importe));
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 };

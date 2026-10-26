@@ -20,7 +20,7 @@ const abiertas = (await cargarTemporada()).rondas
     return {
       ronda: r.ronda,
       cierre,
-      etiqueta: `R${r.ronda} · ${diaSemana(r.fecha)} ${fechaCorta(r.fecha)} · ${r.circuito}`,
+      etiqueta: `R${r.ronda} · ${diaSemana(r.fecha).slice(0, 3)} ${fechaCorta(r.fecha)} · ${r.circuito}`,
       corta: `R${r.ronda} ${r.circuito}`,
       cierreTxt: `${diaSemana(cierre)} ${fechaCorta(cierre)}`,
     };
@@ -53,6 +53,7 @@ const abiertas = (await cargarTemporada()).rondas
             <span id="sum">Reserva de plaza{abiertas[0] && ` · ${abiertas[0].corta}`}</span>
             <strong class="tnum">{RESERVA.importe} €</strong>
           </div>
+          <p class="card__desc">Se descuentan del precio de la carrera ({RESERVA.precioCarrera} €): después solo pagas {RESERVA.precioCarrera - RESERVA.importe} €.</p>
 
           <p class="card__notice" id="sin-rondas" hidden={abiertas.length > 0}>Ahora mismo no hay ninguna ronda con la inscripción abierta. <a href={whatsappUrl()} target="_blank" rel="noopener">Escríbenos por WhatsApp</a> y te avisamos de la siguiente.</p>
           <label class="field"><span>Ronda</span>
@@ -90,7 +91,7 @@ const abiertas = (await cargarTemporada()).rondas
               </label>
               <label class="pay__opt">
                 <input type="radio" name="metodo" value="bizum" />
-                <span><strong>Bizum</strong><small>Al {BIZUM.numero}</small></span>
+                <span><strong>Bizum</strong><small>Al <span>{BIZUM.numero}</span></small></span>
               </label>
             </fieldset>
           )}
@@ -274,6 +275,7 @@ const abiertas = (await cargarTemporada()).rondas
   .card[hidden] { display: none; }
   .card__notice { margin: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); font-size: 14px; }
   .card__sum { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .card__desc { margin: -6px 0 0; font-size: 14px; color: var(--muted); }
   .card__sum strong { font-family: var(--font-display); font-weight: 900; font-size: 32px; letter-spacing: -0.02em; white-space: nowrap; }
   .field { display: grid; gap: 7px; font-size: 14px; font-weight: 600; }
   .field input, .field select {
@@ -291,6 +293,7 @@ const abiertas = (await cargarTemporada()).rondas
   .pay__opt input { margin-top: 3px; accent-color: var(--gold); }
   .pay__opt span { display: grid; gap: 2px; font-size: 15px; }
   .pay__opt small { font-size: 13px; color: var(--muted); }
+  .pay__opt small span { white-space: nowrap; }
 
   .check { display: flex; gap: 11px; align-items: flex-start; font-size: 14px; color: var(--muted); line-height: 1.5; }
   .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
@@ -313,6 +316,7 @@ const abiertas = (await cargarTemporada()).rondas
   .bizum__back { justify-self: center; padding: 6px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
   .bizum__back:hover { color: var(--paper); }
 
-  @media (max-width: 900px) { .res__grid { grid-template-columns: 1fr; } }
+  .field select { width: 100%; min-width: 0; }
+  @media (max-width: 900px) { .res__grid { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 380px) { .pay { grid-template-columns: 1fr; } }
 </style>

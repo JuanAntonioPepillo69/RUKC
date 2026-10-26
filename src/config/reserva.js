@@ -5,6 +5,7 @@ export const RESERVA = {
   id: 'reserva-t2',
   concepto: 'Reserva de plaza · Temporada 2 RUKC',
   importe: 30, // euros, precio final
+  precioCarrera: 99, // euros; la reserva se descuenta de este precio
   reembolsable: false,
 };
 

@@ -371,7 +371,7 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
         <p class="r2-title" id="r2-title"><b>R2</b> · Sábado 21 de noviembre · Karting Campillos</p>
         <ul class="r2-facts">
           <li><b>99 €</b> la carrera</li>
-          <li>Reserva con <b>%%RESERVA%% €</b></li>
+          <li>Reserva con <b>%%RESERVA%% €</b> (se descuentan)</li>
           <li>Cierre: <b>martes 17 nov</b></li>
         </ul>
       </div>
@@ -523,7 +523,7 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
         <span><i style="border:1px solid var(--gold)"></i><b>Libre</b> · disponible ahora</span>
       </div>
       <div class="offer-row">
-        <div class="price"><b class="tnum">99€</b> por carrera<small>Reserva tu plaza con %%RESERVA%% €. Próxima: R2, sábado 21 de noviembre en Karting Campillos. Cierre de inscripción: martes 17 de noviembre.</small></div>
+        <div class="price"><b class="tnum">99€</b> por carrera<small>Reserva tu plaza con %%RESERVA%% €, que se descuentan del precio: después solo pagas %%RESTO%% €. Próxima: R2, sábado 21 de noviembre en Karting Campillos. Cierre de inscripción: martes 17 de noviembre.</small></div>
         <a class="cta" href="/inscripcion?ronda=2" data-reserva><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 21.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>Reservar mi plaza · %%RESERVA%% €</a>
       </div>
     </div>
@@ -566,7 +566,7 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
       <details><summary>¿Cuánto dura?<span class="plus"></span></summary><div class="a">Media jornada. El horario exacto depende del circuito, y te lo confirmamos antes de cada carrera.</div></details>
       <details><summary>¿Cómo es un día de carrera?<span class="plus"></span></summary><div class="a">Entrenamientos libres, clasificación y dos carreras por jornada, con la final decidiéndolo todo. Formato Fórmula 1, en un solo día.</div></details>
       <details><summary>¿Dónde se corre?<span class="plus"></span></summary><div class="a">Rotamos entre los mejores circuitos de la zona: Campillos, Mijas, KartFun Málaga, KartFun Estepona, Karting del Sol y Karting Granada. Todos a menos de 90 km de Málaga, de Granada a Estepona.</div></details>
-      <details><summary>¿Cuánto cuesta?<span class="plus"></span></summary><div class="a">99€ por carrera. Para asegurar tu plaza pagas una reserva de %%RESERVA%% € con tarjeta o Bizum. Las condiciones de temporada completa, con mejores precios en el acceso anticipado, te las contamos por WhatsApp después de reservar.</div></details>
+      <details><summary>¿Cuánto cuesta?<span class="plus"></span></summary><div class="a">99€ por carrera. Para asegurar tu plaza pagas una reserva de %%RESERVA%% € con tarjeta o Bizum, que se descuenta del precio: después solo te quedan %%RESTO%% €. Las condiciones de temporada completa, con mejores precios en el acceso anticipado, te las contamos por WhatsApp después de reservar.</div></details>
       <details><summary>¿Tengo que hacer toda la temporada?<span class="plus"></span></summary><div class="a">No. Puedes empezar por una sola carrera desde 99€. Y si vas a por la temporada entera, tienes un precio exclusivo que solo abrimos ahora, en el acceso anticipado.</div></details>
       <details><summary>¿Qué necesito llevar?<span class="plus"></span></summary><div class="a">El kart lo ponemos nosotros. Ven con ropa cómoda y ganas; del equipo de seguridad te informamos al confirmar tu plaza.</div></details>
       <details><summary>¿Es seguro? ¿Y si hay un toque?<span class="plus"></span></summary><div class="a">Hay comisarios en pista y un reglamento con penalizaciones por contacto. Se pelea duro, pero limpio: la seguridad y el juego limpio van primero.</div></details>
@@ -584,7 +584,7 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
       <h2 style="font-weight:900;font-size:clamp(28px,4.6vw,44px)">Tres pasos. Y estás en la parrilla.</h2>
     </div>
     <div class="steps">
-      <div class="step reveal d1"><div class="n">1</div><p>Pulsa <b>Reservar mi plaza</b> y paga la reserva de %%RESERVA%% € con tarjeta o Bizum. Un minuto.</p></div>
+      <div class="step reveal d1"><div class="n">1</div><p>Pulsa <b>Reservar mi plaza</b> y paga la reserva de %%RESERVA%% € con tarjeta o Bizum. Se descuenta del precio de la carrera.</p></div>
       <div class="step reveal d2"><div class="n">2</div><p>Te escribimos por <b>WhatsApp</b> para confirmar tu plaza y cerrar los detalles.</p></div>
       <div class="step reveal d3"><div class="n">3</div><p>El <b>sábado 21 de noviembre</b> corres la R2 en Karting Campillos.</p></div>
     </div>
@@ -608,11 +608,12 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
         <li>Ronda <b>R2 · Karting Campillos</b></li>
         <li>Fecha <b>Sábado 21 de noviembre</b></li>
         <li>Precio de la carrera <b class="tnum">99 €</b></li>
-        <li>Reserva <b class="tnum">%%RESERVA%% €</b></li>
+        <li>Reserva ahora <b class="tnum">%%RESERVA%% €</b></li>
+        <li>Resto, después <b class="tnum">%%RESTO%% €</b></li>
         <li>Cierre de inscripción <b>Martes 17 de noviembre</b></li>
       </ul>
       <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
-      <p class="pay-note">Pago seguro con tarjeta o Bizum. La reserva no es reembolsable.</p>
+      <p class="pay-note">Los %%RESERVA%% € se descuentan del precio de la carrera. Pago seguro con tarjeta o Bizum. La reserva no es reembolsable.</p>
       <p class="doubts">¿Dudas? <a href="#" data-wa target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
       <p class="form-foot">Quedan <b class="tnum" data-quedan>18</b> plazas de 100 · Nos vemos en pista.</p>
     </div>

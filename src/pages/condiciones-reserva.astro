@@ -21,6 +21,7 @@ import { BIZUM, RESERVA } from '../config/reserva.js';
   <h2>Precio y pago</h2>
   <ul>
     <li><strong>Precio:</strong> {RESERVA.importe} €, precio final.</li>
+    <li><strong>Descuento:</strong> el importe de la reserva se descuenta del precio de la ronda reservada ({RESERVA.precioCarrera} €), así que después solo pagas la diferencia ({RESERVA.precioCarrera - RESERVA.importe} €).</li>
     <li><strong>Con tarjeta:</strong> en la pantalla de pago de Stripe. Stripe procesa el pago y te envía el justificante por correo; RUKC no ve ni guarda los datos de tu tarjeta. La plaza queda reservada en cuanto se completa el pago.</li>
     {BIZUM.numero && <li><strong>Con Bizum:</strong> al número {BIZUM.numero} (titular: {BIZUM.titular}), con el concepto que indica la web. Después nos mandas el justificante por WhatsApp. La plaza queda reservada cuando comprobamos que el Bizum ha llegado, y te lo confirmamos por WhatsApp.</li>}
   </ul>
