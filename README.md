@@ -117,7 +117,7 @@ Los textos de la landing están en `src/landing/landing.html`. Arriba del archiv
 
 **Vídeo de la landing:** está alojado en la propia web, en `public/lp/video/` (`r1-mijas.mp4`, 720p, y sus pósters), y se configura con `VIDEO` en `window.RUKC`. No se descarga hasta que se pulsa el play. Para cambiarlo, comprime el nuevo a 720p H.264 (unos 1,2 Mbps, con `-movflags +faststart`), sustituye los archivos y, si cambia el nombre, actualiza `VIDEO` y el póster del bloque `#vsl`.
 
-Todos los botones de la landing ("Reservar mi plaza · 30 €") llevan a `/inscripcion?ronda=2`, que abre el formulario con la R2 elegida. La landing no tiene formulario propio: WhatsApp queda solo como enlace de dudas. **Cuando pase la R2**, cambia en `landing.html` el bloque "PRÓXIMA RONDA", la ficha del final (`rfacts`), la barra fija del móvil, los pasos, la FAQ y el `?ronda=2` de los enlaces por los datos de la siguiente ronda.
+Todos los botones de la landing ("Reservar mi plaza · 30 €") llevan a `/inscripcion?ronda=2`, que abre el formulario con la R2 elegida. La landing no tiene formulario propio: WhatsApp queda solo como enlace de dudas. **Cuando pase la R2**, cambia en `landing.html` la barra fina de arriba y la ficha "PRÓXIMA RONDA" (después del vídeo), la ficha del final (`rfacts`), la barra fija del móvil, los pasos, la FAQ y el `?ronda=2` de los enlaces por los datos de la siguiente ronda.
 
 En `/inscripcion` el desplegable de ronda se rellena solo con las rondas programadas de la hoja cuya inscripción sigue abierta (cierra el martes anterior a la carrera, `DIAS_CIERRE` en `src/config/reserva.js`).
 

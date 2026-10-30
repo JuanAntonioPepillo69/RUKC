@@ -104,7 +104,7 @@ section{position:relative;z-index:1;padding:84px 0}
 .crest::before{content:"";position:absolute;inset:-24% -22%;z-index:-1;
   background:radial-gradient(closest-side, rgba(212,166,42,.32), transparent 72%);filter:blur(6px)}
 .crest img{height:128px;width:auto;margin:0 auto}
-@media(max-width:640px){.crest img{height:98px}}
+@media(max-width:640px){.crest img{height:68px}.hero{padding-top:24px}.hero .eyebrow{margin-top:14px}}
 .hero .eyebrow{margin-top:22px}
 .hero h1{font-weight:900;font-size:clamp(38px,6.6vw,64px);margin:14px auto 0}
 .hero h1 .g{background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;color:transparent;display:block}
@@ -251,7 +251,17 @@ section{position:relative;z-index:1;padding:84px 0}
 .form-foot b{color:var(--red-soft)}
 
 /* ---------- próxima ronda ---------- */
-.r2{padding:22px 0 0}
+.r2{padding:0 0 70px}
+@media(max-width:640px){.r2{padding-bottom:50px}}
+.r2-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;
+  background:linear-gradient(90deg,rgba(212,166,42,.06),rgba(212,166,42,.16),rgba(212,166,42,.06));border-bottom:1px solid var(--line);
+  font-size:14px;color:var(--paper);text-decoration:none;position:relative;z-index:1}
+.r2-bar b{color:var(--gold);font-weight:800}
+.r2-bar .pulse{flex:none;width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 2.2s infinite}
+.r2-bar__go{flex:none;font-family:"Archivo";font-weight:800;color:var(--gold);white-space:nowrap}
+.r2-bar:hover .r2-bar__go{text-decoration:underline}
+@media(max-width:640px){.r2-bar{font-size:12.5px;gap:8px;padding:9px 12px}.r2-bar__open{display:none}}
+@media(max-width:370px){.r2-bar__k{display:none}}
 .r2-card{max-width:940px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:18px 28px;align-items:center;
   border:1px solid var(--gold);border-radius:var(--r);padding:20px 24px;
   background:radial-gradient(120% 140% at 0% 0%,rgba(212,166,42,.16),transparent 60%),var(--ink-2);box-shadow:var(--shadow)}
@@ -364,23 +374,12 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
   </div>
 </header>
 
-<!-- PRÓXIMA RONDA -->
-<section class="r2" aria-labelledby="r2-title">
-  <div class="wrap">
-    <div class="r2-card">
-      <div>
-        <span class="r2-tag"><span class="pulse"></span>Inscripción abierta · Próxima ronda</span>
-        <p class="r2-title" id="r2-title"><b>R2</b> · Sábado 21 de noviembre · Karting Campillos</p>
-        <ul class="r2-facts">
-          <li><b>99 €</b> la carrera</li>
-          <li>Reserva con <b>%%RESERVA%% €</b> (se descuentan)</li>
-          <li>Cierre: <b>martes 17 nov</b></li>
-        </ul>
-      </div>
-      <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
-    </div>
-  </div>
-</section>
+<!-- PRÓXIMA RONDA: aviso fino arriba (la ficha completa va después del vídeo) -->
+<a class="r2-bar" href="/inscripcion?ronda=2" data-reserva>
+  <span class="pulse" aria-hidden="true"></span>
+  <span class="r2-bar__txt"><span class="r2-bar__open">Inscripción abierta · </span><b>R2</b> · Sáb 21 nov · <span class="r2-bar__k">Karting </span>Campillos</span>
+  <span class="r2-bar__go">Reservar →</span>
+</a>
 
 <!-- HERO -->
 <section class="hero center">
@@ -393,7 +392,7 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     <div class="vsl" id="vsl">
       <div class="frame">
         <div class="ph media" style="border-radius:0;border:0;box-shadow:none">
-          <img src="/lp/video/r1-mijas-poster-1280.webp" srcset="/lp/video/r1-mijas-poster-640.webp 640w, /lp/video/r1-mijas-poster-1280.webp 1280w" sizes="(max-width: 980px) 100vw, 940px" width="1280" height="720" alt="Pilotos en la parrilla de la R1 en Karting Mijas" loading="lazy" decoding="async" onerror="this.style.display='none'" />
+          <img src="/lp/video/r1-mijas-poster-1280.webp" srcset="/lp/video/r1-mijas-poster-640.webp 640w, /lp/video/r1-mijas-poster-1280.webp 1280w" sizes="(max-width: 980px) 100vw, 940px" width="1280" height="720" alt="Pilotos en la parrilla de la R1 en Karting Mijas" loading="eager" decoding="async" onerror="this.style.display='none'" />
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg></div>
         </div>
         <div class="veil"></div>
@@ -408,6 +407,24 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
       <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
       <span class="scarce-chip"><span class="pulse"></span>Solo <b class="tnum">&nbsp;100&nbsp;</b> plazas · quedan <b class="tnum" data-quedan>&nbsp;18&nbsp;</b></span>
       <span class="miniproof"><b>6</b> carreras · <b>6</b> circuitos · <b>+100</b> pilotos en la Temporada 1</span>
+    </div>
+  </div>
+</section>
+
+<!-- PRÓXIMA RONDA: ficha completa -->
+<section class="r2" aria-labelledby="r2-title">
+  <div class="wrap">
+    <div class="r2-card reveal">
+      <div>
+        <span class="r2-tag"><span class="pulse"></span>Inscripción abierta · Próxima ronda</span>
+        <p class="r2-title" id="r2-title"><b>R2</b> · Sábado 21 de noviembre · Karting Campillos</p>
+        <ul class="r2-facts">
+          <li><b>99 €</b> la carrera</li>
+          <li>Reserva con <b>%%RESERVA%% €</b> (se descuentan)</li>
+          <li>Cierre: <b>martes 17 nov</b></li>
+        </ul>
+      </div>
+      <a class="cta" href="/inscripcion?ronda=2" data-reserva>Reservar mi plaza · %%RESERVA%% €</a>
     </div>
   </div>
 </section>
