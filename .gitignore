@@ -5,3 +5,7 @@ dist/
 .env*
 tools/hero/out/
 .claude/settings.local.json
+
+# Plantillas de posts de Instagram (proyectos aparte, no se publican con la web)
+plantillas/
+plantillas-t1/
