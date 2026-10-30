@@ -11,7 +11,9 @@
     "hero:encode": "node tools/hero/encode.mjs",
     "test": "node --test \"tests/**/*.test.ts\"",
     "reglamento": "node tools/reglamento/convert.mjs",
-    "db:migrar": "node --env-file-if-exists=.env db/migrar.mjs"
+    "db:migrar": "node --env-file-if-exists=.env db/migrar.mjs",
+    "db:sembrar": "node --env-file-if-exists=.env db/sembrar.mjs",
+    "db:test": "node --env-file-if-exists=.env --test db/tests/esquema.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.3.0",
