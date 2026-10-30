@@ -9,3 +9,4 @@ tools/hero/out/
 # Plantillas de posts de Instagram (proyectos aparte, no se publican con la web)
 plantillas/
 plantillas-t1/
+!.env.example
