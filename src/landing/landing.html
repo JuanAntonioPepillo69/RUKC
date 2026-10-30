@@ -23,7 +23,7 @@ window.RUKC = {
   PLAZAS_OCUPADAS: 82,
   PRECIO_DESDE: 99,
   PIXEL_ID: "%%PIXEL_ID%%",
-  VSL_EMBED: "",            // src del iframe (YouTube/Vimeo). Vacío = muestra el póster.
+  VIDEO: "/lp/video/r1-mijas.mp4", // vídeo alojado en la propia web (public/lp/video). Vacío = solo póster.
   CONSENT_GATE: false       // false = Pixel al entrar. true = espera "Aceptar".
 };
 </script>
@@ -131,7 +131,9 @@ section{position:relative;z-index:1;padding:84px 0}
 .vsl .play .disc svg{width:32px;height:32px;margin-left:5px;fill:#0a0a0b}
 .vsl .play .lbl{font-family:"Archivo";font-weight:800;font-size:20px}
 .vsl .play .lbl small{display:block;font-family:"Inter";font-weight:500;font-size:13.5px;color:var(--muted);margin-top:5px}
-.vsl iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media(max-width:640px){.vsl .play{gap:10px}.vsl .play .disc,.vsl .play .disc::before{width:60px;height:60px}.vsl .play .disc svg{width:24px;height:24px}
+  .vsl .play .lbl{font-size:17px}.vsl .play .lbl small{font-size:12.5px}}
+.vsl iframe,.vsl video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
 
 .hero-under{margin:30px auto 0;display:flex;flex-direction:column;align-items:center;gap:16px}
 .hero-under .cta{font-size:17.5px;padding:18px 32px}
@@ -388,16 +390,16 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
     <h1>Deja de pasear rápido.<span class="g">Empieza a competir.</span></h1>
     <p class="sub">La única liga mensual de karting de alquiler de la Costa del Sol.</p>
 
-    <div class="vsl" id="vsl" style="display:none">
+    <div class="vsl" id="vsl">
       <div class="frame">
         <div class="ph media" style="border-radius:0;border:0;box-shadow:none">
-          <img src="/lp/hero-4-paralelo.webp" srcset="/lp/hero-4-paralelo-640.webp 640w, /lp/hero-4-paralelo.webp 1600w" sizes="(max-width: 700px) 100vw, 560px" width="1600" height="1067" alt="Salida de parrilla RaceUp en Campillos" loading="lazy" decoding="async" onerror="this.style.display='none'" />
+          <img src="/lp/video/r1-mijas-poster-1280.webp" srcset="/lp/video/r1-mijas-poster-640.webp 640w, /lp/video/r1-mijas-poster-1280.webp 1280w" sizes="(max-width: 980px) 100vw, 940px" width="1280" height="720" alt="Pilotos en la parrilla de la R1 en Karting Mijas" loading="lazy" decoding="async" onerror="this.style.display='none'" />
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg></div>
         </div>
         <div class="veil"></div>
         <button class="play" id="vslPlay" aria-label="Reproducir vídeo">
           <span class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
-          <span class="lbl">Míralo por dentro<small>90 segundos. Así se corre en RaceUp.</small></span>
+          <span class="lbl">Así fue la R1 en Mijas<small>5 minutos de la Temporada 2. Dale sonido.</small></span>
         </button>
       </div>
     </div>
@@ -699,15 +701,17 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
   });},{threshold:.3});
   document.querySelectorAll('[data-trig]').forEach(function(el){io2.observe(el);});
 
-  // VSL
-  var play=document.getElementById('vslPlay');
-  if(play)play.addEventListener('click',function(){
-    var frame=document.querySelector('#vsl .frame');
-    if(C.VSL_EMBED){var f=document.createElement('iframe');
-      f.src=C.VSL_EMBED+(C.VSL_EMBED.indexOf('?')>-1?'&':'?')+'autoplay=1';
-      f.allow='autoplay; fullscreen; picture-in-picture';f.setAttribute('allowfullscreen','');
-      frame.innerHTML='';frame.appendChild(f);}
-    else play.querySelector('.lbl').innerHTML='Pega el VSL en la variable VSL_EMBED<small>(arriba del archivo)</small>';
+  // Vídeo: no se descarga nada hasta que se pulsa el play; entonces se cambia el póster por el reproductor
+  var play=document.getElementById('vslPlay'), vsl=document.getElementById('vsl');
+  if(!C.VIDEO&&vsl)vsl.style.display='none';
+  if(play&&C.VIDEO)play.addEventListener('click',function(){
+    var frame=document.querySelector('#vsl .frame'), img=frame.querySelector('img');
+    var v=document.createElement('video');
+    v.src=C.VIDEO;v.controls=true;v.autoplay=true;v.playsInline=true;v.preload='auto';
+    if(img)v.poster=img.currentSrc||img.src;
+    frame.innerHTML='';frame.appendChild(v);
+    var p=v.play();if(p&&p.catch)p.catch(function(){});
+    try{if(window.fbq)fbq('trackCustom','VideoPlay',{video:'R1 Mijas'});}catch(e){}
   });
 
   // Reserva con pago online: marca que viene de la landing (para medir la compra en Meta) e InitiateCheckout en el píxel
