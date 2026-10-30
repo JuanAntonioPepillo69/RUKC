@@ -181,12 +181,13 @@ section{position:relative;z-index:1;padding:84px 0}
 /* ---------- prueba ---------- */
 .proof{background:linear-gradient(180deg,#0d0c0a,var(--ink))}
 .stats{margin:40px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:center;max-width:760px}
-@media(max-width:420px){.stats{gap:10px}.stat{padding:22px 6px}.stat .num{font-size:36px}}
-@media(max-width:380px){.stat .num{font-size:30px}.stat .lbl{font-size:11px;letter-spacing:.08em}}
-.stat{border:1px solid var(--line);border-radius:var(--r);padding:28px 12px;background:rgba(18,17,16,.5)}
-.stat .num{font-family:"Archivo";font-weight:900;font-size:clamp(42px,7vw,62px);background:var(--grad-gold);
-  -webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.stat{border:1px solid var(--line);border-radius:var(--r);padding:28px 12px;background:rgba(18,17,16,.5);container-type:inline-size;min-width:0}
+/* La cifra se ajusta al ancho de su tarjeta (36% del ancho útil): "+100" cabe entera en cualquier móvil y llega a 62px en escritorio */
+.stat .num{font-family:"Archivo";font-weight:900;font-size:clamp(28px,7vw,62px);font-size:clamp(24px,36cqi,62px);white-space:nowrap;
+  background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
 .stat .lbl{margin-top:8px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+@media(max-width:420px){.stats{gap:10px}.stat{padding:22px 6px}}
+@media(max-width:380px){.stat .lbl{font-size:11px;letter-spacing:.08em}}
 .chips{margin:28px auto 0;display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:720px}
 .chip{font-family:"Archivo";font-weight:700;font-size:13px;color:var(--paper);border:1px solid var(--line-n);
   border-radius:999px;padding:8px 15px;background:rgba(255,255,255,.02)}
