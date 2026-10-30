@@ -1,0 +1,124 @@
+/* Sistema visual RUKC post-carrera · Dirección A "Tribuna"
+   Lienzo 1080x1350 (4:5). Márgenes laterales de 72 px: el recorte 3:4 de la cuadrícula
+   del perfil se come unos 34 px por lado. Ningún texto por debajo de 28 px. */
+
+@font-face { font-family: 'Archivo'; src: url(fonts/archivo-latin-standard-normal.woff2) format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Archivo'; src: url(fonts/archivo-latin-ext-standard-normal.woff2) format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Plex Mono'; src: url(fonts/IBMPlexMono-Regular.ttf); font-weight: 400; }
+@font-face { font-family: 'Plex Mono'; src: url(fonts/IBMPlexMono-Bold.ttf); font-weight: 700; }
+
+:root {
+  /* Paleta */
+  --negro: #0b0b0c;
+  --carbon: #18181a;
+  --linea: #2a2a2d;
+  --oro: #d9b23a;
+  --oro-claro: #e9cd6a;
+  --rojo: #d50507;
+  --blanco: #f4f1ea;
+  --gris: #9a968c;
+
+  /* Retícula */
+  --w: 1080px;
+  --h: 1350px;
+  --margen: 72px;
+  --cab-top: 48px;
+  --cab-h: 88px;
+  --pie-bottom: 40px;
+
+  /* Escala tipográfica (px a 1080 de ancho; mínimo 28) */
+  --t-min: 28px;
+  --t-dato: 30px;
+  --t-fila: 38px;
+  --t-h3: 52px;
+  --t-h2: 76px;
+  --t-h1: 132px;
+}
+
+/* Color de acento por categoría */
+.cat-ligeros { --acento: var(--oro); --acento-tinta: var(--negro); }
+.cat-pesados { --acento: var(--rojo); --acento-tinta: var(--blanco); }
+.cat-destacados { --acento: var(--blanco); --acento-tinta: var(--negro); }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: var(--w); height: var(--h); overflow: hidden; background: var(--negro); color: var(--blanco); }
+body { font-family: 'Archivo', sans-serif; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+
+/* Cabecera fija */
+.cab { flex: none; margin: var(--cab-top) var(--margen) 0; height: var(--cab-h); display: flex; align-items: center; justify-content: space-between; }
+.marca { display: flex; align-items: center; gap: 22px; }
+.marca img { height: 84px; display: block; }
+.marca .m1 { font-stretch: 125%; font-weight: 800; font-size: 36px; letter-spacing: 0.06em; color: var(--oro); line-height: 1; }
+.marca .m2 { font-weight: 500; font-size: var(--t-min); letter-spacing: 0.08em; color: var(--gris); line-height: 1; margin-top: 8px; }
+.cab .ctx { font-family: 'Plex Mono'; font-size: var(--t-dato); color: var(--gris); letter-spacing: 0.04em; text-align: right; }
+.cab .ctx b { color: var(--blanco); font-weight: 700; }
+
+/* Pie fijo */
+.pie { flex: none; margin: 0 var(--margen) var(--pie-bottom); height: 40px; display: flex; justify-content: space-between; align-items: center; font-family: 'Plex Mono'; font-size: var(--t-min); color: var(--gris); }
+.pie b { color: var(--blanco); font-weight: 400; }
+.flecha { display: inline-flex; align-items: center; gap: 14px; color: var(--blanco); }
+.flecha i { display: block; width: 44px; height: 2px; background: var(--oro); position: relative; }
+.flecha i::after { content: ''; position: absolute; right: 0; top: -6px; width: 12px; height: 12px; border-top: 2px solid var(--oro); border-right: 2px solid var(--oro); transform: rotate(45deg); }
+
+/* Fotos: siempre en bloque, nunca con texto encima */
+.foto { flex: none; position: relative; width: var(--w); overflow: hidden; margin-top: 28px; background: var(--carbon); }
+.foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.filete { flex: none; height: 6px; width: var(--w); background: linear-gradient(90deg, var(--acento, var(--oro)) 0 62%, transparent 62%); }
+
+/* Foto a sangre (slides de destacados): todo el lienzo, sin cabecera ni pie */
+.a-sangre .foto { height: var(--h); margin: 0; }
+
+/* Zona de contenido */
+.cuerpo { flex: 1; min-height: 0; margin: 0 var(--margen); display: flex; flex-direction: column; }
+
+/* Etiquetas */
+.pre { font-weight: 700; font-size: var(--t-dato); letter-spacing: 0.22em; color: var(--oro); text-transform: uppercase; }
+.chip { display: inline-flex; align-items: center; height: 46px; padding: 0 16px; background: var(--acento); color: var(--acento-tinta); font-weight: 800; font-size: var(--t-min); letter-spacing: 0.16em; text-transform: uppercase; line-height: 1; }
+.dato { font-family: 'Plex Mono'; font-size: var(--t-dato); color: var(--gris); }
+.h1 { font-stretch: 125%; font-weight: 900; font-size: var(--t-h1); line-height: 0.95; letter-spacing: -0.01em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.h2 { font-stretch: 125%; font-weight: 900; font-size: var(--t-h2); line-height: 1; letter-spacing: -0.005em; text-transform: uppercase; white-space: nowrap; }
+.nombre { text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dorsal { font-family: 'Plex Mono'; color: var(--gris); font-weight: 400; }
+.badge { display: inline-flex; align-items: center; height: 40px; padding: 0 12px; margin-left: 14px; border: 2px solid var(--oro); color: var(--oro); font-family: 'Plex Mono'; font-weight: 700; font-size: var(--t-min); line-height: 1; vertical-align: middle; flex: none; }
+
+/* Hueco visible para un dato que falta */
+.hueco { display: inline-flex; align-items: center; height: 60px; padding: 0 18px; border: 2px dashed var(--oro); color: var(--oro-claro); font-family: 'Plex Mono'; font-size: var(--t-min); font-weight: 700; text-transform: none; letter-spacing: 0; background: repeating-linear-gradient(135deg, rgba(217, 178, 58, 0.12) 0 10px, transparent 10px 20px); white-space: nowrap; }
+
+/* Tablas de resultados y clasificación */
+.titulo-tabla { margin-top: 36px; }
+.titulo-tabla .linea { display: flex; align-items: center; justify-content: space-between; }
+.titulo-tabla .h2 { margin-top: 18px; }
+.tabla { margin-top: 30px; }
+.tabla .fila { display: grid; align-items: center; height: 78px; border-bottom: 1px solid var(--linea); }
+.tabla .fila.cabecera { white-space: nowrap; height: 52px; border-bottom: 2px solid var(--gris); font-family: 'Plex Mono'; font-size: var(--t-min); color: var(--gris); }
+.tabla .pos { font-weight: 800; font-size: 40px; }
+.tabla .podio .pos { color: var(--oro); }
+.tabla .fuera .pos { font-family: 'Plex Mono'; font-size: var(--t-min); color: var(--gris); }
+.tabla .quien { display: flex; align-items: center; min-width: 0; gap: 18px; }
+.tabla .quien .dorsal { font-size: var(--t-dato); width: 78px; flex: none; }
+.tabla .quien .nombre { font-stretch: 92%; font-weight: 700; font-size: var(--t-fila); min-width: 0; }
+.tabla .num { font-family: 'Plex Mono'; font-size: var(--t-dato); text-align: right; }
+.tabla .pts { font-weight: 800; font-size: 40px; text-align: right; }
+.tabla .cabecera .num, .tabla .cabecera .pts { font-family: 'Plex Mono'; font-size: var(--t-min); font-weight: 400; }
+.leyenda { margin-top: auto; margin-bottom: 22px; font-family: 'Plex Mono'; font-size: var(--t-min); color: var(--gris); }
+
+/* Podio */
+.podio-lista { margin-top: 26px; }
+.peldano { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; border-bottom: 1px solid var(--linea); }
+.peldano .n { font-stretch: 125%; font-weight: 900; color: var(--gris); }
+.peldano .quien { display: flex; align-items: center; min-width: 0; gap: 18px; }
+.peldano .quien .dorsal { font-size: var(--t-dato); flex: none; }
+.peldano .nombre { font-weight: 800; min-width: 0; }
+.peldano .pts { font-family: 'Plex Mono'; font-size: var(--t-dato); color: var(--gris); white-space: nowrap; padding-left: 20px; }
+.peldano .pts b { font-family: 'Archivo'; font-weight: 800; font-size: 40px; color: var(--blanco); }
+.peldano.p1 { height: 128px; }
+.peldano.p1 .n { font-size: 96px; color: var(--oro); }
+.peldano.p1 .nombre { font-size: var(--t-h3); }
+.peldano.p2, .peldano.p3 { height: 98px; }
+.peldano.p2 .n, .peldano.p3 .n { font-size: 64px; }
+.peldano.p2 .nombre, .peldano.p3 .nombre { font-size: 40px; font-weight: 700; }
+
+/* Galería */
+.galeria { flex: 1; min-height: 0; display: flex; gap: 16px; margin-top: 28px; margin-bottom: 28px; }
+.galeria.apiladas { flex-direction: column; }
+.galeria .foto { flex: 1; width: auto; margin: 0; }

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>A Tribuna</title>
+<style>
+  @font-face { font-family: 'Archivo'; src: url(../fonts/archivo-latin-standard-normal.woff2) format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; }
+  @font-face { font-family: 'Plex Mono'; src: url(../fonts/IBMPlexMono-Regular.ttf); font-weight: 400; }
+  @font-face { font-family: 'Plex Mono'; src: url(../fonts/IBMPlexMono-Bold.ttf); font-weight: 700; }
+
+  :root {
+    --negro: #0b0b0c;
+    --carbon: #161618;
+    --oro: #d9b23a;
+    --oro-claro: #e9cd6a;
+    --blanco: #f4f1ea;
+    --gris: #9a968c;
+    --margen: 72px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1350px; background: var(--negro); color: var(--blanco); overflow: hidden; }
+  body { font-family: 'Archivo', sans-serif; position: relative; }
+
+  /* Cabecera */
+  .cab { position: absolute; top: 48px; left: var(--margen); right: var(--margen); height: 88px; display: flex; align-items: center; justify-content: space-between; }
+  .marca { display: flex; align-items: center; gap: 22px; }
+  .marca img { height: 84px; }
+  .marca .t1 { font-stretch: 125%; font-weight: 800; font-size: 36px; letter-spacing: 0.06em; color: var(--oro); line-height: 1; }
+  .marca .t2 { font-weight: 500; font-size: 28px; letter-spacing: 0.08em; color: var(--gris); line-height: 1; margin-top: 8px; }
+  .ronda-n { font-family: 'Plex Mono'; font-size: 30px; color: var(--gris); letter-spacing: 0.04em; }
+  .ronda-n b { color: var(--blanco); font-weight: 700; }
+
+  /* Foto */
+  .foto { position: absolute; top: 164px; left: 0; width: 1080px; height: 668px; overflow: hidden; }
+  .foto img { width: 1188px; height: auto; margin: -14px 0 0 -90px; display: block; }
+  .filete { position: absolute; top: 832px; left: 0; width: 1080px; height: 6px; background: linear-gradient(90deg, var(--oro) 0 62%, transparent 62%); }
+
+  /* Titular */
+  .titular { position: absolute; top: 868px; left: var(--margen); right: var(--margen); }
+  .titular .pre { font-weight: 700; font-size: 30px; letter-spacing: 0.22em; color: var(--oro); }
+  .titular h1 { font-stretch: 125%; font-weight: 900; font-size: 132px; line-height: 0.95; letter-spacing: -0.01em; margin-top: 10px; }
+  .titular .post { font-family: 'Plex Mono'; font-size: 30px; color: var(--gris); margin-top: 14px; }
+
+  /* Ganadores */
+  .ganadores { position: absolute; top: 1138px; left: var(--margen); right: var(--margen); display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+  .gan .cat { display: flex; align-items: baseline; gap: 16px; font-weight: 700; font-size: 28px; letter-spacing: 0.18em; color: var(--oro); }
+  .gan .cat span { font-family: 'Plex Mono'; letter-spacing: 0; color: var(--gris); font-weight: 400; }
+  .gan .nombre { margin-top: 12px; font-stretch: 100%; font-weight: 800; font-size: 46px; line-height: 1.05; text-transform: uppercase; }
+  .hueco { display: flex; align-items: center; height: 66px; padding: 0 18px; border: 2px dashed var(--oro); color: var(--oro-claro); font-family: 'Plex Mono'; font-size: 28px; font-weight: 700; letter-spacing: 0.02em; background: repeating-linear-gradient(135deg, rgba(217,178,58,0.10) 0 10px, transparent 10px 20px); }
+
+  /* Pie */
+  .pie { position: absolute; bottom: 40px; left: var(--margen); right: var(--margen); display: flex; justify-content: space-between; align-items: center; font-family: 'Plex Mono'; font-size: 28px; color: var(--gris); }
+  .pie .flecha { display: inline-flex; align-items: center; gap: 14px; color: var(--blanco); }
+  .pie .flecha i { display: block; width: 44px; height: 2px; background: var(--oro); position: relative; }
+  .pie .flecha i::after { content: ''; position: absolute; right: 0; top: -6px; width: 12px; height: 12px; border-top: 2px solid var(--oro); border-right: 2px solid var(--oro); transform: rotate(45deg); }
+</style>
+</head>
+<body>
+  <header class="cab">
+    <div class="marca">
+      <img src="../marca/escudo.png" alt="">
+      <div><div class="t1">RUKC</div><div class="t2">TEMPORADA 2</div></div>
+    </div>
+    <div class="ronda-n"><b>R1</b> / 8</div>
+  </header>
+
+  <div class="foto"><img src="img/IMG_6400.jpg" alt=""></div>
+  <div class="filete"></div>
+
+  <section class="titular">
+    <div class="pre">RESULTADOS · RONDA 1</div>
+    <h1>MIJAS</h1>
+    <div class="post">17.10.2026 · Karting Mijas</div>
+  </section>
+
+  <section class="ganadores">
+    <div class="gan">
+      <div class="cat">LIGEROS <span>P1</span></div>
+      <div class="nombre"><div class="hueco">FALTA DATO: ganador</div></div>
+    </div>
+    <div class="gan">
+      <div class="cat">PESADOS <span>P1</span></div>
+      <div class="nombre"><div class="hueco">FALTA DATO: ganador</div></div>
+    </div>
+  </section>
+
+  <footer class="pie">
+    <span>raceupkc.com</span>
+    <span class="flecha">Desliza <i></i></span>
+  </footer>
+</body>
+</html>

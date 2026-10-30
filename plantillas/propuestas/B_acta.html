@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>B Acta</title>
+<style>
+  @font-face { font-family: 'Archivo'; src: url(../fonts/archivo-latin-standard-normal.woff2) format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; }
+  @font-face { font-family: 'Plex Mono'; src: url(../fonts/IBMPlexMono-Regular.ttf); font-weight: 400; }
+  @font-face { font-family: 'Plex Mono'; src: url(../fonts/IBMPlexMono-Bold.ttf); font-weight: 700; }
+
+  :root {
+    --papel: #f2efe8;
+    --tinta: #111111;
+    --rojo: #d50507;
+    --gris: #6f6b63;
+    --linea: #cfc9bc;
+    --margen: 72px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1350px; background: var(--papel); color: var(--tinta); overflow: hidden; }
+  body { font-family: 'Archivo', sans-serif; position: relative; }
+
+  /* Foto a sangre arriba */
+  .foto { position: absolute; top: 0; left: 0; width: 1080px; height: 790px; overflow: hidden; background: #222; }
+  .foto img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 78%; display: block; }
+  /* Pestaña de marca: bloque opaco, nunca texto suelto sobre la foto */
+  .tab { position: absolute; top: 0; left: var(--margen); background: var(--tinta); padding: 26px 26px 22px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .tab img { width: 92px; display: block; }
+  .tab span { font-stretch: 125%; font-weight: 800; font-size: 28px; letter-spacing: 0.08em; color: var(--papel); line-height: 1; }
+  .banda { position: absolute; top: 790px; left: 0; width: 1080px; height: 14px; background: var(--rojo); }
+
+  /* Panel tipo acta oficial */
+  .panel { position: absolute; top: 804px; left: var(--margen); right: var(--margen); }
+  .meta { display: flex; justify-content: space-between; padding-top: 30px; font-family: 'Plex Mono'; font-size: 28px; color: var(--gris); letter-spacing: 0.02em; }
+  .meta b { color: var(--tinta); }
+  h1 { display: flex; align-items: baseline; gap: 26px; margin-top: 10px; font-stretch: 72%; font-weight: 900; font-size: 196px; line-height: 0.86; letter-spacing: -0.015em; text-transform: uppercase; }
+  h1 small { font-size: 196px; color: var(--rojo); }
+
+  .tabla { margin-top: 30px; border-top: 3px solid var(--tinta); }
+  .fila { display: grid; grid-template-columns: 210px 92px 1fr; align-items: center; height: 82px; border-bottom: 1px solid var(--linea); }
+  .fila .cat { font-family: 'Plex Mono'; font-weight: 700; font-size: 28px; letter-spacing: 0.06em; }
+  .fila .pos { font-stretch: 72%; font-weight: 900; font-size: 46px; color: var(--rojo); }
+  .fila .nombre { font-stretch: 85%; font-weight: 800; font-size: 46px; text-transform: uppercase; }
+  .hueco { display: flex; align-items: center; height: 58px; padding: 0 18px; border: 2px dashed var(--rojo); color: var(--rojo); font-family: 'Plex Mono'; font-size: 28px; font-weight: 700; background: repeating-linear-gradient(135deg, rgba(213,5,7,0.08) 0 10px, transparent 10px 20px); }
+
+  .pie { position: absolute; bottom: 40px; left: var(--margen); right: var(--margen); display: flex; justify-content: space-between; font-family: 'Plex Mono'; font-size: 28px; color: var(--gris); }
+  .pie b { color: var(--tinta); }
+</style>
+</head>
+<body>
+  <div class="foto"><img src="img/IMG_6259.jpg" alt=""></div>
+  <div class="tab"><img src="../marca/escudo.png" alt=""><span>RUKC</span></div>
+  <div class="banda"></div>
+
+  <section class="panel">
+    <div class="meta"><span><b>RESULTADOS</b> · RONDA 01 / 08</span><span>17.10.2026</span></div>
+    <h1><small>R1</small>Mijas</h1>
+    <div class="tabla">
+      <div class="fila"><span class="cat">LIGEROS</span><span class="pos">P1</span><span class="nombre"><span class="hueco">FALTA DATO: ganador</span></span></div>
+      <div class="fila"><span class="cat">PESADOS</span><span class="pos">P1</span><span class="nombre"><span class="hueco">FALTA DATO: ganador</span></span></div>
+    </div>
+  </section>
+
+  <footer class="pie"><span>Karting Mijas · <b>raceupkc.com</b></span><span>01 / 10</span></footer>
+</body>
+</html>

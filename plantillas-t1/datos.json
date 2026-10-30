@@ -1,0 +1,733 @@
+{
+ "afterR5": [
+  {
+   "name": "RAFAEL LOZANO",
+   "pts": 85
+  },
+  {
+   "name": "ELIEZER DANIELES",
+   "pts": 68
+  },
+  {
+   "name": "FRAN PEÑA",
+   "pts": 67
+  },
+  {
+   "name": "MANUEL MAÑERO",
+   "pts": 35
+  },
+  {
+   "name": "GONZALO VERGARA",
+   "pts": 26
+  },
+  {
+   "name": "JULIO BENITEZ",
+   "pts": 26
+  },
+  {
+   "name": "PABLO RÍOS",
+   "pts": 25
+  },
+  {
+   "name": "ARON PETERZENS",
+   "pts": 24
+  },
+  {
+   "name": "ADRIÁN MORENO",
+   "pts": 19
+  },
+  {
+   "name": "LUCAS PINTO",
+   "pts": 18
+  },
+  {
+   "name": "DANIEL DOMÍNGUEZ",
+   "pts": 17
+  },
+  {
+   "name": "RAÚL GONZALEZ",
+   "pts": 16
+  },
+  {
+   "name": "OSCAR GARCÍA",
+   "pts": 12
+  },
+  {
+   "name": "RAFAEL FORTES",
+   "pts": 10
+  },
+  {
+   "name": "JOSÉ DELGADO",
+   "pts": 10
+  },
+  {
+   "name": "ALFREDO REYES",
+   "pts": 9
+  },
+  {
+   "name": "JOHN FORTES",
+   "pts": 8
+  },
+  {
+   "name": "JOSE MIGUEL",
+   "pts": 8
+  },
+  {
+   "name": "JULIO BAUTISTA",
+   "pts": 6
+  },
+  {
+   "name": "SAMUEL CESAR",
+   "pts": 6
+  },
+  {
+   "name": "CRISTÓBAL CORRAL",
+   "pts": 6
+  },
+  {
+   "name": "ÁLVARO GOMEZ",
+   "pts": 6
+  },
+  {
+   "name": "JOSE MARÍA",
+   "pts": 4
+  },
+  {
+   "name": "VADYM",
+   "pts": 4
+  },
+  {
+   "name": "FERNANDO GONZÁLEZ",
+   "pts": 2
+  },
+  {
+   "name": "IVAN CALDERÓN",
+   "pts": 2
+  },
+  {
+   "name": "RAMÓN GARRIDO",
+   "pts": 2
+  },
+  {
+   "name": "ÁLVARO COBOS",
+   "pts": 2
+  },
+  {
+   "name": "JOSÉ PLAJA",
+   "pts": 2
+  },
+  {
+   "name": "ALBERTO LOZANO",
+   "pts": 1
+  },
+  {
+   "name": "AMIR KUSTAFI",
+   "pts": 1
+  },
+  {
+   "name": "ANABLE CHECA",
+   "pts": 1
+  },
+  {
+   "name": "CARLOS",
+   "pts": 1
+  },
+  {
+   "name": "CHEMI",
+   "pts": 1
+  },
+  {
+   "name": "CRISTÓBAL N.P.",
+   "pts": 1
+  },
+  {
+   "name": "DANIEL ALDANA",
+   "pts": 1
+  },
+  {
+   "name": "DAVID",
+   "pts": 1
+  },
+  {
+   "name": "FRANCISCO PINTO",
+   "pts": 1
+  },
+  {
+   "name": "IDELFONSO FERNÁNDEZ",
+   "pts": 1
+  },
+  {
+   "name": "JAVIER CABELLO",
+   "pts": 1
+  },
+  {
+   "name": "MARKEL V",
+   "pts": 1
+  },
+  {
+   "name": "SARA",
+   "pts": 1
+  },
+  {
+   "name": "MYKOLA SKRYPNIK",
+   "pts": 1
+  },
+  {
+   "name": "ADAM",
+   "pts": 1
+  },
+  {
+   "name": "DIEGO RONZI",
+   "pts": 1
+  }
+ ],
+ "afterR6": [
+  {
+   "name": "RAFAEL LOZANO",
+   "pts": 93
+  },
+  {
+   "name": "ELIEZER DANIELES",
+   "pts": 69
+  },
+  {
+   "name": "FRAN PEÑA",
+   "pts": 68
+  },
+  {
+   "name": "GONZALO VERGARA",
+   "pts": 51
+  },
+  {
+   "name": "MANUEL MAÑERO",
+   "pts": 35
+  },
+  {
+   "name": "JULIO BENITEZ",
+   "pts": 27
+  },
+  {
+   "name": "PABLO RÍOS",
+   "pts": 25
+  },
+  {
+   "name": "ARON PETERZENS",
+   "pts": 25
+  },
+  {
+   "name": "ADRIÁN MORENO",
+   "pts": 19
+  },
+  {
+   "name": "LUCAS PINTO",
+   "pts": 19
+  },
+  {
+   "name": "OSCAR GARCÍA",
+   "pts": 18
+  },
+  {
+   "name": "DANIEL AGROMARTIN",
+   "pts": 18
+  },
+  {
+   "name": "DANIEL DOMÍNGUEZ",
+   "pts": 17
+  },
+  {
+   "name": "RAÚL GONZALEZ",
+   "pts": 16
+  },
+  {
+   "name": "JUAN AMADOR",
+   "pts": 15
+  },
+  {
+   "name": "ALAIN ESKURZA",
+   "pts": 12
+  },
+  {
+   "name": "MYKOLA SKRYPNIK",
+   "pts": 11
+  },
+  {
+   "name": "RAFAEL FORTES",
+   "pts": 10
+  },
+  {
+   "name": "JOSÉ DELGADO",
+   "pts": 10
+  },
+  {
+   "name": "ALFREDO REYES",
+   "pts": 10
+  },
+  {
+   "name": "JOHN FORTES",
+   "pts": 8
+  },
+  {
+   "name": "JOSE MIGUEL",
+   "pts": 8
+  },
+  {
+   "name": "VADYM",
+   "pts": 8
+  },
+  {
+   "name": "SAMUEL CESAR",
+   "pts": 7
+  },
+  {
+   "name": "CRISTÓBAL CORRAL",
+   "pts": 7
+  },
+  {
+   "name": "ÁLVARO GOMEZ",
+   "pts": 7
+  },
+  {
+   "name": "JULIO BAUTISTA",
+   "pts": 6
+  },
+  {
+   "name": "JOSE MARÍA",
+   "pts": 4
+  },
+  {
+   "name": "JOSÉ PLAJA",
+   "pts": 3
+  },
+  {
+   "name": "FERNANDO GONZÁLEZ",
+   "pts": 2
+  },
+  {
+   "name": "IVAN CALDERÓN",
+   "pts": 2
+  },
+  {
+   "name": "RAMÓN GARRIDO",
+   "pts": 2
+  },
+  {
+   "name": "ÁLVARO COBOS",
+   "pts": 2
+  },
+  {
+   "name": "FRANCISCO PINTO",
+   "pts": 2
+  },
+  {
+   "name": "ADAM",
+   "pts": 2
+  },
+  {
+   "name": "RODRIGO MÉNDEZ",
+   "pts": 2
+  },
+  {
+   "name": "ALBERTO LOZANO",
+   "pts": 1
+  },
+  {
+   "name": "AMIR KUSTAFI",
+   "pts": 1
+  },
+  {
+   "name": "ANABLE CHECA",
+   "pts": 1
+  },
+  {
+   "name": "CARLOS",
+   "pts": 1
+  },
+  {
+   "name": "CHEMI",
+   "pts": 1
+  },
+  {
+   "name": "CRISTÓBAL N.P.",
+   "pts": 1
+  },
+  {
+   "name": "DANIEL ALDANA",
+   "pts": 1
+  },
+  {
+   "name": "DAVID",
+   "pts": 1
+  },
+  {
+   "name": "IDELFONSO FERNÁNDEZ",
+   "pts": 1
+  },
+  {
+   "name": "JAVIER CABELLO",
+   "pts": 1
+  },
+  {
+   "name": "MARKEL V",
+   "pts": 1
+  },
+  {
+   "name": "SARA",
+   "pts": 1
+  },
+  {
+   "name": "DIEGO RONZI",
+   "pts": 1
+  },
+  {
+   "name": "VICTOR ROMERO",
+   "pts": 1
+  },
+  {
+   "name": "PABLO BESCANSA",
+   "pts": 1
+  },
+  {
+   "name": "JAVIER AGÜERA",
+   "pts": 1
+  },
+  {
+   "name": "MARIO PACHECO",
+   "pts": 1
+  },
+  {
+   "name": "GEORGI",
+   "pts": 1
+  },
+  {
+   "name": "DAVID PACHECO",
+   "pts": 1
+  },
+  {
+   "name": "JERÓNIMO FERNÁNDEZ",
+   "pts": 1
+  },
+  {
+   "name": "ALEJANDRO CALLE",
+   "pts": 1
+  }
+ ],
+ "r5": [
+  {
+   "pos": 1,
+   "dorsal": "36",
+   "name": "FRAN PEÑA",
+   "best": "58.917",
+   "pts": 25
+  },
+  {
+   "pos": 2,
+   "dorsal": "44",
+   "name": "ELIEZER DANIELES",
+   "best": "59.699",
+   "pts": 18
+  },
+  {
+   "pos": 3,
+   "dorsal": "29",
+   "name": "RAFAEL LOZANO",
+   "best": "1:00.373",
+   "pts": 15
+  },
+  {
+   "pos": 4,
+   "dorsal": "18",
+   "name": "ÓSCAR GARCÍA",
+   "best": "1:00.882",
+   "pts": 12
+  },
+  {
+   "pos": 5,
+   "dorsal": "117",
+   "name": "JOSÉ DELGADO",
+   "best": "1:00.424",
+   "pts": 10
+  },
+  {
+   "pos": 6,
+   "dorsal": "1",
+   "name": "ARON PETERZENS",
+   "best": "1:01.084",
+   "pts": 8
+  },
+  {
+   "pos": 7,
+   "dorsal": "3",
+   "name": "DANIEL DOMÍNGUEZ",
+   "best": "1:00.863",
+   "pts": 6
+  },
+  {
+   "pos": 8,
+   "dorsal": "24",
+   "name": "VADYM",
+   "best": "1:00.937",
+   "pts": 4
+  },
+  {
+   "pos": 9,
+   "dorsal": "27",
+   "name": "JULIO BENÍTEZ",
+   "best": "1:00.992",
+   "pts": 2
+  },
+  {
+   "pos": 10,
+   "dorsal": "26",
+   "name": "MYKOLA SKRYPNIK",
+   "best": "1:02.441",
+   "pts": 1
+  },
+  {
+   "pos": 11,
+   "dorsal": "31",
+   "name": "ADAM",
+   "best": "1:02.165",
+   "pts": 1
+  },
+  {
+   "pos": 12,
+   "dorsal": "22",
+   "name": "DIEGO RONZI",
+   "best": "1:02.036",
+   "pts": 1
+  },
+  {
+   "pos": 13,
+   "dorsal": "10",
+   "name": "ÁLVARO GÓMEZ",
+   "best": "1:02.703",
+   "pts": 1
+  },
+  {
+   "pos": 14,
+   "dorsal": "21",
+   "name": "CRISTÓBAL CORRAL",
+   "best": "1:00.392",
+   "pts": 1
+  },
+  {
+   "pos": 15,
+   "dorsal": "28",
+   "name": "JOSÉ PLAJA",
+   "best": "1:04.046",
+   "pts": 1
+  },
+  {
+   "pos": 16,
+   "dorsal": "13",
+   "name": "RAFAEL FORTES",
+   "best": "1:00.580",
+   "pts": 1
+  }
+ ],
+ "r6": [
+  {
+   "pos": 1,
+   "dorsal": "23",
+   "name": "GONZALO VERGARA",
+   "best": "1:24.541",
+   "pts": 25
+  },
+  {
+   "pos": 2,
+   "dorsal": "30",
+   "name": "DANIEL AGROMARTIN",
+   "best": "1:24.188",
+   "pts": 18
+  },
+  {
+   "pos": 3,
+   "dorsal": "32",
+   "name": "JUAN AMADOR",
+   "best": "1:24.084",
+   "pts": 15
+  },
+  {
+   "pos": 4,
+   "dorsal": "34",
+   "name": "ALAIN ESKURZA",
+   "best": "1:24.187",
+   "pts": 12
+  },
+  {
+   "pos": 5,
+   "dorsal": "26",
+   "name": "MYKOLA SKRYPNIK",
+   "best": "1:24.405",
+   "pts": 10
+  },
+  {
+   "pos": 6,
+   "dorsal": "29",
+   "name": "RAFAEL LOZANO",
+   "best": "1:24.325",
+   "pts": 8
+  },
+  {
+   "pos": 7,
+   "dorsal": "18",
+   "name": "ÓSCAR GARCÍA",
+   "best": "1:25.393",
+   "pts": 6
+  },
+  {
+   "pos": 8,
+   "dorsal": "24",
+   "name": "VADYM",
+   "best": "1:25.353",
+   "pts": 4
+  },
+  {
+   "pos": 9,
+   "dorsal": "35",
+   "name": "RODRIGO MÉNDEZ",
+   "best": "1:25.047",
+   "pts": 2
+  },
+  {
+   "pos": 10,
+   "dorsal": "36",
+   "name": "FRAN PEÑA",
+   "best": "1:24.805",
+   "pts": 1
+  },
+  {
+   "pos": 11,
+   "dorsal": "40",
+   "name": "VICTOR ROMERO",
+   "best": "1:25.348",
+   "pts": 1
+  },
+  {
+   "pos": 12,
+   "dorsal": "44",
+   "name": "ELIEZER DANIELES",
+   "best": "1:25.366",
+   "pts": 1
+  },
+  {
+   "pos": 13,
+   "dorsal": "91",
+   "name": "ÁLVARO GÓMEZ",
+   "best": "1:25.829",
+   "pts": 1
+  },
+  {
+   "pos": 14,
+   "dorsal": "37",
+   "name": "PABLO BESCANSA",
+   "best": "1:25.636",
+   "pts": 1
+  },
+  {
+   "pos": 15,
+   "dorsal": "25",
+   "name": "LUCAS PINTO",
+   "best": "1:25.729",
+   "pts": 1
+  },
+  {
+   "pos": 16,
+   "dorsal": "27",
+   "name": "JULIO BENÍTEZ",
+   "best": "1:26.597",
+   "pts": 1
+  },
+  {
+   "pos": 17,
+   "dorsal": "88",
+   "name": "JAVIER AGÜERA",
+   "best": "1:25.732",
+   "pts": 1
+  },
+  {
+   "pos": 18,
+   "dorsal": "38",
+   "name": "MARIO PACHECO",
+   "best": "1:26.633",
+   "pts": 1
+  },
+  {
+   "pos": 19,
+   "dorsal": "38",
+   "name": "SAMUEL CÉSAR",
+   "best": "1:25.424",
+   "pts": 1
+  },
+  {
+   "pos": 20,
+   "dorsal": "21",
+   "name": "CRISTÓBAL CORRAL",
+   "best": "1:25.963",
+   "pts": 1
+  },
+  {
+   "pos": 21,
+   "dorsal": "39",
+   "name": "GEORGI",
+   "best": "1:26.618",
+   "pts": 1
+  },
+  {
+   "pos": 22,
+   "dorsal": "40",
+   "name": "DAVID PACHECO",
+   "best": "1:26.969",
+   "pts": 1
+  },
+  {
+   "pos": 23,
+   "dorsal": "1",
+   "name": "ARON PETERZENS",
+   "best": "1:27.137",
+   "pts": 1
+  },
+  {
+   "pos": 24,
+   "dorsal": "41",
+   "name": "JERÓNIMO FERNÁNDEZ",
+   "best": "1:28.166",
+   "pts": 1
+  },
+  {
+   "pos": 25,
+   "dorsal": "33",
+   "name": "ALFREDO REYES",
+   "best": "1:28.258",
+   "pts": 1
+  },
+  {
+   "pos": 26,
+   "dorsal": "99",
+   "name": "FRANCISCO PINTO",
+   "best": "1:27.401",
+   "pts": 1
+  },
+  {
+   "pos": 27,
+   "dorsal": "31",
+   "name": "ADAM",
+   "best": "1:27.534",
+   "pts": 1
+  },
+  {
+   "pos": 28,
+   "dorsal": "55",
+   "name": "ALEJANDRO CALLE",
+   "best": "1:28.805",
+   "pts": 1
+  },
+  {
+   "pos": 29,
+   "dorsal": "28",
+   "name": "JOSÉ PLAJA",
+   "best": "1:29.300",
+   "pts": 1
+  }
+ ]
+}

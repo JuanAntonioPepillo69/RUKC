@@ -41,7 +41,7 @@ export function parametrosCheckout(datos, origen, cliente = {}) {
     'line_items[0][price_data][currency]': 'eur',
     'line_items[0][price_data][unit_amount]': String(RESERVA.importe * 100),
     'line_items[0][price_data][product_data][name]': `${RESERVA.concepto} · ${datos.ronda}`,
-    'line_items[0][price_data][product_data][description]': 'Reserva no reembolsable. Condiciones en raceupkc.com/condiciones-reserva',
+    'line_items[0][price_data][product_data][description]': 'Se descuenta del precio de la carrera. Condiciones en raceupkc.com/condiciones-reserva',
     'payment_intent_data[description]': `${RESERVA.concepto} · ${datos.ronda.split(' ·')[0]} · ${datos.nombre}`,
     'payment_intent_data[receipt_email]': datos.email,
     success_url: `${origen}/inscripcion/confirmada?pago={CHECKOUT_SESSION_ID}`,

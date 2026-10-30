@@ -83,7 +83,7 @@ Mientras `RUKC_SHEET_ID` no esté puesto, la web usa los datos de ejemplo de `da
 
 ## 2. Reserva de plaza con pago online (Stripe)
 
-`/inscripcion` cobra la reserva de plaza (30 €, no reembolsable) con **Stripe Checkout**: el piloto rellena nombre, correo, WhatsApp y categoría, acepta las condiciones y paga en la pantalla de Stripe con tarjeta o Bizum. Después vuelve a `/inscripcion/confirmada`. Las condiciones están en `/condiciones-reserva`.
+`/inscripcion` cobra la reserva de plaza (30 €, se descuenta del precio de la carrera; la política de reembolso está solo en `/condiciones-reserva`) con **Stripe Checkout**: el piloto rellena nombre, correo, WhatsApp y categoría, acepta las condiciones y paga en la pantalla de Stripe con tarjeta o Bizum. Después vuelve a `/inscripcion/confirmada`. Las condiciones están en `/condiciones-reserva`.
 
 - **Importe, concepto y categorías:** `src/config/reserva.js`. Si cambias el importe, revisa también los textos de `/condiciones-reserva`.
 - **Dónde se enlaza:** botón "Reservar plaza" de la cabecera, la home, la Temporada 2, el pie y, en la landing, el botón "Reserva ya tu plaza" debajo del formulario (lleva lo que el piloto ya haya escrito).
