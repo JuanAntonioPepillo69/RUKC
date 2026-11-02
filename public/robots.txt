@@ -1,6 +1,11 @@
 # La landing de anuncios no se bloquea aquí a propósito: lleva noindex (meta y cabecera)
 # y Google tiene que poder leerlo. Simplemente no está enlazada ni en el sitemap.
+# Las zonas privadas (panel, onboarding, feedback y API) llevan noindex y además no se rastrean.
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /feedback
+Disallow: /api
 
 Sitemap: https://raceupkc.com/sitemap.xml

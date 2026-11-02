@@ -130,6 +130,9 @@ test('catálogo: rondas futuras con cupo por categoría, precio y reserva', asyn
   assert.equal(c.reserva_cent, 3000);
   assert.equal(c.carrera_cent, 9900);
   assert.ok(c.rondas.length >= 1 && c.rondas.every((r) => r.categorias.length === 2));
+  // La fecha llega tal cual está en la base de datos, sin desplazarse por la zona horaria del servidor.
+  const [bd] = await q('SELECT fecha::text AS fecha FROM ronda WHERE id = $1', [c.rondas[0].id]);
+  assert.equal(c.rondas[0].fecha, bd.fecha);
   assert.equal(c.aviso_borradores.provisional, true);
 });
 
