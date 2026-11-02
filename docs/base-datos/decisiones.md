@@ -43,6 +43,20 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **`src/config/site.ts` pasa a `site.js`** para que las funciones de `api/` puedan importarlo sin compilar TypeScript.
 - **Versión de prueba:** `rukc-pruebas.vercel.app` (alias de la última publicación de prueba), con las variables de Preview (Neon desarrollo y Stripe en modo prueba). Stripe entra con el secreto de "Protection Bypass for Automation" en la URL del webhook.
 
+## Fase 3 · decisiones de implementación del panel
+
+- **Tablas de login:** las de Better Auth 1.7.10 con el prefijo `auth_` (`auth_usuario`, `auth_sesion`, `auth_cuenta`, `auth_verificacion`, `auth_dos_factores`) y sus columnas originales en inglés. Dentro de ellas se borra en cascada, como hace Better Auth. El rol del panel está en `admin`, unido por email.
+- **Bloqueo:** 5 fallos en 15 min bloquean el email (contraseña) y la IP (código TOTP), con `limite_peticion`. Además, Better Auth bloquea el segundo factor tras sus propios intentos fallidos.
+- **Segundo factor:** quien no lo tiene activado puede iniciar sesión, pero el panel solo le deja ir a `/admin/seguridad` para activarlo.
+- **Funciones de Vercel:** todo `/api/admin/*` es una sola función y todo `/api/auth/*` otra, por el límite de 12 funciones del plan Hobby (vercel.json reescribe las rutas).
+- **Venta con varios pagos:** el dinero confirmado cubre primero las rondas más próximas; lo pendiente de verificar va detrás.
+- **Descuentos:** se reparten entre las inscripciones en proporción a su precio. El motivo de un descuento manual queda como nota en la ficha del pagador (el pedido no tiene columna de motivo).
+- **Fusión de duplicados:** no se hace si el duplicado tiene documentos firmados (hay que fusionar al revés) o si los dos tienen onboarding, acceso al grupo, oportunidad, dorsal o ficha de piloto en la misma temporada. El duplicado queda anonimizado como "Fusionada".
+- **Aplazar una ronda** cambia la fecha en la base de datos: hay que cambiarla también en la hoja, porque si no coinciden la web no se publica (D2). El panel lo avisa.
+- **Exportaciones:** los datos sensibles posibles son fecha de nacimiento y peso, solo desde Inscripciones, con casilla y confirmación, y quedan en `evento`. El número de documento nunca se exporta.
+- **Mensaje de confirmación por WhatsApp:** genera un enlace de onboarding nuevo y marca `enlace_enviado_en`; desde ese momento la página de éxito ya no genera otro.
+- **Pantallas que llegan después:** Catálogo, Onboarding y grupo (fase 4), Feedback (fase 5), Documentos y RGPD (fase 6), como en el prompt maestro.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
