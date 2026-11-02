@@ -1,5 +1,7 @@
 ---
 // Página a la que vuelve Stripe después de pagar la reserva. No se indexa.
+// Consulta /api/checkout/estado con el token del borrador (sessionStorage) y, solo si el pago ya está confirmado,
+// muestra el botón al onboarding. El aviso de Stripe puede tardar unos segundos: mientras, se reintenta.
 import Doc from '../../layouts/Doc.astro';
 import { SITE, whatsappUrl } from '../../config/site';
 import { RESERVA } from '../../config/reserva.js';
@@ -11,13 +13,56 @@ import { RESERVA } from '../../config/reserva.js';
   heading="Plaza reservada"
   noindex
 >
-  <p><strong>Gracias, ya tienes tu sitio en la parrilla.</strong> Hemos recibido el pago de la reserva ({RESERVA.importe} €) y te llegará el justificante de Stripe a tu correo.</p>
+  <p class="estado" id="estado" hidden></p>
+  <p><strong>Gracias, ya tienes tu sitio en la parrilla.</strong> Cuando se confirme el pago de la reserva ({RESERVA.importe} €) te llegará el justificante de Stripe a tu correo.</p>
+  <p id="onboarding" hidden>
+    El siguiente paso es completar tu ficha de piloto: datos, contacto de emergencia y documentos. Son unos minutos y es obligatoria para correr.
+    <a class="btn btn--gold" id="onboarding-btn" href="#">Completar mi ficha de piloto</a>
+  </p>
   <p>Los {RESERVA.importe} € se descuentan del precio de la carrera: te quedan {RESERVA.precioCarrera - RESERVA.importe} €. Te escribimos por WhatsApp para confirmar tu plaza y cerrar los detalles. Si prefieres adelantarte, escríbenos tú:</p>
-  <p><a class="btn btn--gold" href={whatsappUrl('Hola, acabo de pagar la reserva de plaza de la Temporada 2 de RUKC.')} target="_blank" rel="noopener">Escribir por WhatsApp</a></p>
+  <p><a class="btn btn--gold" id="wa" href={whatsappUrl('Hola, acabo de pagar la reserva de plaza de la Temporada 2 de RUKC.')} target="_blank" rel="noopener">Escribir por WhatsApp</a></p>
   <p>Mientras tanto, echa un vistazo al <a href="/reglamento">reglamento</a> y al <a href="/season-2">calendario de la temporada</a>. Para cualquier duda sobre el pago: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.</p>
 </Doc>
 
 <script>
-  // Los datos del formulario ya no hacen falta en este navegador
+  const estado = document.getElementById('estado')!;
+  const onboarding = document.getElementById('onboarding')!;
+  let borrador: { token: string; codigo: string } | null = null;
+  try { borrador = JSON.parse(sessionStorage.getItem('rukc_solicitud') || 'null'); } catch {}
   try { sessionStorage.removeItem('rukc_reserva'); } catch {}
+
+  const mostrar = (texto: string) => { estado.textContent = texto; estado.hidden = !texto; };
+
+  async function consultar(intento = 0): Promise<void> {
+    if (!borrador) return;
+    try {
+      const res = await fetch('/api/checkout/estado', { headers: { Authorization: `Bearer ${borrador.token}` } });
+      const r = await res.json();
+      if (r.estado === 'pagada') {
+        mostrar(`Pago confirmado. Tu código de reserva es ${r.codigo}.`);
+        if (r.onboarding_url) {
+          (document.getElementById('onboarding-btn') as HTMLAnchorElement).href = r.onboarding_url;
+          onboarding.hidden = false;
+        }
+        const wa = document.getElementById('wa') as HTMLAnchorElement;
+        wa.href = wa.href.replace(/text=[^&]*/, `text=${encodeURIComponent(`Hola, acabo de pagar la reserva ${r.codigo}.`)}`);
+        return;
+      }
+      if (intento < 15) {
+        mostrar('Estamos confirmando el pago con el banco. Un momento…');
+        setTimeout(() => consultar(intento + 1), 2000);
+      } else {
+        mostrar(`Todavía no nos ha llegado la confirmación del pago. Si has pagado, no te preocupes: te escribimos por WhatsApp. Tu código es ${borrador.codigo}.`);
+      }
+    } catch {
+      if (intento < 15) setTimeout(() => consultar(intento + 1), 2000);
+    }
+  }
+  consultar();
 </script>
+
+<style>
+  .estado { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); }
+  .estado[hidden], #onboarding[hidden] { display: none; }
+  #onboarding .btn { margin-top: 12px; display: inline-flex; }
+</style>
