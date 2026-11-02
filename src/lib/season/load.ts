@@ -274,6 +274,53 @@ export function construirTemporada(tabs: Record<Pestana, Fila[]>, demo: boolean)
   return { config, rondas, pilotos, resultados, sanciones, menciones, media, demo };
 }
 
+// ---------- calendario desde la base de datos (decisión D2) ----------
+/** Ronda tal como está en la base de datos: número, fecha (YYYY-MM-DD), circuito y estado. */
+export type RondaBd = { numero: number; fecha: string; circuito: string; estado: 'programada' | 'aplazada' | 'celebrada' | 'cancelada' };
+
+/**
+ * Fecha y circuito de cada ronda salen de la base de datos; fotos, vídeos, bandera roja y resultados siguen en la hoja.
+ * Si la hoja y la base de datos no coinciden (otra fecha, otro circuito o rondas de más o de menos), la publicación
+ * falla con la lista de diferencias, salvo con datos DEMO, donde manda la base de datos sin avisar.
+ * Una ronda aplazada o cancelada en la base de datos se muestra así aunque la hoja no lo diga (salvo si ya está disputada).
+ */
+export function cotejarCalendario(t: Temporada, bd: RondaBd[]): Temporada {
+  const normal = (s: string) => s.normalize('NFC').trim().toLowerCase();
+  const errores: string[] = [];
+  for (const r of t.rondas) {
+    const b = bd.find((x) => x.numero === r.ronda);
+    if (!b) { errores.push(`R${r.ronda} está en la hoja pero no en la base de datos`); continue; }
+    if (b.fecha !== r.fecha) errores.push(`R${r.ronda}: fecha ${r.fecha} en la hoja y ${b.fecha} en la base de datos`);
+    if (normal(b.circuito) !== normal(r.circuito)) errores.push(`R${r.ronda}: circuito "${r.circuito}" en la hoja y "${b.circuito}" en la base de datos`);
+  }
+  for (const b of bd) if (!t.rondas.some((r) => r.ronda === b.numero)) errores.push(`R${b.numero} está en la base de datos pero no en la hoja`);
+  if (errores.length && !t.demo) {
+    throw new Error(`La hoja de la temporada y la base de datos no coinciden (pestaña Rondas):\n- ${errores.join('\n- ')}`);
+  }
+  const rondas = t.rondas
+    .filter((r) => bd.some((b) => b.numero === r.ronda))
+    .map((r) => {
+      const b = bd.find((x) => x.numero === r.ronda)!;
+      const estado: EstadoRonda = r.estado !== 'disputada' && (b.estado === 'aplazada' || b.estado === 'cancelada') ? b.estado : r.estado;
+      return { ...r, fecha: b.fecha, circuito: b.circuito, estado };
+    });
+  return { ...t, rondas };
+}
+
+/** Rondas de la temporada abierta en la base de datos, o null si no hay base de datos configurada. */
+async function leerRondasBd(): Promise<RondaBd[] | null> {
+  const url = (import.meta.env?.DATABASE_URL as string | undefined) || process.env.DATABASE_URL;
+  if (!url) return null;
+  process.env.DATABASE_URL ??= url;
+  const { consulta } = await import('../../../lib/db.js');
+  const filas = await consulta(
+    `SELECT r.numero, r.fecha::text AS fecha, c.nombre AS circuito, r.estado
+     FROM ronda r JOIN circuito c ON c.id = r.circuito_id
+     WHERE r.temporada_id = (SELECT id FROM temporada WHERE estado IN ('abierta', 'en_curso') ORDER BY inicio DESC NULLS LAST LIMIT 1)
+     ORDER BY r.numero`);
+  return filas as RondaBd[];
+}
+
 let cache: Promise<Temporada> | null = null;
 /** Una sola lectura por compilación, compartida por todas las páginas. */
 export function cargarTemporada(): Promise<Temporada> {
@@ -282,7 +329,9 @@ export function cargarTemporada(): Promise<Temporada> {
     const tabs = sheetId
       ? await leerHoja(sheetId)
       : (Object.fromEntries(await Promise.all(TODAS.map(async (t) => [t, await leerDemo(t)]))) as Record<Pestana, Fila[]>);
-    return construirTemporada(tabs, !sheetId);
+    const temporada = construirTemporada(tabs, !sheetId);
+    const bd = await leerRondasBd();
+    return bd ? cotejarCalendario(temporada, bd) : temporada;
   })();
   return cache;
 }

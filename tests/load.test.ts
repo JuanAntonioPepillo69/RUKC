@@ -83,3 +83,15 @@ test('fotos y vídeos: columnas de Rondas y pestaña Media', () => {
   tabs.Rondas[0] = { ...tabs.Rondas[0], fotos: 'https://drive.google.com/file/d/xyz/view' };
   assert.throws(() => construirTemporada(tabs, true), /"fotos" tiene que ser el enlace a una carpeta de Google Drive/);
 });
+
+test('calendario: fecha y circuito salen de la base de datos; si no coinciden con la hoja, la publicación falla', async () => {
+  const { cotejarCalendario } = await import('../src/lib/season/load.ts');
+  const t = { ...construirTemporada(demoTabs(), true), demo: false };
+  const bd = t.rondas.map((r) => ({ numero: r.ronda, fecha: r.fecha, circuito: r.circuito, estado: 'programada' as const }));
+  assert.deepEqual(cotejarCalendario(t, bd).rondas.map((r) => r.fecha), t.rondas.map((r) => r.fecha));
+  const cancelada = cotejarCalendario(t, bd.map((b) => (b.numero === 3 ? { ...b, estado: 'cancelada' as const } : b)));
+  assert.equal(cancelada.rondas.find((r) => r.ronda === 3)!.estado, 'cancelada');
+  assert.throws(() => cotejarCalendario(t, bd.map((b) => (b.numero === 2 ? { ...b, fecha: '2026-11-28' } : b))),
+    /R2: fecha 2026-11-21 en la hoja y 2026-11-28 en la base de datos/);
+  assert.throws(() => cotejarCalendario(t, bd.filter((b) => b.numero !== 8)), /R8 está en la hoja pero no en la base de datos/);
+});
