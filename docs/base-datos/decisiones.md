@@ -29,6 +29,20 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Valores no definidos en el diseño:** `solicitud_rgpd.tipo` (acceso, rectificación, supresión, oposición, limitación, portabilidad, retirada de consentimiento) y `estado` (pendiente, resuelta, rechazada). `consentimiento.origen` es texto libre.
 - **Seed T2:** temporada `en_curso` del 17-10-2026 al 03-07-2027, tarifas vigentes desde el 01-09-2026, cupos todos `cerrada` (hay que abrirlos desde el panel antes de vender en la fase 2), documentos versión `borrador-1` sin activar y plantilla de feedback `v1` vacía e inactiva.
 
+## Fase 2 · decisiones de implementación de la captura web
+
+- **Enlace de onboarding en la página de éxito:** la base de datos solo guarda el hash del token, así que el enlace no se puede volver a leer. `GET /api/checkout/estado` genera un token nuevo cada vez que se consulta (y sustituye el hash), mientras el administrador no haya enviado ya el enlace por WhatsApp. Un enlace anterior deja de valer cuando se genera otro.
+- **Lista de espera:** el diseño no tiene tabla de lista de espera. Si el cupo está cerrado o en lista de espera, la web lo dice y ofrece un botón de WhatsApp con el código de la solicitud. La solicitud se queda en borrador con su ronda, a la vista en "Recuperar".
+- **Categoría elegida en el formulario:** se guarda en la inscripción con `categoria_origen = por_peso` (la declara el piloto según su peso). "Aún no lo sé" deja la categoría pendiente.
+- **Oportunidad:** la que pasa a "ganada" es la del pagador (quien contactó y pagó). Si paga por otra persona, el piloto se crea como persona aparte y es quien recibe la inscripción y el onboarding.
+- **Método del pago con Stripe:** el webhook lee el tipo real del cobro (tarjeta, Bizum…) desde el PaymentIntent. Con la clave restringida de producción hace falta el permiso `PaymentIntents: Read`; sin él, se guarda `stripe_tarjeta`.
+- **Documentos aceptados en el formulario:** mientras los documentos de la base de datos estén en BORRADOR, `acepta_documentos` guarda las versiones de las páginas publicadas (`web-2026-10-22` para condiciones y privacidad).
+- **Aviso de borradores:** mientras el documento `aviso_borradores` no esté activado, el formulario muestra un texto provisional con la etiqueta "Texto provisional".
+- **Pago repetido:** si el piloto ya tenía una inscripción activa en esa ronda y categoría, el pago se aplica a ella y se deja una nota para revisar, en vez de fallar.
+- **Sesiones de Stripe antiguas** (anteriores a la base de datos, sin `solicitud_id`): el webhook las registra en `stripe_evento` y no hace nada más.
+- **`src/config/site.ts` pasa a `site.js`** para que las funciones de `api/` puedan importarlo sin compilar TypeScript.
+- **Versión de prueba:** `rukc-pruebas.vercel.app` (alias de la última publicación de prueba), con las variables de Preview (Neon desarrollo y Stripe en modo prueba). Stripe entra con el secreto de "Protection Bypass for Automation" en la URL del webhook.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
