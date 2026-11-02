@@ -1,105 +1,91 @@
-// Pago de la reserva con Stripe: validación del formulario, sesión de Checkout y aviso (webhook) con su firma.
+// Pago de la reserva: validación del formulario, sesión de Stripe sin datos personales, firma del webhook,
+// atribución y teléfonos. Sin base de datos: los flujos completos están en db/tests/flujo-web.test.mjs (npm run db:test).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { POST as checkout, parametrosCheckout, validarReserva } from '../api/checkout.js';
+import { parametrosSesion, POST as checkout } from '../api/checkout/index.js';
 import { POST as webhook, eventoCompra, firmaValida } from '../api/stripe-webhook.js';
-import { DIAS_CIERRE, RESERVA } from '../src/config/reserva.js';
+import { canal, limpiarOrigen } from '../lib/atribucion.js';
+import { normalizarTelefono } from '../lib/telefono.js';
+import { crearSolicitud, faltaParaPagar, pedirPago } from '../lib/validacion/solicitud.js';
 import { diaSemana, restarDias } from '../src/lib/season/format.ts';
 
-const OK = { nombre: 'Carlos Martín', email: 'Carlos@Mail.com ', telefono: '+34 600 11 22 33', categoria: 'Ligeros', ronda: 'R2 · sábado 21 nov · Karting Campillos', acepta: true };
 const firmar = (payload: string, secreto: string, t = Math.floor(Date.now() / 1000)) =>
   `t=${t},v1=${crypto.createHmac('sha256', secreto).update(`${t}.${payload}`).digest('hex')}`;
 
-test('reserva: valida nombre, correo, teléfono, categoría y condiciones', () => {
-  assert.equal(validarReserva(OK).datos?.email, 'carlos@mail.com');
-  assert.match(validarReserva({ ...OK, email: 'x' }).error!, /correo/);
-  assert.match(validarReserva({ ...OK, telefono: '123' }).error!, /WhatsApp/);
-  assert.match(validarReserva({ ...OK, categoria: 'Otra' }).error!, /categoría/);
-  assert.match(validarReserva({ ...OK, acepta: 'true' }).error!, /condiciones/);
-  assert.match(validarReserva({ ...OK, ronda: '' }).error!, /ronda/);
+const SOLICITUD = {
+  id: '00000000-0000-4000-8000-000000000001', codigo: 'RK-AB23', pagador_email: 'carlos@mail.com', pagador_nombre: 'Carlos Martín',
+  pagador_telefono: '+34600112233', importe_reserva_cent: 3000, ronda_numero: 2, circuito: 'Karting Campillos', ronda_fecha: '2026-11-21',
+};
+
+test('teléfonos: se normalizan a E.164 y se rechazan los que no lo son', () => {
+  assert.equal(normalizarTelefono('600 11 22 33'), '+34600112233');
+  assert.equal(normalizarTelefono('0034 600112233'), '+34600112233');
+  assert.equal(normalizarTelefono('+44 7700 900123'), '+447700900123');
+  assert.equal(normalizarTelefono('123'), null);
+  assert.equal(normalizarTelefono(''), null);
 });
 
-test('reserva: la sesión de Checkout cobra el importe en euros y lleva los datos en metadata', () => {
-  const p = parametrosCheckout(validarReserva(OK).datos!, 'https://raceupkc.com', { ip: '1.2.3.4', ua: 'UA' });
-  assert.equal(p.get('mode'), 'payment');
-  assert.equal(p.get('line_items[0][price_data][currency]'), 'eur');
-  assert.equal(p.get('line_items[0][price_data][unit_amount]'), String(RESERVA.importe * 100));
-  assert.equal(p.get('success_url'), 'https://raceupkc.com/inscripcion/confirmada?pago={CHECKOUT_SESSION_ID}');
-  assert.equal(p.get('metadata[producto]'), RESERVA.id);
-  assert.equal(p.get('metadata[categoria]'), 'Ligeros');
-  assert.equal(p.get('metadata[ronda]'), 'R2 · sábado 21 nov · Karting Campillos');
-  assert.equal(p.get('line_items[0][price_data][product_data][name]'), `${RESERVA.concepto} · R2 · sábado 21 nov · Karting Campillos`);
-  assert.equal(p.get('payment_intent_data[description]'), `${RESERVA.concepto} · R2 · Carlos Martín`);
-  assert.equal(p.has('payment_method_types[0]'), false); // los métodos se eligen en el panel de Stripe
-  assert.equal(p.has('metadata[ip]'), false); // sin consentimiento de medición no se guardan datos para Meta
+test('formulario: el borrador valida teléfono y email; pagar exige aceptar y datos completos', () => {
+  assert.equal(crearSolicitud.safeParse({ campos: { pagador_telefono: '600112233' } }).data?.campos.pagador_telefono, '+34600112233');
+  assert.equal(crearSolicitud.safeParse({ campos: { pagador_email: 'x' } }).success, false);
+  assert.equal(crearSolicitud.safeParse({ campos: { desconocido: 1 } }).success, false);
+  assert.equal(pedirPago.safeParse({ metodo: 'tarjeta', acepta: false }).success, false);
+  assert.match(faltaParaPagar({ ...SOLICITUD, ronda_id: 'x', categoria_elegida: 'LIG', piloto_es_pagador: false })!, /piloto/);
+  assert.equal(faltaParaPagar({ ...SOLICITUD, ronda_id: 'x', categoria_elegida: 'LIG', piloto_es_pagador: true }), null);
 });
 
-test('reserva: sin STRIPE_SECRET_KEY responde 503 con un mensaje claro', async () => {
-  const prev = process.env.STRIPE_SECRET_KEY;
-  delete process.env.STRIPE_SECRET_KEY;
-  const res = await checkout(new Request('https://raceupkc.com/api/checkout', { method: 'POST', body: JSON.stringify(OK) }));
-  assert.equal(res.status, 503);
-  assert.match((await res.json()).error, /WhatsApp/);
-  if (prev) process.env.STRIPE_SECRET_KEY = prev;
+test('sesión de Stripe: importe de reserva, caduca a los 30 min y solo solicitud_id en los metadatos', () => {
+  const ahora = Date.now();
+  const p = parametrosSesion(SOLICITUD, 'https://raceupkc.com', ahora);
+  assert.equal(p.get('line_items[0][price_data][unit_amount]'), '3000');
+  assert.ok(Number(p.get('expires_at')) - ahora / 1000 >= 1800);
+  assert.deepEqual([...p.keys()].filter((k) => k.includes('metadata')).sort(), ['metadata[solicitud_id]', 'payment_intent_data[metadata][solicitud_id]']);
+  for (const [, v] of p) assert.doesNotMatch(v, /Carlos|Martín|600112233/);
+  assert.equal(p.get('success_url'), 'https://raceupkc.com/inscripcion/confirmada');
 });
 
-test('reserva: con clave llama a Stripe y devuelve la URL de pago', async () => {
-  const prevKey = process.env.STRIPE_SECRET_KEY, prevFetch = globalThis.fetch;
-  process.env.STRIPE_SECRET_KEY = 'sk_test_x';
-  let llamada: { url: string; body: string } | undefined;
-  globalThis.fetch = (async (url: string, init: RequestInit) => {
-    llamada = { url, body: String(init.body) };
-    return Response.json({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' });
-  }) as typeof fetch;
-  try {
-    const res = await checkout(new Request('https://raceupkc.com/api/checkout', { method: 'POST', body: JSON.stringify(OK) }));
-    assert.deepEqual(await res.json(), { url: 'https://checkout.stripe.com/c/pay/cs_test_1' });
-    assert.equal(llamada!.url, 'https://api.stripe.com/v1/checkout/sessions');
-    assert.match(llamada!.body, /unit_amount%5D=3000/);
-  } finally {
-    globalThis.fetch = prevFetch;
-    if (prevKey) process.env.STRIPE_SECRET_KEY = prevKey; else delete process.env.STRIPE_SECRET_KEY;
-  }
+test('checkout: sin token del borrador responde 401', async () => {
+  const res = await checkout(new Request('https://raceupkc.com/api/checkout', { method: 'POST', body: JSON.stringify({ metodo: 'tarjeta', acepta: true }) }));
+  assert.equal(res.status, 401);
 });
 
-test('cierre de inscripción: el martes anterior a la carrera del sábado', () => {
-  assert.equal(diaSemana('2026-11-21'), 'sábado');
-  assert.equal(restarDias('2026-11-21', DIAS_CIERRE), '2026-11-17');
-  assert.equal(diaSemana(restarDias('2026-11-21', DIAS_CIERRE)), 'martes');
-});
-
-test('webhook: acepta solo firmas válidas y recientes', () => {
+test('webhook: firma válida y reciente; sin secreto 503; firma mala 400', async () => {
   const body = '{"a":1}';
   assert.equal(firmaValida(body, firmar(body, 'whsec_1'), 'whsec_1'), true);
   assert.equal(firmaValida(body, firmar(body, 'whsec_otro'), 'whsec_1'), false);
   assert.equal(firmaValida('{"a":2}', firmar(body, 'whsec_1'), 'whsec_1'), false);
   assert.equal(firmaValida(body, firmar(body, 'whsec_1', Math.floor(Date.now() / 1000) - 3600), 'whsec_1'), false);
-  assert.equal(firmaValida(body, null, 'whsec_1'), false);
-});
-
-test('webhook: Purchase para Meta solo si hubo consentimiento de medición', () => {
-  const sesion = { id: 'cs_1', created: 1, amount_total: 3000, customer_details: { email: 'a@b.c' }, metadata: { producto: RESERVA.id, meta: 'si', telefono: '600112233', fbp: 'fb.1.x' } };
-  const ev = eventoCompra(sesion)!;
-  assert.equal(ev.event_name, 'Purchase');
-  assert.equal(ev.event_id, 'cs_1');
-  assert.deepEqual(ev.custom_data.value, 30);
-  assert.equal(ev.user_data.fbp, 'fb.1.x');
-  assert.equal(ev.user_data.em.length, 64);
-  assert.equal(eventoCompra({ ...sesion, metadata: { ...sesion.metadata, meta: 'no' } }), null);
-});
-
-test('webhook: firma mala 400; pago completado sin token de Meta 200', async () => {
-  const prev = process.env.STRIPE_WEBHOOK_SECRET, prevMeta = process.env.META_CAPI_TOKEN;
+  const prev = process.env.STRIPE_WEBHOOK_SECRET;
+  delete process.env.STRIPE_WEBHOOK_SECRET;
+  assert.equal((await webhook(new Request('https://raceupkc.com/api/stripe-webhook', { method: 'POST', body }))).status, 503);
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
-  delete process.env.META_CAPI_TOKEN;
-  const body = JSON.stringify({ type: 'checkout.session.completed', data: { object: { id: 'cs_1', payment_status: 'paid', amount_total: 3000, metadata: { producto: RESERVA.id, meta: 'si' } } } });
-  const req = (sig: string) => new Request('https://raceupkc.com/api/stripe-webhook', { method: 'POST', body, headers: { 'stripe-signature': sig } });
-  try {
-    assert.equal((await webhook(req('t=1,v1=00'))).status, 400);
-    assert.equal((await webhook(req(firmar(body, 'whsec_test')))).status, 200);
-  } finally {
-    if (prev) process.env.STRIPE_WEBHOOK_SECRET = prev; else delete process.env.STRIPE_WEBHOOK_SECRET;
-    if (prevMeta) process.env.META_CAPI_TOKEN = prevMeta;
-  }
+  assert.equal((await webhook(new Request('https://raceupkc.com/api/stripe-webhook', { method: 'POST', body, headers: { 'stripe-signature': 't=1,v1=00' } }))).status, 400);
+  if (prev) process.env.STRIPE_WEBHOOK_SECRET = prev; else delete process.env.STRIPE_WEBHOOK_SECRET;
+});
+
+test('Purchase para Meta: solo con consentimiento de medición y con event_id = id del pago', () => {
+  const solicitud = { consentimiento_medicion: true, pagador_email: 'a@b.c', pagador_telefono: '+34600112233', fbp: 'fb.1.x', fbc: null };
+  const ev = eventoCompra({ pagoId: 'pago-1', importeCent: 3000, solicitud, creadoEn: 1 })!;
+  assert.equal(ev.event_name, 'Purchase');
+  assert.equal(ev.event_id, 'pago-1');
+  assert.equal(ev.custom_data.value, 30);
+  assert.equal(ev.user_data.em.length, 64);
+  assert.equal(eventoCompra({ pagoId: 'pago-1', importeCent: 3000, solicitud: { ...solicitud, consentimiento_medicion: false } }), null);
+});
+
+test('atribución: canal según UTM, fbclid, landing y referrer; fbc/fbp solo con consentimiento', () => {
+  assert.equal(canal({ fbclid: 'x' }), 'meta_ads');
+  assert.equal(canal({ landing_path: '/acceso-t2-c7e594' }), 'meta_ads');
+  assert.equal(canal({ utm_source: 'instagram', utm_medium: 'bio' }), 'instagram');
+  assert.equal(canal({ referrer: 'https://wa.me/' }), 'whatsapp');
+  assert.equal(canal({}), 'web_directa');
+  assert.equal(limpiarOrigen({ utm_source: 'ig' }, { consentimiento: false, fbp: 'fb.1' })!.fbp, null);
+  assert.equal(limpiarOrigen({ utm_source: 'ig' }, { consentimiento: true, fbp: 'fb.1' })!.fbp, 'fb.1');
+  assert.equal(limpiarOrigen(null), null);
+});
+
+test('fechas: día de la semana y resta de días', () => {
+  assert.equal(diaSemana('2026-11-21'), 'sábado');
+  assert.equal(restarDias('2026-11-21', 4), '2026-11-17');
 });
