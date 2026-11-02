@@ -733,7 +733,14 @@ body.loaded .hero .hero-under{opacity:1;transform:none;transition-delay:.72s}
   });
 
   // Reserva con pago online: marca que viene de la landing (para medir la compra en Meta) e InitiateCheckout en el píxel
-  try{localStorage.setItem('rukc_origen','landing');}catch(e){}
+  // Atribución (D1): la landing es la llegada desde anuncios; se guarda siempre como última llegada, con sus UTM y fbclid.
+  // Misma lógica que src/scripts/origen.ts. Sin datos personales.
+  try{(function(){var u=new URL(location.href),d={},ks=['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid'];
+    ks.forEach(function(k){var v=u.searchParams.get(k);if(v)d[k]=v.slice(0,300);});
+    var ext='';try{if(document.referrer&&new URL(document.referrer).host!==location.host)ext=new URL(document.referrer).origin;}catch(e){}
+    d.landing_path=location.pathname;if(ext)d.referrer=ext;d.capturada_en=new Date().toISOString();
+    var o=JSON.stringify(d);localStorage.setItem('rukc_origen',o);if(!localStorage.getItem('rukc_origen_primero'))localStorage.setItem('rukc_origen_primero',o);
+  })();}catch(e){}
   document.querySelectorAll('[data-reserva]').forEach(function(a){a.addEventListener('click',function(){
     try{if(window.fbq)fbq('track','InitiateCheckout',{value:%%RESERVA%%,currency:'EUR',content_name:'Reserva T2 R2'});}catch(e){}
   });});
