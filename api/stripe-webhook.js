@@ -1,37 +1,86 @@
-// Aviso de Stripe cuando una reserva se ha pagado: envía el evento Purchase a Meta (API de conversiones).
-// En Stripe > Developers > Webhooks, endpoint https://raceupkc.com/api/stripe-webhook con los eventos
-// checkout.session.completed y checkout.session.async_payment_succeeded.
-// Variable de entorno en Vercel: STRIPE_WEBHOOK_SECRET (whsec_..., la da Stripe al crear el endpoint).
-import crypto from 'node:crypto';
-import { RESERVA } from '../src/config/reserva.js';
+// Avisos de Stripe. Firma verificada e idempotencia con stripe_evento: cada evento se procesa una sola vez.
+// - checkout.session.completed (pagado) y checkout.session.async_payment_succeeded: en una sola transacción, la
+//   solicitud se convierte en persona(s), oportunidad ganada, pedido, inscripción, pago confirmado con su aplicación,
+//   onboarding pendiente y solicitud pagada (F1 paso 6). Después, fuera de la transacción, Purchase a Meta con
+//   event_id = id del pago.
+// - checkout.session.expired: la solicitud pasa a pago_abandonado (si esa sesión era la vigente).
+// - checkout.session.async_payment_failed: pago fallido y solicitud a pago_abandonado.
+// Eventos en Stripe > Developers > Webhooks: los cuatro de arriba. Variable: STRIPE_WEBHOOK_SECRET.
 import { enviarEvento, userData } from './_meta.js';
+import { conTransaccion } from '../lib/db.js';
+import { convertirSolicitud, registrarPagoFallido } from '../lib/flujos.js';
+import { firmaValida, stripe } from '../lib/stripe.js';
 
-const EVENTOS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+const PAGADO = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+const MANEJADOS = [...PAGADO, 'checkout.session.expired', 'checkout.session.async_payment_failed'];
 
-/** Comprueba la cabecera Stripe-Signature (t=...,v1=...) contra el cuerpo tal cual llegó. */
-export function firmaValida(payload, cabecera, secreto, ahora = Date.now() / 1000, tolerancia = 300) {
-  if (!cabecera || !secreto) return false;
-  const partes = cabecera.split(',').map((p) => p.split('='));
-  const t = partes.find(([k]) => k === 't')?.[1];
-  const firmas = partes.filter(([k]) => k === 'v1').map(([, v]) => v);
-  if (!t || !firmas.length || Math.abs(ahora - Number(t)) > tolerancia) return false;
-  const esperada = crypto.createHmac('sha256', secreto).update(`${t}.${payload}`).digest('hex');
-  return firmas.some((f) => f.length === esperada.length && crypto.timingSafeEqual(Buffer.from(f), Buffer.from(esperada)));
+// Reexportado para los tests y para quien ya lo importaba desde aquí.
+export { firmaValida };
+
+/** Método del pago: tipo real del cobro si se puede leer; si no, stripe_tarjeta / stripe_otro según la sesión. */
+async function metodoPago(sesion) {
+  const tipo = (t) => (t === 'card' ? 'stripe_tarjeta' : t === 'bizum' ? 'stripe_bizum' : 'stripe_otro');
+  if (sesion.payment_intent) {
+    try {
+      const pi = await stripe(`payment_intents/${sesion.payment_intent}?expand[]=latest_charge`);
+      const t = pi.latest_charge?.payment_method_details?.type;
+      if (t) return tipo(t);
+    } catch { /* clave sin permiso de lectura: se usa lo que diga la sesión */ }
+  }
+  const tipos = sesion.payment_method_types ?? [];
+  return tipos.length === 1 ? tipo(tipos[0]) : 'stripe_tarjeta';
 }
 
-/** Evento Purchase para Meta a partir de la sesión de Checkout pagada. Null si no hay que enviarlo. */
-export function eventoCompra(sesion) {
-  const m = sesion.metadata || {};
-  if (m.producto !== RESERVA.id || m.meta !== 'si') return null;
+/** Evento Purchase para Meta a partir de la solicitud pagada. Null si no hay consentimiento de medición. */
+export function eventoCompra({ pagoId, importeCent, solicitud, creadoEn }) {
+  if (!solicitud?.consentimiento_medicion) return null;
   return {
     event_name: 'Purchase',
-    event_time: sesion.created || Math.floor(Date.now() / 1000),
-    event_id: sesion.id,
+    event_time: creadoEn || Math.floor(Date.now() / 1000),
+    event_id: pagoId,
     action_source: 'website',
     event_source_url: 'https://raceupkc.com/inscripcion',
-    user_data: userData({ email: sesion.customer_details?.email || sesion.customer_email, telefono: m.telefono, ip: m.ip, ua: m.ua, fbp: m.fbp, fbc: m.fbc }),
-    custom_data: { currency: 'EUR', value: sesion.amount_total / 100, content_name: RESERVA.concepto, ronda: m.ronda, origen: m.origen },
+    user_data: userData({ email: solicitud.pagador_email, telefono: solicitud.pagador_telefono, fbp: solicitud.fbp, fbc: solicitud.fbc }),
+    custom_data: { currency: 'EUR', value: importeCent / 100, content_name: 'Reserva de plaza T2' },
   };
+}
+
+async function procesar(evento) {
+  const sesion = evento.data?.object ?? {};
+  const solicitudId = sesion.metadata?.solicitud_id || sesion.client_reference_id;
+  // Sesiones antiguas (antes de la base de datos) no traen solicitud_id: se registran y no se tocan.
+  if (!solicitudId || !/^[0-9a-f-]{36}$/.test(solicitudId)) return { nota: 'sin solicitud_id' };
+
+  if (PAGADO.includes(evento.type)) {
+    if (sesion.payment_status !== 'paid') return { nota: `payment_status ${sesion.payment_status}` };
+    const metodo = await metodoPago(sesion);
+    const r = await conTransaccion((c) => convertirSolicitud(c, solicitudId, {
+      metodo,
+      importe_cent: sesion.amount_total,
+      stripe_payment_intent_id: sesion.payment_intent ?? null,
+      stripe_checkout_session_id: sesion.id,
+      confirmado_por: 'stripe',
+      recibido_en: sesion.created ? new Date(sesion.created * 1000).toISOString() : null,
+    }), { actor: 'stripe' });
+    return { compra: r };
+  }
+
+  if (evento.type === 'checkout.session.expired') {
+    await conTransaccion((c) => c.query(
+      `UPDATE solicitud_inscripcion SET estado = 'pago_abandonado'
+       WHERE id = $1 AND estado = 'enviada' AND stripe_checkout_session_id = $2`, [solicitudId, sesion.id]), { actor: 'stripe' });
+    return {};
+  }
+
+  if (evento.type === 'checkout.session.async_payment_failed') {
+    const metodo = await metodoPago(sesion);
+    await conTransaccion((c) => registrarPagoFallido(c, solicitudId, {
+      metodo, importe_cent: sesion.amount_total, stripe_payment_intent_id: sesion.payment_intent ?? null,
+      stripe_checkout_session_id: sesion.id,
+    }), { actor: 'stripe' });
+    return {};
+  }
+  return {};
 }
 
 export async function POST(request) {
@@ -40,16 +89,44 @@ export async function POST(request) {
 
   const payload = await request.text();
   if (!firmaValida(payload, request.headers.get('stripe-signature'), secreto)) return new Response('bad signature', { status: 400 });
-
   const evento = JSON.parse(payload);
-  const sesion = evento.data?.object;
-  if (!EVENTOS.includes(evento.type) || sesion?.payment_status !== 'paid') return Response.json({ received: true });
+  if (!MANEJADOS.includes(evento.type)) return Response.json({ received: true });
 
-  const compra = eventoCompra(sesion);
-  if (compra && process.env.META_CAPI_TOKEN) {
-    const meta = await enviarEvento(compra);
-    // Si Meta falla, Stripe reintenta el aviso; Meta descarta duplicados por event_id
-    if (!meta.ok) return Response.json({ error: 'meta_error', detail: meta.json }, { status: 500 });
+  // Idempotencia: el evento se registra una vez; si ya se procesó, se responde 200 sin repetir nada.
+  const { rows: [ya] } = await conTransaccion((c) => c.query(
+    `INSERT INTO stripe_evento (stripe_event_id, tipo) VALUES ($1, $2)
+     ON CONFLICT (stripe_event_id) DO UPDATE SET tipo = EXCLUDED.tipo
+     RETURNING procesado_en`, [evento.id, evento.type]), { actor: 'stripe' });
+  if (ya?.procesado_en) return Response.json({ received: true, duplicado: true });
+
+  let resultado;
+  try {
+    resultado = await procesar(evento);
+  } catch (e) {
+    console.error('stripe-webhook', evento.type, e.message);
+    await conTransaccion((c) => c.query('UPDATE stripe_evento SET error = $2 WHERE stripe_event_id = $1',
+      [evento.id, e.message.slice(0, 1000)]), { actor: 'stripe' }).catch(() => {});
+    // 500: Stripe lo reintenta. El evento no queda como procesado.
+    return Response.json({ error: 'procesar' }, { status: 500 });
+  }
+  await conTransaccion((c) => c.query(
+    'UPDATE stripe_evento SET procesado_en = now(), error = $2 WHERE stripe_event_id = $1',
+    [evento.id, resultado?.nota ?? null]), { actor: 'stripe' });
+
+  // Purchase a Meta, fuera de la transacción: si falla no se deshace la venta.
+  const compra = resultado?.compra;
+  if (compra && !compra.yaPagada && process.env.META_CAPI_TOKEN) {
+    try {
+      const { rows: [s] } = await conTransaccion((c) => c.query(
+        `SELECT s.consentimiento_medicion, s.pagador_email, s.pagador_telefono,
+           (SELECT fbc FROM atribucion WHERE solicitud_id = s.id AND fbc IS NOT NULL ORDER BY capturada_en DESC LIMIT 1) AS fbc,
+           (SELECT fbp FROM atribucion WHERE solicitud_id = s.id AND fbp IS NOT NULL ORDER BY capturada_en DESC LIMIT 1) AS fbp
+         FROM solicitud_inscripcion s WHERE s.pedido_id = $1`, [compra.pedidoId]));
+      const ev = eventoCompra({ pagoId: compra.pagoId, importeCent: evento.data.object.amount_total, solicitud: s, creadoEn: evento.created });
+      if (ev) await enviarEvento(ev);
+    } catch (e) {
+      console.error('Purchase Meta', e.message);
+    }
   }
   return Response.json({ received: true });
 }
