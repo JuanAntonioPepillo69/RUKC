@@ -1,0 +1,50 @@
+---
+// Panel de administración: sin datos en la página (todo se pide a /api/admin/*), sin indexar, sin píxel ni scripts
+// de terceros, sin referrer. Pensado primero para el móvil: menú inferior en pantallas pequeñas.
+import '../styles/global.css';
+import '../styles/admin.css';
+
+interface Props { titulo: string; seccion?: string; sinMenu?: boolean }
+const { titulo, seccion = '', sinMenu = false } = Astro.props;
+const MENU = [
+  ['/admin', 'Hoy', 'hoy'],
+  ['/admin/leads', 'Leads', 'leads'],
+  ['/admin/recuperar', 'Recuperar', 'recuperar'],
+  ['/admin/personas', 'Personas', 'personas'],
+  ['/admin/rondas', 'Rondas', 'rondas'],
+  ['/admin/inscripciones', 'Inscripciones', 'inscripciones'],
+  ['/admin/ventas', 'Ventas y pagos', 'ventas'],
+  ['/admin/ajustes', 'Ajustes', 'ajustes'],
+];
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>{titulo} · Panel RUKC</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+</head>
+<body class="adm">
+  {!sinMenu && (
+    <header class="adm-cab">
+      <a class="adm-marca" href="/admin"><img src="/brand/escudo-96.webp" width="28" height="27" alt="" /> Panel RUKC</a>
+      <nav class="adm-menu" aria-label="Panel">
+        {MENU.map(([href, texto, clave]) => <a href={href} aria-current={clave === seccion ? 'page' : undefined}>{texto}</a>)}
+      </nav>
+      <button class="adm-salir" type="button" data-salir>Salir</button>
+    </header>
+  )}
+  <main class="adm-main">
+    <h1 class="adm-titulo">{titulo}</h1>
+    <slot />
+  </main>
+  <div class="adm-aviso" id="adm-aviso" role="status" hidden></div>
+  <script>
+    import { salir } from '../scripts/admin/api';
+    document.querySelector('[data-salir]')?.addEventListener('click', salir);
+  </script>
+</body>
+</html>

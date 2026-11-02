@@ -1,0 +1,11 @@
+---
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Personas" seccion="personas">
+  <section class="caja"><div id="lista"></div></section>
+</Admin>
+
+<script>
+  import { crearLista } from '../../scripts/admin/lista';
+  crearLista({ vista: 'personas', contenedor: document.getElementById('lista')!, alPulsar: (f) => { location.href = `/admin/persona?id=${f.id}`; } });
+</script>

@@ -1,0 +1,182 @@
+---
+// Ventas y pagos: lista de pagos (confirmar o rechazar Bizum y transferencias, anotar factura), caja por día,
+// F4 · Nueva venta y registrar un pago más de un pedido.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Ventas y pagos" seccion="ventas">
+  <div class="pestanas" role="tablist">
+    <button class="b" role="tab" data-p="pagos" aria-selected="true">Pagos</button>
+    <button class="b" role="tab" data-p="caja">Caja</button>
+    <button class="b" role="tab" data-p="venta">Nueva venta</button>
+    <button class="b" role="tab" data-p="pago">Registrar pago</button>
+  </div>
+  <section class="caja" data-panel="pagos"><div id="pagos"></div></section>
+  <section class="caja" data-panel="caja" hidden><div id="caja"></div></section>
+  <section class="caja" data-panel="venta" hidden><div id="venta"></div></section>
+  <section class="caja" data-panel="pago" hidden><div id="pago"></div></section>
+</Admin>
+
+<script>
+  import { api, accion, euros, h } from '../../scripts/admin/api';
+  import { crearLista } from '../../scripts/admin/lista';
+
+  // ---------- pestañas ----------
+  const pestanas = [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')];
+  const mostrar = (p: string) => {
+    pestanas.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.p === p)));
+    document.querySelectorAll<HTMLElement>('[data-panel]').forEach((s) => { s.hidden = s.dataset.panel !== p; });
+  };
+  pestanas.forEach((b) => b.addEventListener('click', () => mostrar(b.dataset.p!)));
+
+  // ---------- pagos y caja ----------
+  crearLista({
+    vista: 'pagos',
+    contenedor: document.getElementById('pagos')!,
+    alPulsar: (f) => { location.href = `/admin/persona?id=${f.pagador_persona_id}`; },
+    acciones: (f, recargar) => h('span', { class: 'acciones' },
+      f.estado === 'pendiente_verificacion' ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: async () => {
+        if (await accion(() => api(`pagos/${f.id}/confirmar`, {}), 'Pago confirmado.')) recargar(); } }, 'Confirmar') : null,
+      f.estado === 'pendiente_verificacion' ? h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: async () => {
+        const motivo = prompt('Motivo (opcional):') ?? undefined;
+        if (await accion(() => api(`pagos/${f.id}/rechazar`, { motivo: motivo || undefined }), 'Pago rechazado.')) recargar(); } }, 'No llegó') : null,
+      ['confirmado', 'reembolsado_parcial'].includes(f.estado) ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+        const ref = prompt('Número de factura:', f.factura_ref ?? '');
+        if (ref && await accion(() => api(`pagos/${f.id}/factura`, { factura_ref: ref }), 'Factura anotada.')) recargar(); } }, f.factura_ref ? 'Factura' : 'Anotar factura') : null),
+  });
+  crearLista({ vista: 'caja', contenedor: document.getElementById('caja')! });
+
+  // ---------- utilidades de formulario ----------
+  const entrada = (nombre: string, etiqueta: string, props: Record<string, any> = {}) => h('label', { class: 'campo' }, etiqueta, h('input', { name: nombre, ...props }));
+  const selector = (nombre: string, etiqueta: string, opciones: [string, string][]) =>
+    h('label', { class: 'campo' }, etiqueta, h('select', { name: nombre }, ...opciones.map(([v, t]) => h('option', { value: v }, t))));
+  const val = (raiz: ParentNode, n: string) => ((raiz.querySelector(`[name="${n}"]`) as HTMLInputElement)?.value ?? '').trim();
+  const centimos = (t: string) => Math.round(Number(t.replace(',', '.')) * 100);
+
+  /** Buscador de persona existente o alta de una nueva. Devuelve { nodo, valor() }. */
+  function persona(titulo: string, permitirPagador = false) {
+    let elegida: any = null;
+    const res = h('div', { class: 'acciones' });
+    const busca = h('input', { class: 'ctrl', placeholder: 'Buscar por teléfono, email o nombre' }) as HTMLInputElement;
+    const nueva = h('div', { class: 'dos' }, entrada('nombre', 'Nombre y apellidos'), entrada('telefono', 'Teléfono', { type: 'tel' }), entrada('email', 'Email (opcional)', { type: 'email' }));
+    const modo = h('select', { class: 'ctrl' }, ...(permitirPagador ? [h('option', { value: 'pagador' }, 'El mismo pagador')] : []),
+      h('option', { value: 'existente' }, 'Persona existente'), h('option', { value: 'nueva' }, 'Persona nueva')) as HTMLSelectElement;
+    const pintar = () => { busca.hidden = res.hidden = modo.value !== 'existente'; nueva.hidden = modo.value !== 'nueva'; };
+    modo.addEventListener('change', pintar);
+    let espera: number | undefined;
+    busca.addEventListener('input', () => {
+      window.clearTimeout(espera);
+      espera = window.setTimeout(async () => {
+        const r = await api(`buscar-personas?q=${encodeURIComponent(busca.value)}`);
+        res.replaceChildren(...r.personas.map((p: any) => h('button', { class: 'b b--peq', type: 'button', onclick: () => {
+          elegida = p; res.replaceChildren(h('span', { class: 'chip' }, `${p.nombre} ${p.apellidos ?? ''} · ${p.telefono ?? p.email ?? ''}`));
+        } }, `${p.nombre} ${p.apellidos ?? ''} · ${p.telefono ?? p.email ?? ''}`)));
+      }, 300);
+    });
+    pintar();
+    const nodo = h('fieldset', { class: 'form', style: 'border:1px solid var(--line);border-radius:12px;padding:12px' }, h('legend', {}, titulo), modo, busca, res, nueva);
+    return {
+      nodo,
+      valor: () => {
+        if (modo.value === 'pagador') return 'pagador';
+        if (modo.value === 'existente') { if (!elegida) throw new Error(`${titulo}: elige una persona.`); return { persona_id: elegida.id }; }
+        return { nombre: val(nueva, 'nombre'), telefono: val(nueva, 'telefono'), email: val(nueva, 'email') || undefined };
+      },
+    };
+  }
+
+  function filaPago() {
+    const f = h('div', { class: 'dos' },
+      selector('metodo', 'Método', [['efectivo', 'Efectivo'], ['bizum_manual', 'Bizum'], ['transferencia', 'Transferencia']]),
+      entrada('importe', 'Importe (€)', { inputmode: 'decimal' }),
+      h('label', { class: 'campo' }, 'Ya comprobado', h('select', { name: 'verificado' }, h('option', { value: 'si' }, 'Sí, el dinero ha llegado'), h('option', { value: 'no' }, 'No, pendiente de verificar'))),
+      entrada('cobrado_por', 'Cobrado por'), entrada('referencia', 'Referencia / concepto'), entrada('fecha', 'Fecha', { type: 'date' }));
+    return f;
+  }
+  const leerPago = (f: HTMLElement) => ({ metodo: val(f, 'metodo'), importe_cent: centimos(val(f, 'importe')), verificado: val(f, 'verificado') === 'si',
+    cobrado_por: val(f, 'cobrado_por') || undefined, referencia: val(f, 'referencia') || undefined, fecha: val(f, 'fecha') || undefined });
+
+  // ---------- F4 · Nueva venta ----------
+  async function nuevaVenta() {
+    const cat = await api('catalogo-venta');
+    const raiz = document.getElementById('venta')!;
+    const pagador = persona('Pagador');
+    const lineas = h('div', { class: 'form' });
+    const pagos = h('div', { class: 'form' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const resultado = h('div');
+    const precio = (codigo: string) => euros(cat.productos.find((p: any) => p.codigo === codigo)?.precio_cent);
+
+    const anadirLinea = () => {
+      const piloto = persona('Piloto', true);
+      const prod = h('select', { name: 'producto', class: 'ctrl' }, ...cat.productos.map((p: any) => h('option', { value: p.codigo }, `${p.codigo.replace(/_/g, ' ')} · ${precio(p.codigo)}`))) as HTMLSelectElement;
+      const ronda = h('select', { name: 'ronda', class: 'ctrl' }, ...cat.rondas.map((r: any) => h('option', { value: r.id }, `R${r.numero} · ${r.fecha}`))) as HTMLSelectElement;
+      const categoria = h('select', { name: 'categoria', class: 'ctrl' }, h('option', { value: '' }, 'Categoría pendiente'), ...cat.categorias.map((c: any) => h('option', { value: c.codigo }, c.nombre)));
+      prod.addEventListener('change', () => { ronda.hidden = prod.value !== 'carrera_suelta'; });
+      const nodo = h('div', { class: 'caja', 'data-linea': '' }, piloto.nodo, h('div', { class: 'dos' }, prod, ronda, categoria),
+        h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: () => nodo.remove() }, 'Quitar línea'));
+      (nodo as any).leer = () => ({ piloto: piloto.valor(), producto: prod.value, ronda_id: prod.value === 'carrera_suelta' ? ronda.value : undefined,
+        categoria: (categoria as HTMLSelectElement).value || null });
+      lineas.append(nodo);
+    };
+    const anadirPago = () => {
+      const f = filaPago();
+      const nodo = h('div', { class: 'caja', 'data-pago': '' }, f, h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: () => nodo.remove() }, 'Quitar pago'));
+      (nodo as any).leer = () => leerPago(f);
+      pagos.append(nodo);
+    };
+    const desc = h('div', { class: 'dos' }, selector('tipo_desc', 'Descuento', [['', 'Sin descuento'], ['codigo', 'Código'], ['manual', 'Manual']]),
+      entrada('desc_codigo', 'Código'), entrada('desc_importe', 'Importe manual (€)', { inputmode: 'decimal' }), entrada('desc_motivo', 'Motivo del descuento manual'));
+
+    const enviar = h('button', { class: 'b b--oro', type: 'button', onclick: async () => {
+      err.textContent = '';
+      try {
+        const tipo = val(desc, 'tipo_desc');
+        const cuerpo = {
+          pagador: pagador.valor(),
+          lineas: [...lineas.querySelectorAll('[data-linea]')].map((n: any) => n.leer()),
+          descuento: tipo === 'codigo' ? { tipo, codigo: val(desc, 'desc_codigo') } : tipo === 'manual' ? { tipo, importe_cent: centimos(val(desc, 'desc_importe')), motivo: val(desc, 'desc_motivo') } : null,
+          pagos: [...pagos.querySelectorAll('[data-pago]')].map((n: any) => n.leer()),
+        };
+        if (cuerpo.pagador === 'pagador') throw new Error('Elige el pagador.');
+        const r = await api('ventas', cuerpo);
+        resultado.replaceChildren(h('h2', {}, `Pedido ${r.codigo} · ${euros(r.total_cent)}`), ...r.inscripciones.map((i: any) =>
+          h('div', { class: 'fila' }, h('span', {}, `${i.codigo} · ${i.piloto} · R${i.ronda}`), h('span', { class: 'sub' }, `${i.estado.replace('_', ' ')} · falta ${euros(i.saldo_cent)}`))));
+      } catch (e) { err.textContent = (e as Error).message; }
+    } }, 'Crear venta');
+
+    raiz.replaceChildren(h('div', { class: 'form' }, pagador.nodo, h('h2', {}, 'Líneas (piloto × producto)'), lineas,
+      h('button', { class: 'b b--peq', type: 'button', onclick: anadirLinea }, 'Añadir línea'), desc,
+      h('h2', {}, 'Pagos'), pagos, h('button', { class: 'b b--peq', type: 'button', onclick: anadirPago }, 'Añadir pago'),
+      h('p', { class: 'sub' }, 'Los pagos se aplican solos por orden de fecha de ronda. Lo pendiente de verificar no cuenta hasta que lo confirmes.'),
+      enviar, err, resultado));
+    anadirLinea();
+  }
+
+  // ---------- Registrar un pago más de un pedido ----------
+  function registrarPago() {
+    const raiz = document.getElementById('pago')!;
+    const quien = persona('Pagador');
+    const pedidos = h('div', { class: 'form' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const buscar = h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+      err.textContent = '';
+      try {
+        const p = quien.valor() as any;
+        if (!p.persona_id) throw new Error('Elige una persona existente.');
+        const r = await api(`pedidos?persona=${p.persona_id}`);
+        pedidos.replaceChildren(...(r.pedidos.length ? r.pedidos.map((pe: any) => {
+          const f = filaPago();
+          return h('div', { class: 'caja' }, h('h2', {}, `${pe.codigo} · falta ${euros(pe.saldo_cent)}`), h('p', { class: 'sub' }, pe.inscripciones ?? ''), f,
+            h('button', { class: 'b b--oro', type: 'button', onclick: async () => {
+              const r2 = await accion(() => api('pagos', { pedido_id: pe.id, ...leerPago(f) }), 'Pago registrado.');
+              if (r2) buscar.click();
+            } }, 'Registrar pago'));
+        }) : [h('p', { class: 'vacio' }, 'No tiene pedidos.')]));
+      } catch (e) { err.textContent = (e as Error).message; }
+    } }, 'Ver sus pedidos');
+    raiz.replaceChildren(h('div', { class: 'form' }, quien.nodo, buscar, err, pedidos));
+  }
+
+  nuevaVenta().catch(() => {});
+  registrarPago();
+</script>

@@ -1,0 +1,35 @@
+---
+// Ajustes: entidad cobradora (solo el propietario puede cambiarla) e historial de eventos.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Ajustes" seccion="ajustes">
+  <section class="caja">
+    <h2>Entidad cobradora</h2>
+    <p class="sub">Quién cobra los pagos nuevos. Hoy, la titular de la cuenta de Stripe; cuando exista la sociedad, se cambia aquí.</p>
+    <form class="form" id="entidad">
+      <div class="dos">
+        <label class="campo">Nombre comercial <input name="nombre_comercial" required /></label>
+        <label class="campo">Titular legal <input name="titular_legal" /></label>
+        <label class="campo">NIF <input name="nif" /></label>
+        <label class="campo">Tipo <select name="tipo"><option value="">Sin indicar</option><option value="persona_fisica">Persona física</option><option value="empresa">Empresa</option><option value="sociedad">Sociedad</option></select></label>
+        <label class="campo">Activa desde <input name="activa_desde" type="date" /></label>
+      </div>
+      <button class="b" type="submit">Guardar</button>
+    </form>
+  </section>
+  <section class="caja"><h2>Historial</h2><div id="historial"></div></section>
+</Admin>
+
+<script>
+  import { api, accion } from '../../scripts/admin/api';
+  import { crearLista } from '../../scripts/admin/lista';
+  const form = document.getElementById('entidad') as HTMLFormElement;
+  const campos = ['nombre_comercial', 'titular_legal', 'nif', 'tipo', 'activa_desde'];
+  api('entidad').then((d) => { for (const c of campos) (form.elements.namedItem(c) as HTMLInputElement).value = d.entidad?.[c] ?? ''; });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = (c: string) => (form.elements.namedItem(c) as HTMLInputElement).value.trim() || null;
+    await accion(() => api('entidad', { nombre_comercial: v('nombre_comercial'), titular_legal: v('titular_legal'), nif: v('nif'), tipo: v('tipo'), activa_desde: v('activa_desde') }), 'Guardado.');
+  });
+  crearLista({ vista: 'eventos', contenedor: document.getElementById('historial')! });
+</script>

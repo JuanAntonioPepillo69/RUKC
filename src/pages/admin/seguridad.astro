@@ -1,0 +1,57 @@
+---
+// Activación obligatoria del segundo factor (TOTP) en el primer acceso.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Activa el segundo factor" sinMenu>
+  <section class="caja" style="max-width: 520px">
+    <p>Para entrar al panel hace falta un código de una app de autenticación (Google Authenticator, Microsoft Authenticator, 1Password…), además de la contraseña.</p>
+    <form class="form" id="paso1">
+      <label class="campo">Tu contraseña <input name="password" type="password" autocomplete="current-password" required /></label>
+      <button class="b b--oro" type="submit">Continuar</button>
+    </form>
+    <div class="form" id="paso2" hidden>
+      <p>1. Escanea este código con tu app:</p>
+      <img id="qr" alt="Código QR para la app de autenticación" width="220" height="220" style="background:#fff;padding:8px;border-radius:12px" />
+      <p class="sub">Si no puedes escanearlo, escribe esta clave en la app: <code id="clave"></code></p>
+      <p>2. Guarda estos códigos de recuperación en un sitio seguro (sirven si pierdes el móvil):</p>
+      <pre id="respaldo" style="background:#0f0f10;padding:10px;border-radius:10px;white-space:pre-wrap"></pre>
+      <form class="form" id="paso3">
+        <label class="campo">3. Código de 6 cifras que muestra la app <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></label>
+        <button class="b b--oro" type="submit">Activar y entrar</button>
+      </form>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+  </section>
+</Admin>
+
+<script>
+  import QRCode from 'qrcode';
+  const err = document.getElementById('err')!;
+  const llamar = async (ruta: string, cuerpo: unknown) => {
+    const res = await fetch(`/api/auth/${ruta}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), credentials: 'same-origin' });
+    const datos = await res.json().catch(() => ({}));
+    if (res.status === 401) { location.href = '/admin/entrar'; throw new Error('Inicia sesión.'); }
+    if (!res.ok) throw new Error(datos.message || 'No se ha podido completar.');
+    return datos;
+  };
+  const p1 = document.getElementById('paso1') as HTMLFormElement;
+  const p3 = document.getElementById('paso3') as HTMLFormElement;
+  p1.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try {
+      const r = await llamar('two-factor/enable', { password: (p1.password as HTMLInputElement).value });
+      (document.getElementById('qr') as HTMLImageElement).src = await QRCode.toDataURL(r.totpURI, { margin: 1, width: 220 });
+      document.getElementById('clave')!.textContent = new URL(r.totpURI).searchParams.get('secret') ?? '';
+      document.getElementById('respaldo')!.textContent = (r.backupCodes ?? []).join('\n');
+      p1.hidden = true;
+      document.getElementById('paso2')!.hidden = false;
+    } catch (x) { err.textContent = (x as Error).message === 'Invalid password' ? 'Contraseña incorrecta.' : (x as Error).message; }
+  });
+  p3.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try { await llamar('two-factor/verify-totp', { code: (p3.code as HTMLInputElement).value.trim() }); location.href = '/admin'; }
+    catch { err.textContent = 'Código incorrecto. Comprueba que la hora del móvil está bien y prueba con el siguiente.'; }
+  });
+</script>

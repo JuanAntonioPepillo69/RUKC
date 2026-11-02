@@ -1,0 +1,71 @@
+---
+// Rondas: calendario con la parrilla por categoría, interruptores de inscripción, aplazar o volver a programar,
+// lista para el circuito y cobro en el circuito en un toque.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Rondas" seccion="rondas">
+  <div id="rondas" class="rejilla"><p class="vacio">Cargando…</p></div>
+  <dialog class="dlg" id="cobros">
+    <h2 style="margin-top:0">Cobro en circuito</h2>
+    <div id="cobros-lista"></div>
+    <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
+  </dialog>
+</Admin>
+
+<script>
+  import { api, accion, aviso, etiquetaEstado, euros, fecha, h } from '../../scripts/admin/api';
+  const raiz = document.getElementById('rondas')!;
+  const dlg = document.getElementById('cobros') as HTMLDialogElement;
+
+  async function abrirCobros(r: any) {
+    const lista = document.getElementById('cobros-lista')!;
+    const pintar = async () => {
+      const d = await api(`rondas/${r.id}/cobros`);
+      lista.replaceChildren(h('p', { class: 'sub' }, `R${r.numero} · ${r.circuito}: inscritos con saldo pendiente.`),
+        ...(d.inscripciones.length ? d.inscripciones.map((i: any) => h('div', { class: 'fila' },
+          h('div', { class: 'txt' }, h('span', {}, `${i.dorsal ? `#${i.dorsal} ` : ''}${i.piloto}`), h('span', { class: 'sub' }, `${i.categoria ?? '-'} · pagado ${euros(i.pagado_cent)} · falta ${euros(i.saldo_cent)}`)),
+          h('div', { class: 'acciones' },
+            h('button', { class: 'b b--oro', type: 'button', onclick: async () => {
+              if (await accion(() => api(`rondas/${r.id}/cobro`, { inscripcion_id: i.id }), `Cobrados ${euros(i.saldo_cent)} en efectivo.`)) pintar();
+            } }, `Cobrado ${euros(i.saldo_cent)} en efectivo`),
+            h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+              const t = prompt('Importe cobrado en euros:', String(i.saldo_cent / 100));
+              if (!t) return;
+              const importe = Math.round(Number(t.replace(',', '.')) * 100);
+              if (await accion(() => api(`rondas/${r.id}/cobro`, { inscripcion_id: i.id, importe_cent: importe }), 'Cobro anotado.')) pintar();
+            } }, 'Otro importe'))))
+          : [h('p', { class: 'vacio' }, 'Nadie tiene saldo pendiente en esta ronda.')]));
+    };
+    await pintar();
+    dlg.showModal();
+  }
+
+  async function cargar() {
+    const d = await api('rondas');
+    raiz.replaceChildren(...d.rondas.map((r: any) => h('section', { class: 'caja' },
+      h('h2', {}, `R${r.numero} · ${r.circuito}`, etiquetaEstado(r.estado)),
+      h('p', { class: 'sub' }, `${fecha(r.fecha)}${r.notas ? ` · ${r.notas}` : ''}`),
+      ...r.cupos.map((c: any) => h('div', { class: 'fila' },
+        h('div', { class: 'txt' }, h('span', {}, `${c.categoria}: ${c.inscritos}/${c.plazas}${c.en_sobrecupo ? ' · SOBRECUPO' : ''}`), h('span', { class: 'sub' }, `${c.pagados} pagados · ${c.reservados} con reserva · ${c.libres} libres`)),
+        h('div', { class: 'acciones' }, ...['abierta', 'lista_espera', 'cerrada'].map((e) => h('button', {
+          class: `b b--peq${c.estado_cupo === e ? ' b--oro' : ''}`, type: 'button', disabled: !['programada', 'aplazada'].includes(r.estado),
+          onclick: async () => { if (await accion(() => api(`rondas/${r.id}/cupo`, { categoria: c.categoria, estado: e }), `Inscripción ${e.replace('_', ' ')} en ${c.categoria}.`)) cargar(); },
+        }, e === 'lista_espera' ? 'Lista de espera' : e === 'abierta' ? 'Abrir' : 'Cerrar'))))),
+      h('div', { class: 'acciones' },
+        h('button', { class: 'b b--peq', type: 'button', onclick: () => abrirCobros(r) }, 'Cobro en circuito'),
+        h('a', { class: 'b b--peq', href: `/api/admin/exportar/circuito?formato=xlsx&f=${encodeURIComponent(JSON.stringify([{ c: 'ronda', op: 'eq', v: r.numero }]))}` }, 'Lista para el circuito'),
+        r.estado === 'programada' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+          const f = prompt('Nueva fecha (AAAA-MM-DD):', r.fecha);
+          if (!f) return;
+          const res = await accion(() => api(`rondas/${r.id}/aplazar`, { fecha: f }), 'Ronda aplazada.');
+          if (res) { aviso((res as any).aviso); cargar(); }
+        } }, 'Aplazar') : null,
+        r.estado === 'aplazada' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+          const f = prompt('Fecha definitiva (AAAA-MM-DD):', r.fecha);
+          if (!f) return;
+          const res = await accion(() => api(`rondas/${r.id}/reprogramar`, { fecha: f }), 'Ronda programada.');
+          if (res) { aviso((res as any).aviso); cargar(); }
+        } }, 'Volver a programar') : null))));
+  }
+  cargar().catch(() => {});
+</script>

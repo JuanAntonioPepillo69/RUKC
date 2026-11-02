@@ -40,6 +40,7 @@ const RUTAS = [
   // Ventas y pagos (F4)
   ['GET', 'catalogo-venta', ventas.catalogoVenta],
   ['POST', 'ventas', ventas.nuevaVenta],
+  ['GET', 'pedidos', ventas.pedidosDe],
   ['POST', 'pagos', ventas.registrarPago],
   ['POST', 'pagos/:id/confirmar', ventas.confirmarPago],
   ['POST', 'pagos/:id/rechazar', ventas.rechazarPago],

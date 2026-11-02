@@ -1,0 +1,74 @@
+/* Panel de administración: sobrio, legible y pensado primero para el móvil. */
+.adm { background: #0d0d0e; color: var(--paper); font-family: var(--font-body); min-height: 100vh; }
+.adm a { color: var(--gold-hi); }
+.adm-cab { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #111012; border-bottom: 1px solid var(--line); }
+.adm-marca { display: flex; align-items: center; gap: 8px; color: var(--paper) !important; text-decoration: none; font-family: var(--font-display); font-weight: 800; white-space: nowrap; }
+.adm-menu { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
+.adm-menu a { padding: 8px 10px; border-radius: 8px; color: var(--muted) !important; text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.adm-menu a[aria-current='page'] { background: rgba(212, 166, 42, 0.14); color: var(--paper) !important; }
+.adm-salir { border: 1px solid var(--line); background: none; color: var(--muted); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.adm-main { max-width: 1280px; margin: 0 auto; padding: 18px 16px 96px; display: grid; gap: 18px; }
+.adm-titulo { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: clamp(22px, 4vw, 30px); }
+@media (max-width: 760px) {
+  .adm-cab { flex-wrap: wrap; }
+  .adm-menu { position: fixed; left: 0; right: 0; bottom: 0; background: #111012; border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+}
+
+.caja { background: #151416; border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.caja h2 { margin: 0; font-size: 16px; font-weight: 800; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.caja h2 .n { font-family: var(--font-display); color: var(--gold-hi); }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.vacio { color: var(--muted-2); font-size: 14px; margin: 0; }
+.fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.fila:first-of-type { border-top: 0; }
+.fila .txt { display: grid; gap: 2px; min-width: 0; }
+.fila .sub { color: var(--muted); font-size: 13px; }
+.acciones { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.b { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(246, 243, 236, 0.22);
+  background: #1c1b1e; color: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; }
+.b:hover { border-color: var(--gold); }
+.b--oro { background: var(--grad-gold); color: #0a0a0b; border: 0; }
+.b--peligro { border-color: rgba(255, 107, 107, 0.6); color: #ffb3b3; }
+.b--peq { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.b:disabled { opacity: 0.6; cursor: progress; }
+
+.campo { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.campo input, .campo select, .campo textarea, .ctrl { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(246, 243, 236, 0.2);
+  background: #0f0f10; color: var(--paper); font: inherit; font-size: 15px; font-weight: 500; }
+.campo textarea { padding: 10px 12px; min-height: 80px; }
+.form { display: grid; gap: 12px; }
+.form .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.err { color: #ff8a8a; font-size: 14px; margin: 0; }
+.err:empty { display: none; }
+
+/* Listas */
+.lista { display: grid; gap: 10px; }
+.lista-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lista-barra .ctrl { flex: 1 1 200px; min-width: 0; }
+.filtros { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 6px 4px 10px; border-radius: 999px; background: rgba(212, 166, 42, 0.12); border: 1px solid rgba(212, 166, 42, 0.35); font-size: 13px; }
+.chip button { border: 0; background: none; color: var(--paper); cursor: pointer; font-size: 15px; line-height: 1; }
+.nuevo-filtro { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.nuevo-filtro .ctrl { min-height: 36px; font-size: 14px; }
+.tabla-env { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tabla th, .tabla td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tabla th { position: sticky; top: 0; background: #18171a; color: var(--muted); font-weight: 700; cursor: pointer; user-select: none; }
+.tabla tr.clic { cursor: pointer; }
+.tabla tr.clic:hover td { background: rgba(212, 166, 42, 0.06); }
+.tabla td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.paginas { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.estado { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #232226; }
+.estado.ok { background: rgba(80, 200, 120, 0.16); color: #8ce0a8; }
+.estado.mal { background: rgba(255, 107, 107, 0.14); color: #ffb3b3; }
+.estado.medio { background: rgba(212, 166, 42, 0.16); color: var(--gold-hi); }
+
+.adm-aviso { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 50; max-width: min(92vw, 560px); padding: 12px 16px; border-radius: 12px;
+  background: #222; border: 1px solid var(--gold); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); font-size: 14px; }
+.adm-aviso.mal { border-color: #ff6b6b; }
+dialog.dlg { background: #151416; color: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px; width: min(560px, 94vw); }
+dialog.dlg::backdrop { background: rgba(0, 0, 0, 0.6); }
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap; }
+.pestanas button[aria-selected='true'] { background: rgba(212, 166, 42, 0.18); border-color: var(--gold); }
+[hidden] { display: none !important; }

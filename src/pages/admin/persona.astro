@@ -1,0 +1,100 @@
+---
+// Ficha 360 de una persona (?id=): datos, oportunidad, inscripciones, pagos, aceptaciones y línea de tiempo.
+// Acciones: editar, WhatsApp, interacción, etapa, registrar pago de un pedido y fusionar duplicados.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Ficha" seccion="personas">
+  <div id="ficha"><p class="vacio">Cargando…</p></div>
+</Admin>
+
+<script>
+  import { api, accion, etiquetaEstado, euros, fecha, fechaHora, h, whatsapp } from '../../scripts/admin/api';
+  const id = new URLSearchParams(location.search).get('id') ?? '';
+  const raiz = document.getElementById('ficha')!;
+
+  const tabla = (cabs: string[], filas: (Node | string)[][]) => h('div', { class: 'tabla-env' }, h('table', { class: 'tabla' },
+    h('thead', {}, h('tr', {}, ...cabs.map((c) => h('th', {}, c)))),
+    h('tbody', {}, ...(filas.length ? filas.map((f) => h('tr', {}, ...f.map((x) => h('td', {}, x)))) : [h('tr', {}, h('td', { colSpan: cabs.length, class: 'vacio' }, 'Nada todavía.'))]))));
+
+  function campo(nombre: string, etiqueta: string, valor: string | null, tipo = 'text') {
+    return h('label', { class: 'campo' }, etiqueta, h('input', { name: nombre, type: tipo, value: valor ?? '' }));
+  }
+
+  async function cargar() {
+    const d = await api(`personas/${id}`);
+    const p = d.persona;
+    const r = d.resumen;
+    document.querySelector('.adm-titulo')!.textContent = `${p.nombre} ${p.apellidos ?? ''}`.trim();
+    const op = d.oportunidades[0];
+
+    const form = h('form', { class: 'form' },
+      h('div', { class: 'dos' }, campo('nombre', 'Nombre', p.nombre), campo('apellidos', 'Apellidos', p.apellidos), campo('telefono', 'Teléfono', p.telefono, 'tel'),
+        campo('email', 'Email', p.email, 'email'), campo('municipio', 'Municipio', p.municipio), campo('instagram', 'Instagram', p.instagram)),
+      h('label', { class: 'campo' }, 'Notas (solo admin)', h('textarea', { name: 'notas', value: p.notas ?? '' })),
+      h('button', { class: 'b', type: 'submit' }, 'Guardar datos')) as HTMLFormElement;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = (n: string) => (form.elements.namedItem(n) as HTMLInputElement).value.trim();
+      await accion(() => api(`personas/${id}`, { nombre: v('nombre'), apellidos: v('apellidos'), telefono: v('telefono') || null, email: v('email'),
+        municipio: v('municipio'), instagram: v('instagram'), notas: v('notas') }), 'Datos guardados.');
+    });
+
+    const interaccion = h('form', { class: 'form' },
+      h('div', { class: 'dos' }, h('label', { class: 'campo' }, 'Tipo', h('select', { name: 'tipo' }, ...['nota', 'llamada', 'whatsapp_entrante', 'whatsapp_saliente', 'instagram', 'email', 'presencial']
+        .map((t) => h('option', { value: t }, t.replace('_', ' ')))))),
+      h('label', { class: 'campo' }, 'Resumen', h('textarea', { name: 'resumen', required: true })),
+      h('button', { class: 'b', type: 'submit' }, 'Registrar')) as HTMLFormElement;
+    interaccion.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = (n: string) => (interaccion.elements.namedItem(n) as HTMLInputElement).value.trim();
+      if (await accion(() => api('interacciones', { persona_id: id, oportunidad_id: op?.id, tipo: v('tipo'), resumen: v('resumen') }), 'Registrada.')) cargar();
+    });
+
+    const etapas = op ? h('div', { class: 'acciones' }, ...['contactada', 'interesada', 'perdida', 'sin_respuesta'].map((et) =>
+      h('button', { class: 'b b--peq', type: 'button', disabled: op.etapa === et, onclick: async () => {
+        const motivo = et === 'perdida' ? prompt('Motivo de la pérdida:') : undefined;
+        if (et === 'perdida' && !motivo) return;
+        if (await accion(() => api(`oportunidades/${op.id}/etapa`, { etapa: et, motivo: motivo || undefined }), 'Etapa cambiada.')) cargar();
+      } }, et.replace('_', ' ')))) : h('p', { class: 'vacio' }, 'Sin oportunidad.');
+
+    const pedidos = [...new Set(d.inscripciones.filter((i: any) => i.saldo_cent > 0).map((i: any) => i.codigo))];
+    const fusion = h('form', { class: 'form' },
+      h('p', { class: 'sub' }, 'Fusionar un duplicado en esta persona: todo lo del duplicado pasa aquí y el duplicado se anonimiza.'),
+      h('label', { class: 'campo' }, 'Teléfono, email o nombre del duplicado', h('input', { name: 'q' })),
+      h('div', { id: 'candidatos', class: 'acciones' }),
+      h('button', { class: 'b b--peq', type: 'submit' }, 'Buscar')) as HTMLFormElement;
+    fusion.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = (fusion.elements.namedItem('q') as HTMLInputElement).value.trim();
+      const res = await api(`buscar-personas?q=${encodeURIComponent(q)}`);
+      fusion.querySelector('#candidatos')!.replaceChildren(...res.personas.filter((x: any) => x.id !== id).map((x: any) => h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: async () => {
+        if (confirm(`¿Fusionar a ${x.nombre} ${x.apellidos ?? ''} (${x.telefono ?? x.email ?? ''}) dentro de esta ficha? No se puede deshacer.`)
+          && await accion(() => api(`personas/${id}/fusionar`, { duplicado_id: x.id }), 'Fusionadas.')) cargar();
+      } }, `${x.nombre} ${x.apellidos ?? ''} · ${x.telefono ?? x.email ?? ''}`)));
+    });
+
+    raiz.replaceChildren(h('div', { class: 'rejilla' },
+      h('section', { class: 'caja' }, h('h2', {}, 'Resumen'),
+        h('p', {}, r.es_piloto ? `Piloto${r.dorsal ? ` · dorsal ${r.dorsal}` : ''}` : 'No es piloto (todavía)', ' · ', etiquetaEstado(r.etapa ?? 'sin oportunidad')),
+        h('p', { class: 'sub' }, `Saldo pendiente ${euros(r.saldo_pendiente_cent)} · crédito ${euros(r.credito_cent)} · onboarding ${r.onboarding ?? '-'} · grupo ${r.grupo ?? '-'} · primer canal ${r.primer_canal ?? '-'}`),
+        h('div', { class: 'acciones' },
+          p.telefono ? h('button', { class: 'b b--oro', type: 'button', onclick: () => whatsapp({ tipo: 'lead', persona_id: id }) }, 'WhatsApp') : null)),
+      h('section', { class: 'caja' }, h('h2', {}, 'Datos'), form),
+      h('section', { class: 'caja' }, h('h2', {}, 'Oportunidad'), op ? h('p', { class: 'sub' }, `${op.temporada} · ${op.origen.replace('_', ' ')} · próxima acción: ${op.proxima_accion ?? '-'} ${fechaHora(op.proxima_accion_en)}`) : '', etapas),
+      h('section', { class: 'caja' }, h('h2', {}, 'Registrar interacción'), interaccion)),
+      h('section', { class: 'caja' }, h('h2', {}, 'Inscripciones'), tabla(['Código', 'Ronda', 'Categoría', 'Precio', 'Pagado', 'Saldo', 'Estado', 'Onboarding', ''],
+        d.inscripciones.map((i: any) => [i.codigo, `R${i.ronda} · ${fecha(i.ronda_fecha)}`, i.categoria ?? '-', euros(i.precio_cent), euros(i.pagado_cent), euros(i.saldo_cent), etiquetaEstado(i.estado), i.onboarding ?? '-',
+          h('span', { class: 'acciones' },
+            h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'confirmacion', inscripcion_id: i.id }) }, 'Confirmación'),
+            i.saldo_cent > 0 ? h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'saldo_pendiente', inscripcion_id: i.id }) }, 'Recordar saldo') : '')]))),
+      pedidos.length ? h('p', { class: 'sub' }, 'Para registrar un pago de estas inscripciones, ve a Ventas y pagos → Registrar pago.') : '',
+      h('section', { class: 'caja' }, h('h2', {}, 'Pagos'), tabla(['Código', 'Fecha', 'Método', 'Importe', 'Estado', 'Inscripciones', 'Factura'],
+        d.pagos.map((x: any) => [x.codigo, fechaHora(x.fecha), x.metodo.replace('_', ' '), euros(x.importe_cent), etiquetaEstado(x.estado), x.inscripciones ?? '', x.factura_ref ?? '']))),
+      h('section', { class: 'caja' }, h('h2', {}, 'Documentos aceptados'), tabla(['Documento', 'Versión', 'Aceptado', 'Fecha', 'Revocado'],
+        d.aceptaciones.map((a: any) => [a.tipo.replace('_', ' '), a.version, a.aceptado ? 'sí' : 'no', fechaHora(a.aceptada_en), fechaHora(a.revocada_en)]))),
+      h('section', { class: 'caja' }, h('h2', {}, 'Línea de tiempo'), tabla(['Fecha', 'Qué', 'Detalle'],
+        (r.linea_tiempo ?? []).map((l: any) => [fechaHora(l.fecha), l.clase, `${String(l.detalle ?? '').replace(/_/g, ' ')} ${l.texto ? `· ${l.texto}` : ''}`]))),
+      h('section', { class: 'caja' }, h('h2', {}, 'Duplicados'), fusion));
+  }
+  cargar().catch((e) => { raiz.replaceChildren(h('p', { class: 'err' }, (e as Error).message)); });
+</script>

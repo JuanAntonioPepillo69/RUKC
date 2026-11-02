@@ -1,0 +1,48 @@
+---
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Entrar" sinMenu>
+  <section class="caja" style="max-width: 420px">
+    <form class="form" id="paso1">
+      <label class="campo">Email <input name="email" type="email" autocomplete="username" required /></label>
+      <label class="campo">Contraseña <input name="password" type="password" autocomplete="current-password" required /></label>
+      <button class="b b--oro" type="submit">Entrar</button>
+    </form>
+    <form class="form" id="paso2" hidden>
+      <p class="sub">Escribe el código de 6 cifras de tu app de autenticación.</p>
+      <label class="campo">Código <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required /></label>
+      <button class="b b--oro" type="submit">Verificar</button>
+    </form>
+    <p class="err" id="err" role="alert"></p>
+  </section>
+</Admin>
+
+<script>
+  const err = document.getElementById('err')!;
+  const volver = new URLSearchParams(location.search).get('volver');
+  const destino = volver && volver.startsWith('/admin') ? volver : '/admin';
+  const llamar = async (ruta: string, cuerpo: unknown) => {
+    const res = await fetch(`/api/auth/${ruta}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), credentials: 'same-origin' });
+    const datos = await res.json().catch(() => ({}));
+    if (res.status === 429) throw new Error('Demasiados intentos fallidos. Espera 15 minutos.');
+    if (!res.ok) throw new Error(ruta.includes('totp') ? 'Código incorrecto.' : 'Email o contraseña incorrectos.');
+    return datos;
+  };
+  const p1 = document.getElementById('paso1') as HTMLFormElement;
+  const p2 = document.getElementById('paso2') as HTMLFormElement;
+  p1.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try {
+      const r = await llamar('sign-in/email', { email: (p1.email as HTMLInputElement).value.trim(), password: (p1.password as HTMLInputElement).value });
+      if (r.twoFactorRedirect) { p1.hidden = true; p2.hidden = false; (p2.code as HTMLInputElement).focus(); }
+      else location.href = '/admin/seguridad';
+    } catch (x) { err.textContent = (x as Error).message; }
+  });
+  p2.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try { await llamar('two-factor/verify-totp', { code: (p2.code as HTMLInputElement).value.trim() }); location.href = destino; }
+    catch (x) { err.textContent = (x as Error).message; }
+  });
+</script>

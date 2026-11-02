@@ -1,0 +1,78 @@
+---
+// Leads (v_leads) y F3 · Nuevo lead: primero el teléfono; si ya existe, se abre su ficha en vez de duplicar.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Leads" seccion="leads">
+  <section class="caja">
+    <h2>Nuevo lead</h2>
+    <form class="form" id="tel">
+      <div class="dos">
+        <label class="campo">Teléfono (WhatsApp) <input name="telefono" type="tel" inputmode="tel" required placeholder="600 11 22 33" /></label>
+      </div>
+      <button class="b" type="submit">Continuar</button>
+    </form>
+    <form class="form" id="datos" hidden>
+      <div class="dos">
+        <label class="campo">Nombre <input name="nombre" required maxlength="80" /></label>
+        <label class="campo">Apellidos <input name="apellidos" maxlength="120" /></label>
+        <label class="campo">Email <input name="email" type="email" /></label>
+        <label class="campo">Canal
+          <select name="canal"><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="meta_ads">Anuncios de Meta</option>
+            <option value="referido">Referido</option><option value="circuito">Circuito</option><option value="web_directa">Web</option><option value="otro">Otro</option></select>
+        </label>
+        <label class="campo">Campaña (si se sabe) <input name="campana" maxlength="200" /></label>
+      </div>
+      <label class="campo">Nota <textarea name="nota" required maxlength="2000" placeholder="Qué ha preguntado o qué le interesa"></textarea></label>
+      <div class="dos">
+        <label class="campo">Próxima acción <input name="proxima_accion" maxlength="200" placeholder="Llamar, mandar calendario…" /></label>
+        <label class="campo">Cuándo <input name="proxima_accion_en" type="datetime-local" /></label>
+      </div>
+      <button class="b b--oro" type="submit">Crear lead</button>
+    </form>
+    <p class="err" id="err" role="alert"></p>
+  </section>
+  <section class="caja"><h2>Todos los leads</h2><div id="lista"></div></section>
+</Admin>
+
+<script>
+  import { api, ErrorApi, h, whatsapp } from '../../scripts/admin/api';
+  import { crearLista } from '../../scripts/admin/lista';
+  const err = document.getElementById('err')!;
+  const ftel = document.getElementById('tel') as HTMLFormElement;
+  const fdatos = document.getElementById('datos') as HTMLFormElement;
+  let telefono = '';
+  const lista = crearLista({
+    vista: 'leads',
+    contenedor: document.getElementById('lista')!,
+    alPulsar: (f) => { location.href = `/admin/persona?id=${f.persona_id}`; },
+    acciones: (f) => h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'lead', persona_id: f.persona_id }) }, 'WhatsApp'),
+  });
+  ftel.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try {
+      const r = await api('leads/buscar', { telefono: (ftel.telefono as HTMLInputElement).value });
+      if (r.persona) { location.href = `/admin/persona?id=${r.persona.id}`; return; }
+      telefono = r.telefono;
+      ftel.hidden = true;
+      fdatos.hidden = false;
+      (fdatos.nombre as HTMLInputElement).focus();
+    } catch (x) { err.textContent = (x as Error).message; }
+  });
+  fdatos.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    const v = (n: string) => ((fdatos.elements.namedItem(n) as HTMLInputElement).value || '').trim();
+    const cuando = v('proxima_accion_en');
+    try {
+      const r = await api('leads', { telefono, nombre: v('nombre'), apellidos: v('apellidos') || undefined, email: v('email') || undefined, canal: v('canal'),
+        campana: v('campana') || undefined, nota: v('nota'), proxima_accion: v('proxima_accion') || undefined,
+        proxima_accion_en: cuando ? new Date(cuando).toISOString() : undefined });
+      location.href = `/admin/persona?id=${r.persona_id}`;
+    } catch (x) {
+      if (x instanceof ErrorApi && x.datos.persona_id) { location.href = `/admin/persona?id=${x.datos.persona_id}`; return; }
+      err.textContent = (x as Error).message;
+    }
+  });
+  void lista;
+</script>

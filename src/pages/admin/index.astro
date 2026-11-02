@@ -1,0 +1,45 @@
+---
+// Hoy: pagos por verificar, borradores y abandonos de 24 h, leads con acción vencida, onboardings pendientes, grupo por
+// aprobar, próxima ronda con plazas por categoría y feedback pendiente.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Hoy" seccion="hoy">
+  <div class="rejilla" id="hoy"><p class="vacio">Cargando…</p></div>
+</Admin>
+
+<script>
+  import { api, accion, euros, fechaHora, h, whatsapp } from '../../scripts/admin/api';
+  const raiz = document.getElementById('hoy')!;
+
+  const caja = (titulo: string, n: number | string, ...contenido: Node[]) =>
+    h('section', { class: 'caja' }, h('h2', {}, titulo, h('span', { class: 'n' }, String(n))), ...(contenido.length ? contenido : [h('p', { class: 'vacio' }, 'Nada pendiente.')]));
+  const fila = (texto: string, sub: string, ...botones: Node[]) => h('div', { class: 'fila' }, h('div', { class: 'txt' }, h('span', {}, texto), h('span', { class: 'sub' }, sub)), h('div', { class: 'acciones' }, ...botones));
+  const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
+  const ficha = (id: string) => h('a', { class: 'b b--peq', href: `/admin/persona?id=${id}` }, 'Ficha');
+
+  async function cargar() {
+    const d = await api('hoy');
+    const verificar = [
+      ...d.webBizum.map((s: any) => fila(`Bizum web ${s.codigo} · ${euros(s.importe_reserva_cent)}`, `${s.pagador_nombre ?? ''} · ${s.pagador_telefono ?? ''} · R${s.ronda ?? '?'} · ${fechaHora(s.enviada_en)}`,
+        boton('Confirmar', async () => { if (confirm(`¿Has visto el Bizum ${s.codigo} en el banco?`) && await accion(() => api(`solicitudes/${s.id}/confirmar-bizum`, {}), 'Bizum confirmado: inscripción creada.')) cargar(); }, 'b b--peq b--oro'),
+        boton('No llegó', async () => { if (confirm('¿Marcar como no recibido?') && await accion(() => api(`solicitudes/${s.id}/rechazar-bizum`, {}))) cargar(); }, 'b b--peq b--peligro'))),
+      ...d.porVerificar.map((p: any) => fila(`${p.codigo} · ${p.metodo.replace('_', ' ')} · ${euros(p.importe_cent)}`, `${p.pagador} · ${p.referencia_externa ?? ''}`,
+        boton('Confirmar', async () => { if (await accion(() => api(`pagos/${p.id}/confirmar`, {}), 'Pago confirmado.')) cargar(); }, 'b b--peq b--oro'),
+        boton('No llegó', async () => { const motivo = prompt('Motivo (opcional):') ?? undefined; if (await accion(() => api(`pagos/${p.id}/rechazar`, { motivo: motivo || undefined }))) cargar(); }, 'b b--peq b--peligro'))),
+    ];
+    const proxima = d.proxima?.[0];
+    raiz.replaceChildren(
+      caja('Pagos por verificar', verificar.length, ...verificar),
+      caja('Borradores y abandonos (24 h)', d.recientes.length, ...d.recientes.map((s: any) => fila(`${s.pagador_nombre || 'Sin nombre'} · ${s.codigo}`, `${s.estado.replace('_', ' ')} · R${s.ronda ?? '?'} · ${s.canal ?? ''} · ${s.horas_sin_pagar ?? ''} h`,
+        boton('WhatsApp', () => whatsapp({ tipo: s.estado === 'borrador' ? 'recuperar_borrador' : 'recuperar_pago', solicitud_id: s.id }))))),
+      caja('Leads con acción vencida', d.leadsVencidos.length, ...d.leadsVencidos.map((l: any) => fila(l.persona, `${l.proxima_accion ?? ''} · ${fechaHora(l.proxima_accion_en)}`, ficha(l.persona_id),
+        boton('WhatsApp', () => whatsapp({ tipo: 'lead', persona_id: l.persona_id }))))),
+      caja('Próxima ronda', proxima ? `R${proxima.ronda}` : '-', ...(d.proxima ?? []).map((p: any) => fila(`${p.categoria}: ${p.inscritos}/${p.plazas}`, `${p.circuito} · inscripción ${p.estado_cupo.replace('_', ' ')} · ${p.pagados} pagados`))),
+      caja('Onboarding pendiente', d.onboarding.length, ...d.onboarding.slice(0, 15).map((o: any) => fila(o.piloto, `${o.estado.replace('_', ' ')}${o.menor ? ' · menor' : ''}`, ficha(o.persona_id)))),
+      caja('Grupo por aprobar', d.grupo.length, ...d.grupo.map((g: any) => fila(g.piloto, fechaHora(g.solicitado_en), ficha(g.persona_id)))),
+      caja('Feedback', `${d.feedback.por_enviar + d.feedback.sin_responder}`, fila('Por enviar', String(d.feedback.por_enviar)), fila('Sin responder', String(d.feedback.sin_responder))),
+      caja('Sobrecupo', d.sobrecupo.length, ...d.sobrecupo.map((s: any) => fila(`R${s.ronda} · ${s.categoria}`, `${s.inscritos} inscritos para ${s.plazas} plazas`))),
+    );
+  }
+  cargar().catch(() => {});
+</script>
