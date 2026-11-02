@@ -147,5 +147,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/auth/:ruta*",
+      "destination": "/api/auth?ruta=:ruta*"
+    },
+    {
+      "source": "/api/admin/:ruta*",
+      "destination": "/api/admin?ruta=:ruta*"
+    }
   ]
 }
