@@ -110,6 +110,8 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Región de las funciones:** `fra1` (Fráncfort) en vercel.json, junto a Neon, como pide el diseño ("fijar región UE"). Antes corrían en `iad1` (Washington): cada consulta cruzaba el Atlántico (la tarea diaria bajó de unos 1000 ms a unos 40 ms por consulta) y los datos se trataban fuera de la UE.
 - **Comprobación previa:** `npm run db:comprobar` lee `.env.produccion` y solo hace lecturas. La lista y el plan están en docs/base-datos/paso-a-produccion.md.
 - **Blob de producción:** un almacén nuevo, `rukc-produccion`, conectado solo a Production, para que no se mezcle con las fotos y copias de prueba.
+- **Aviso de borradores:** John da por bueno el texto provisional, revisado por el abogado el 4-11-2026. Se carga como `aviso_borradores` versión `aviso-v1` (`db/documento-aviso-borradores.mjs`), en desarrollo y en producción.
+- **Plazas al publicar (provisionales hasta el D4):** las reservas antiguas de la T2 aún no están importadas, así que John fija las plazas que quedan libres de verdad. Por categoría: R2 20, R3 30, R4 29, R5 28, R6 27, R7 26 y R8 25, todas abiertas; la R1 sigue cerrada. **Cuando se importe el D4, las plazas vuelven a la capacidad real**: si no, las reservas importadas se descontarían dos veces.
 
 ## Pendiente de confirmar
 
