@@ -76,6 +76,17 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Grupo:** el enlace del grupo se guarda en `temporada.enlace_grupo_whatsapp` desde la pantalla "Onboarding y grupo" (solo el propietario). "Ya está dentro" desde `aprobado` pasa antes por `enlace_enviado`, como exige la máquina de estados.
 - **Acreditación:** en Rondas, botón "Acreditación" por ronda. Asistió sin onboarding completado pide motivo; la base de datos también lo impide sin motivo.
 
+## Fase 5 · decisiones de implementación del feedback
+
+- **Enlaces:** al generar, cada envío guarda el hash de un token que nadie conoce. "Enviar" y "Recordar" crean un token nuevo y preparan el WhatsApp con él, porque en la base de datos solo queda el hash (como en el onboarding). Consecuencia: al recordar, el enlace del primer mensaje deja de valer; el recordatorio lleva el nuevo. El panel lo avisa antes.
+- **Caducidad:** 14 días desde que se genera (regla 7). Pasada la fecha, el enlace responde 404 y no acepta respuestas, aunque la tarea diaria (fase 6) todavía no lo haya marcado `caducado`. El panel ya lo cuenta como caducado.
+- **Estados:** `abierto` se marca la primera vez que el piloto carga la página tras el envío; `respondido` al enviar. No se puede responder dos veces.
+- **Plantilla activa:** una sola en todo el sistema (índice único); es la que se usa al generar. No se activa una plantilla sin preguntas. La columna `temporada.plantilla_feedback_id` no se usa en v1.
+- **Respuestas:** una fila por pregunta respondida (las opcionales vacías no crean fila). Escalas en `valor_num`, una opción y texto en `valor_texto`, varias opciones en `valor_opciones`.
+- **Filtro por respuesta:** por pregunta concreta (por ejemplo, "nota menor que 7"), no por `v_feedback.nota_minima`, que mezcla escalas de 0-10 y de 1-5. Para texto y opciones, "contiene". La exportación (CSV o XLSX) respeta el filtro y lleva una columna por pregunta.
+- **Mensajes de error de la base de datos:** el panel y el onboarding ya no cortan el texto por los dos puntos (antes "Esta plantilla ya se ha usado: duplícala…" llegaba como "duplícala…"); solo quitan un prefijo "error:".
+- **Preguntas (regla 8):** la plantilla `v1` sigue vacía. Las preguntas las define John desde el editor del panel.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
