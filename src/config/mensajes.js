@@ -23,6 +23,14 @@ export const MENSAJES = {
   saldo_pendiente: ({ nombre, ronda, importe }) =>
     `Hola ${nombre}, te recuerdo que de la R${ronda} quedan ${importe} € por pagar. Puedes hacerlo en el circuito el día de la carrera o por Bizum. Cualquier duda, aquí estoy.`,
 
+  /** Enlace nuevo a la ficha de piloto (onboarding). */
+  onboarding: ({ nombre, enlace }) =>
+    `Hola ${nombre}, soy John, de RUKC. Te dejo el enlace para completar tu ficha de piloto (datos, contacto de emergencia y documentos). Es obligatoria para correr: ${enlace}`,
+
+  /** Acceso aprobado al grupo de pilotos. */
+  grupo: ({ nombre, enlace }) =>
+    `Hola ${nombre}, tu ficha de piloto está completa. Este es el enlace al grupo de WhatsApp de pilotos de la temporada: ${enlace}`,
+
   /** Bizum recibido y confirmado. */
   bizum_confirmado: ({ nombre, codigo }) =>
     `Hola ${nombre}, hemos recibido tu Bizum de la reserva ${codigo}. Tu plaza queda confirmada.`,

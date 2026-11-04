@@ -156,6 +156,14 @@
     {
       "source": "/api/admin/:ruta*",
       "destination": "/api/admin?ruta=:ruta*"
+    },
+    {
+      "source": "/api/onboarding/:ruta*",
+      "destination": "/api/onboarding?ruta=:ruta*"
+    },
+    {
+      "source": "/onboarding/:token",
+      "destination": "/onboarding"
     }
   ]
 }
