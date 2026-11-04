@@ -105,6 +105,12 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Descarga de copias:** el parámetro es `?copia=`, no `?ruta=`, porque la reescritura de `/api/admin/*` en vercel.json ya usa `ruta` y lo pisaba.
 - **Clave de Neon:** de proyecto (solo ve RUKC). `NEON_PROJECT_ID` es el id del proyecto (`broad-salad-…`), no el de la organización (`org-…`).
 
+## Fase 7 · decisiones del paso a producción
+
+- **Región de las funciones:** `fra1` (Fráncfort) en vercel.json, junto a Neon, como pide el diseño ("fijar región UE"). Antes corrían en `iad1` (Washington): cada consulta cruzaba el Atlántico (la tarea diaria bajó de unos 1000 ms a unos 40 ms por consulta) y los datos se trataban fuera de la UE.
+- **Comprobación previa:** `npm run db:comprobar` lee `.env.produccion` y solo hace lecturas. La lista y el plan están en docs/base-datos/paso-a-produccion.md.
+- **Blob de producción:** un almacén nuevo, `rukc-produccion`, conectado solo a Production, para que no se mezcle con las fotos y copias de prueba.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
