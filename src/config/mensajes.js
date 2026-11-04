@@ -31,6 +31,14 @@ export const MENSAJES = {
   grupo: ({ nombre, enlace }) =>
     `Hola ${nombre}, tu ficha de piloto está completa. Este es el enlace al grupo de WhatsApp de pilotos de la temporada: ${enlace}`,
 
+  /** Feedback de una ronda celebrada. */
+  feedback: ({ nombre, ronda, dias, enlace }) =>
+    `Hola ${nombre}, gracias por correr la R${ronda} con RUKC. ¿Nos cuentas qué tal? Son un par de minutos y nos ayuda a mejorar la siguiente ronda. El enlace vale ${dias} días: ${enlace}`,
+
+  /** Recordatorio del feedback (el enlace anterior deja de valer). */
+  feedback_recordatorio: ({ nombre, ronda, dias, enlace }) =>
+    `Hola ${nombre}, te recuerdo el feedback de la R${ronda}. Si tienes un par de minutos, nos ayuda mucho. Te dejo el enlace otra vez (vale ${dias} días más): ${enlace}`,
+
   /** Bizum recibido y confirmado. */
   bizum_confirmado: ({ nombre, codigo }) =>
     `Hola ${nombre}, hemos recibido tu Bizum de la reserva ${codigo}. Tu plaza queda confirmada.`,

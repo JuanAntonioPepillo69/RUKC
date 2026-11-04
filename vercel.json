@@ -164,6 +164,14 @@
     {
       "source": "/onboarding/:token",
       "destination": "/onboarding"
+    },
+    {
+      "source": "/api/feedback/:ruta*",
+      "destination": "/api/feedback?ruta=:ruta*"
+    },
+    {
+      "source": "/feedback/:token",
+      "destination": "/feedback"
     }
   ]
 }
