@@ -1,6 +1,7 @@
 ---
 // Ficha 360 de una persona (?id=): datos, oportunidad, inscripciones, pagos, aceptaciones y línea de tiempo.
-// Acciones: editar, WhatsApp, interacción, etapa, registrar pago de un pedido y fusionar duplicados.
+// Acciones: editar, WhatsApp, interacción, etapa, registrar pago de un pedido y fusionar duplicados. Fase 6: trasladar,
+// cancelar y resolver inscripciones, reembolsar pagos, y créditos (abonar y canjear).
 import Admin from '../../layouts/Admin.astro';
 ---
 <Admin titulo="Ficha" seccion="personas">
@@ -8,7 +9,9 @@ import Admin from '../../layouts/Admin.astro';
 </Admin>
 
 <script>
-  import { api, accion, etiquetaEstado, euros, fecha, fechaHora, h, whatsapp } from '../../scripts/admin/api';
+  import { api, accion, aCentimos, etiquetaEstado, euros, fecha, fechaHora, formulario, h, whatsapp } from '../../scripts/admin/api';
+  import * as Op from '../../scripts/admin/operacion';
+  import * as Rgpd from '../../scripts/admin/rgpd';
   const id = new URLSearchParams(location.search).get('id') ?? '';
   const raiz = document.getElementById('ficha')!;
 
@@ -73,12 +76,37 @@ import Admin from '../../layouts/Admin.astro';
       } }, `${x.nombre} ${x.apellidos ?? ''} · ${x.telefono ?? x.email ?? ''}`)));
     });
 
+    // Créditos: libro de la persona (abonos + y canjes −), abonar a mano y canjear en una inscripción con saldo.
+    const cr = await api(`personas/${id}/creditos`);
+    const TIPOS: Record<string, string> = { fidelidad: 'Fidelidad', compensacion_cancelacion: 'Compensación por cancelación', canje: 'Canje', caducidad: 'Caducidad', ajuste: 'Ajuste' };
+    const creditos = h('section', { class: 'caja' }, h('h2', {}, 'Créditos', h('span', { class: 'n' }, euros(cr.saldo_cent))),
+      tabla(['Fecha', 'Tipo', 'Importe', 'Inscripción', 'Motivo', 'Caduca'], cr.movimientos.map((m: any) => [fechaHora(m.creado_en), TIPOS[m.tipo] ?? m.tipo, euros(m.importe_cent), m.inscripcion ?? '', m.motivo ?? '', fecha(m.caduca_en)])),
+      h('div', { class: 'acciones' },
+        h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+          const v = await formulario('Abonar crédito', [
+            { nombre: 'tipo', etiqueta: 'Tipo', tipo: 'select', opciones: [['fidelidad', 'Fidelidad'], ['compensacion_cancelacion', 'Compensación por cancelación'], ['ajuste', 'Ajuste (puede ser negativo)']] },
+            { nombre: 'importe', etiqueta: 'Importe (€)', tipo: 'number', requerido: true },
+            { nombre: 'motivo', etiqueta: 'Motivo', tipo: 'textarea', ayuda: 'Obligatorio en los ajustes.' },
+            { nombre: 'caduca_en', etiqueta: 'Caduca el (opcional)', tipo: 'date' },
+          ], 'Abonar');
+          if (v && await accion(() => api(`personas/${id}/creditos`, { tipo: v.tipo, importe_cent: aCentimos(v.importe), motivo: v.motivo || undefined, caduca_en: v.caduca_en || undefined }), 'Crédito abonado.')) cargar();
+        } }, 'Abonar crédito'),
+        cr.saldo_cent > 0 && cr.canjeables.length ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: async () => {
+          const v = await formulario('Canjear crédito', [
+            { nombre: 'inscripcion_id', etiqueta: 'Inscripción', tipo: 'select', opciones: cr.canjeables.map((i: any) => [i.id, `${i.codigo} · falta ${euros(i.saldo_cent)}`]) },
+            { nombre: 'importe', etiqueta: 'Importe (€)', tipo: 'number', valor: String(Math.min(cr.saldo_cent, cr.canjeables[0].saldo_cent) / 100), requerido: true },
+          ], 'Canjear', `Saldo disponible: ${euros(cr.saldo_cent)}. Cuenta como pagado en la inscripción.`);
+          if (v && await accion(() => api(`personas/${id}/canje`, { inscripcion_id: v.inscripcion_id, importe_cent: aCentimos(v.importe) }), 'Crédito canjeado.')) cargar();
+        } }, 'Canjear crédito') : null));
+
     raiz.replaceChildren(h('div', { class: 'rejilla' },
       h('section', { class: 'caja' }, h('h2', {}, 'Resumen'),
         h('p', {}, r.es_piloto ? `Piloto${r.dorsal ? ` · dorsal ${r.dorsal}` : ''}` : 'No es piloto (todavía)', ' · ', etiquetaEstado(r.etapa ?? 'sin oportunidad')),
         h('p', { class: 'sub' }, `Saldo pendiente ${euros(r.saldo_pendiente_cent)} · crédito ${euros(r.credito_cent)} · onboarding ${r.onboarding ?? '-'} · grupo ${r.grupo ?? '-'} · primer canal ${r.primer_canal ?? '-'}`),
         h('div', { class: 'acciones' },
-          p.telefono ? h('button', { class: 'b b--oro', type: 'button', onclick: () => whatsapp({ tipo: 'lead', persona_id: id }) }, 'WhatsApp') : null)),
+          p.telefono ? h('button', { class: 'b b--oro', type: 'button', onclick: () => whatsapp({ tipo: 'lead', persona_id: id }) }, 'WhatsApp') : null,
+          h('button', { class: 'b b--peq', type: 'button', onclick: () => Rgpd.exportar(id) }, 'Exportar datos (RGPD)'),
+          p.estado === 'activa' ? h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: async () => { if (await Rgpd.anonimizar(id, `${p.nombre} ${p.apellidos ?? ''}`.trim())) cargar(); } }, 'Anonimizar') : null)),
       h('section', { class: 'caja' }, h('h2', {}, 'Datos'), form),
       h('section', { class: 'caja' }, h('h2', {}, 'Oportunidad'), op ? h('p', { class: 'sub' }, `${op.temporada} · ${op.origen.replace('_', ' ')} · próxima acción: ${op.proxima_accion ?? '-'} ${fechaHora(op.proxima_accion_en)}`) : '', etapas),
       h('section', { class: 'caja' }, h('h2', {}, 'Registrar interacción'), interaccion)),
@@ -86,10 +114,16 @@ import Admin from '../../layouts/Admin.astro';
         d.inscripciones.map((i: any) => [i.codigo, `R${i.ronda} · ${fecha(i.ronda_fecha)}`, i.categoria ?? '-', euros(i.precio_cent), euros(i.pagado_cent), euros(i.saldo_cent), etiquetaEstado(i.estado), i.onboarding ?? '-',
           h('span', { class: 'acciones' },
             h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'confirmacion', inscripcion_id: i.id }) }, 'Confirmación'),
-            i.saldo_cent > 0 ? h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'saldo_pendiente', inscripcion_id: i.id }) }, 'Recordar saldo') : '')]))),
+            i.saldo_cent > 0 ? h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'saldo_pendiente', inscripcion_id: i.id }) }, 'Recordar saldo') : '',
+            ['pendiente_pago', 'reservada', 'pagada'].includes(i.estado) ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => { if (await Op.trasladar(i.id, i.codigo)) cargar(); } }, 'Trasladar') : '',
+            ['pendiente_pago', 'reservada', 'pagada'].includes(i.estado) ? h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: async () => { if (await Op.cancelar(i.id, i.codigo)) cargar(); } }, 'Cancelar') : '',
+            i.estado === 'cancelada' && i.resolucion === 'pendiente' ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: async () => { if (await Op.resolver({ id: i.id, codigo: i.codigo, pagado_cent: i.pagado_cent })) cargar(); } }, 'Resolver') : '',
+            i.estado === 'cancelada' && i.resolucion !== 'pendiente' ? h('span', { class: 'sub' }, `resuelta: ${String(i.resolucion).replace('_', ' ')}`) : '')]))),
       pedidos.length ? h('p', { class: 'sub' }, 'Para registrar un pago de estas inscripciones, ve a Ventas y pagos → Registrar pago.') : '',
-      h('section', { class: 'caja' }, h('h2', {}, 'Pagos'), tabla(['Código', 'Fecha', 'Método', 'Importe', 'Estado', 'Inscripciones', 'Factura'],
-        d.pagos.map((x: any) => [x.codigo, fechaHora(x.fecha), x.metodo.replace('_', ' '), euros(x.importe_cent), etiquetaEstado(x.estado), x.inscripciones ?? '', x.factura_ref ?? '']))),
+      h('section', { class: 'caja' }, h('h2', {}, 'Pagos'), tabla(['Código', 'Fecha', 'Método', 'Importe', 'Estado', 'Inscripciones', 'Factura', ''],
+        d.pagos.map((x: any) => [x.codigo, fechaHora(x.fecha), x.metodo.replace('_', ' '), euros(x.importe_cent), etiquetaEstado(x.estado), x.inscripciones ?? '', x.factura_ref ?? '',
+          ['confirmado', 'reembolsado_parcial'].includes(x.estado) ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => { if (await Op.reembolsar(x)) cargar(); } }, 'Reembolsar') : '']))),
+      creditos,
       h('section', { class: 'caja' }, h('h2', {}, 'Documentos aceptados'), tabla(['Documento', 'Versión', 'Aceptado', 'Fecha', 'Revocado'],
         d.aceptaciones.map((a: any) => [a.tipo.replace('_', ' '), a.version, a.aceptado ? 'sí' : 'no', fechaHora(a.aceptada_en), fechaHora(a.revocada_en)]))),
       h('section', { class: 'caja' }, h('h2', {}, 'Línea de tiempo'), tabla(['Fecha', 'Qué', 'Detalle'],

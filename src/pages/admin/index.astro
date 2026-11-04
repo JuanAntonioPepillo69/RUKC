@@ -28,7 +28,18 @@ import Admin from '../../layouts/Admin.astro';
         boton('No llegó', async () => { const motivo = prompt('Motivo (opcional):') ?? undefined; if (await accion(() => api(`pagos/${p.id}/rechazar`, { motivo: motivo || undefined }))) cargar(); }, 'b b--peq b--peligro'))),
     ];
     const proxima = d.proxima?.[0];
+    const a = d.avisos;
+    const NOMBRES: Record<string, string> = { bizum: 'Bizum sin confirmar', feedback: 'Feedback caducado', copia: 'Copia de seguridad', neon: 'Consumo de Neon', anonimizacion: 'Plazo de conservación' };
+    const avisos = [
+      ...a.tareas.map((t: any) => fila(`Tarea con error: ${NOMBRES[t.tarea] ?? t.tarea}`, `${fechaHora(t.cuando)} · ${t.error}`, h('a', { class: 'b b--peq', href: '/admin/ajustes' }, 'Ver'))),
+      a.neon ? fila(`Neon al ${a.neon.porcentaje} % del mes`, `${a.neon.cu_horas} de ${a.neon.limite_cu_horas} CU-horas. Revisa el consumo o el plan antes de que se pare.`) : null,
+      ...a.rgpd.map((s: any) => fila(`RGPD: ${s.tipo.replace('_', ' ')} de ${s.contacto}`, `vence ${fechaHora(s.vence_en)}`, h('a', { class: 'b b--peq b--oro', href: '/admin/rgpd' }, 'Responder'))),
+      a.cancelaciones ? fila(`${a.cancelaciones} inscripciones canceladas sin resolver`, 'Elige reembolso, crédito, traslado o sin devolución.', h('a', { class: 'b b--peq', href: '/admin/rondas' }, 'Rondas')) : null,
+      ...a.reembolsos.map((r: any) => fila(`Reembolso fallido de ${r.codigo} (${euros(r.importe_cent)})`, r.motivo, ficha(r.pagador_persona_id))),
+      a.anonimizacion ? fila(`${a.anonimizacion.candidatos} personas con el plazo de conservación vencido`, 'Confirma su anonimización.', h('a', { class: 'b b--peq', href: '/admin/rgpd' }, 'Revisar')) : null,
+    ].filter((x): x is HTMLElement => x != null);
     raiz.replaceChildren(
+      ...(avisos.length ? [caja('Avisos', avisos.length, ...avisos)] : []),
       caja('Pagos por verificar', verificar.length, ...verificar),
       caja('Borradores y abandonos (24 h)', d.recientes.length, ...d.recientes.map((s: any) => fila(`${s.pagador_nombre || 'Sin nombre'} · ${s.codigo}`, `${s.estado.replace('_', ' ')} · R${s.ronda ?? '?'} · ${s.canal ?? ''} · ${s.horas_sin_pagar ?? ''} h`,
         boton('WhatsApp', () => whatsapp({ tipo: s.estado === 'borrador' ? 'recuperar_borrador' : 'recuperar_pago', solicitud_id: s.id }))))),

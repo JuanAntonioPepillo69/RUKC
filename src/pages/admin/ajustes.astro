@@ -1,5 +1,6 @@
 ---
-// Ajustes: entidad cobradora (solo el propietario puede cambiarla) e historial de eventos.
+// Ajustes: entidad cobradora (solo el propietario puede cambiarla), tareas programadas y copias de seguridad, e
+// historial de eventos.
 import Admin from '../../layouts/Admin.astro';
 ---
 <Admin titulo="Ajustes" seccion="ajustes">
@@ -17,11 +18,15 @@ import Admin from '../../layouts/Admin.astro';
       <button class="b" type="submit">Guardar</button>
     </form>
   </section>
+  <section class="caja"><h2>Tareas y copias de seguridad</h2>
+    <p class="sub">La tarea diaria (03:00 UTC) marca los Bizum sin confirmar en 72 h y el feedback caducado, hace la copia cifrada, mira el consumo de Neon y, el día 1, cuenta las personas con el plazo de conservación vencido. Si un paso falla no se reintenta: sale aquí y en "Hoy".</p>
+    <div id="sistema"><p class="vacio">Cargando…</p></div>
+  </section>
   <section class="caja"><h2>Historial</h2><div id="historial"></div></section>
 </Admin>
 
 <script>
-  import { api, accion } from '../../scripts/admin/api';
+  import { api, accion, fechaHora, h } from '../../scripts/admin/api';
   import { crearLista } from '../../scripts/admin/lista';
   const form = document.getElementById('entidad') as HTMLFormElement;
   const campos = ['nombre_comercial', 'titular_legal', 'nif', 'tipo', 'activa_desde'];
@@ -32,4 +37,18 @@ import Admin from '../../layouts/Admin.astro';
     await accion(() => api('entidad', { nombre_comercial: v('nombre_comercial'), titular_legal: v('titular_legal'), nif: v('nif'), tipo: v('tipo'), activa_desde: v('activa_desde') }), 'Guardado.');
   });
   crearLista({ vista: 'eventos', contenedor: document.getElementById('historial')! });
+
+  const NOMBRES: Record<string, string> = { bizum: 'Bizum sin confirmar', feedback: 'Feedback caducado', copia: 'Copia de seguridad', neon: 'Consumo de Neon', anonimizacion: 'Plazo de conservación' };
+  api('sistema').then((d) => {
+    const fila = (t: string, s: string) => h('div', { class: 'fila' }, h('div', { class: 'txt' }, h('span', {}, t), h('span', { class: 'sub' }, s)));
+    const mb = (b: number) => `${(b / 1048576).toFixed(2)} MB`;
+    document.getElementById('sistema')!.replaceChildren(...[
+      ...(d.ultimas.length ? d.ultimas.map((u: any) => fila(`${NOMBRES[u.tarea] ?? u.tarea}: ${u.ok ? 'bien' : 'ERROR'}`, `${fechaHora(u.cuando)}${u.error ? ` · ${u.error}` : ''}`))
+        : [h('p', { class: 'vacio' }, 'Todavía no se ha ejecutado ninguna tarea.')]),
+      d.neon ? fila(`Neon: ${d.neon.cu_horas} de ${d.neon.limite_cu_horas} CU-horas este mes (${d.neon.porcentaje} %)`, d.neon.aviso ? 'Pasa del 70 %: revisa el consumo o el plan.' : `Medido ${fechaHora(d.neon.cuando)}`) : null,
+      h('h3', {}, `Copias (${d.copias.length})`),
+      ...d.copias.map((c: any) => h('div', { class: 'fila' }, h('div', { class: 'txt' }, h('span', {}, c.ruta.replace('copias/', '')), h('span', { class: 'sub' }, `${mb(c.tamano)} · ${fechaHora(c.subido_en)}`)),
+        h('div', { class: 'acciones' }, h('a', { class: 'b b--peq', href: `/api/admin/copias/descargar?ruta=${encodeURIComponent(c.ruta)}` }, 'Descargar (cifrada)')))),
+    ].filter((x): x is HTMLElement => x != null));
+  }).catch(() => {});
 </script>

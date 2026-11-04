@@ -11,6 +11,11 @@ import Admin from '../../layouts/Admin.astro';
     <div id="cobros-lista"></div>
     <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
   </dialog>
+  <dialog class="dlg" id="canceladas">
+    <h2 style="margin-top:0">Resolver cancelaciones</h2>
+    <div id="canceladas-lista"></div>
+    <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
+  </dialog>
   <dialog class="dlg" id="acreditacion">
     <h2 style="margin-top:0">Acreditación</h2>
     <div id="acreditacion-lista"></div>
@@ -19,7 +24,8 @@ import Admin from '../../layouts/Admin.astro';
 </Admin>
 
 <script>
-  import { api, accion, aviso, etiquetaEstado, euros, fecha, h } from '../../scripts/admin/api';
+  import { api, accion, aviso, etiquetaEstado, euros, fecha, formulario, h } from '../../scripts/admin/api';
+  import * as Op from '../../scripts/admin/operacion';
   const raiz = document.getElementById('rondas')!;
   const dlg = document.getElementById('cobros') as HTMLDialogElement;
 
@@ -44,6 +50,26 @@ import Admin from '../../layouts/Admin.astro';
     };
     await pintar();
     dlg.showModal();
+  }
+
+  // F8: inscripciones de una ronda cancelada, cada una con su resolución (reembolso, crédito, traslado o sin devolución).
+  const dlgCan = document.getElementById('canceladas') as HTMLDialogElement;
+  async function abrirCanceladas(r: any) {
+    const lista = document.getElementById('canceladas-lista')!;
+    const pintar = async () => {
+      const d = await api(`rondas/${r.id}/canceladas`);
+      const pendientes = d.inscripciones.filter((i: any) => i.resolucion === 'pendiente').length;
+      lista.replaceChildren(h('p', { class: 'sub' }, `R${r.numero} · ${r.circuito}: ${pendientes} por resolver de ${d.inscripciones.length}.`),
+        ...(d.inscripciones.length ? d.inscripciones.map((i: any) => h('div', { class: 'fila' },
+          h('div', { class: 'txt' }, h('span', {}, `${i.piloto} · ${i.codigo}`),
+            h('span', { class: 'sub' }, `pagado ${euros(i.pagado_cent)}${i.credito_cent ? ` + crédito ${euros(i.credito_cent)}` : ''}${i.pagos.length ? ` · ${i.pagos.map((p: any) => `${p.codigo} ${p.stripe ? 'Stripe' : p.metodo.replace('_', ' ')}`).join(', ')}` : ''}`)),
+          h('div', { class: 'acciones' }, i.resolucion === 'pendiente'
+            ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: async () => { if (await Op.resolver(i)) pintar(); } }, 'Resolver')
+            : etiquetaEstado(i.resolucion))))
+          : [h('p', { class: 'vacio' }, 'No había inscripciones activas.')]));
+    };
+    await pintar();
+    dlgCan.showModal();
   }
 
   const dlgAcr = document.getElementById('acreditacion') as HTMLDialogElement;
@@ -88,6 +114,14 @@ import Admin from '../../layouts/Admin.astro';
       h('div', { class: 'acciones' },
         h('button', { class: 'b b--peq', type: 'button', onclick: () => abrirCobros(r) }, 'Cobro en circuito'),
         h('button', { class: 'b b--peq', type: 'button', onclick: () => abrirAcreditacion(r) }, 'Acreditación'),
+        r.estado === 'cancelada' ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: () => abrirCanceladas(r) }, 'Resolver cancelaciones') : null,
+        ['programada', 'aplazada'].includes(r.estado) ? h('button', { class: 'b b--peq b--peligro', type: 'button', onclick: async () => {
+          const v = await formulario(`Cancelar la R${r.numero}`, [{ nombre: 'motivo', etiqueta: 'Motivo', tipo: 'textarea', requerido: true }], 'Cancelar la ronda',
+            'Todas sus inscripciones activas pasan a canceladas con la resolución pendiente. No se puede deshacer.');
+          if (!v) return;
+          const res = await accion(() => api<any>(`rondas/${r.id}/cancelar`, { motivo: v.motivo }), '');
+          if (res) { aviso(`Ronda cancelada: ${res.canceladas} inscripciones por resolver.`); await cargar(); abrirCanceladas({ ...r, estado: 'cancelada' }); }
+        } }, 'Cancelar ronda') : null,
         h('a', { class: 'b b--peq', href: `/api/admin/exportar/circuito?formato=xlsx&f=${encodeURIComponent(JSON.stringify([{ c: 'ronda', op: 'eq', v: r.numero }]))}` }, 'Lista para el circuito'),
         r.estado === 'programada' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
           const f = prompt('Nueva fecha (AAAA-MM-DD):', r.fecha);

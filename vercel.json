@@ -173,5 +173,16 @@
       "source": "/feedback/:token",
       "destination": "/feedback"
     }
-  ]
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "functions": {
+    "api/cron.js": {
+      "maxDuration": 60
+    }
+  }
 }
