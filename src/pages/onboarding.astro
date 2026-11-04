@@ -1,0 +1,549 @@
+---
+// Ficha de piloto (onboarding obligatorio, F5). Se abre con el enlace personal /onboarding/<token> (vercel.json
+// reescribe esa ruta a esta página). La página no lleva datos: lee el token de la dirección y lo manda a
+// /api/onboarding/* en la cabecera Authorization. Sin indexar, sin referrer, sin píxel ni scripts de terceros
+// (no usa Base.astro, que carga la medición). Cada paso se autoguarda (sin fecha de nacimiento, peso ni documento)
+// y se guarda de verdad al pulsar "Guardar y seguir".
+import '../styles/global.css';
+import { whatsappUrl } from '../config/site.js';
+
+const ayuda = whatsappUrl('Hola, tengo una duda con mi ficha de piloto.');
+const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funciona. ¿Me mandas uno nuevo?');
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <title>Ficha de piloto · RUKC</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+</head>
+<body>
+  <header class="ob-cab wrap">
+    <img src="/brand/escudo-96.webp" width="36" height="34" alt="" />
+    <div><p class="eyebrow" id="temporada">RUKC</p><p class="ob-cab__t">Ficha de piloto</p></div>
+  </header>
+
+  <main class="ob wrap">
+    <p class="ob-carga" id="carga">Cargando tu ficha…</p>
+
+    <section class="card" id="invalido" hidden>
+      <h1 class="ob-h">Este enlace no es válido</h1>
+      <p>Puede que haya caducado o que ya te hayamos mandado uno nuevo. Pídenos otro por WhatsApp.</p>
+      <a class="btn btn--gold card__btn" href={enlaceNuevo} target="_blank" rel="noopener">Pedir un enlace nuevo</a>
+    </section>
+
+    <section class="card" id="fin" hidden>
+      <p class="eyebrow">Ficha completada</p>
+      <h1 class="ob-h">Ya estás dentro de la temporada</h1>
+      <p id="fin-grupo"></p>
+      <a class="btn btn--gold card__btn" id="fin-enlace" href="#" target="_blank" rel="noopener" hidden>Entrar al grupo de pilotos</a>
+      <div id="fin-foto" hidden>
+        <p class="ob-sub">Aún no tenemos tu foto de piloto. Puedes subirla cuando quieras.</p>
+        <button class="btn btn--ghost card__btn" type="button" data-ir="foto">Subir mi foto</button>
+      </div>
+    </section>
+
+    <div id="pasos" hidden>
+      <div class="ob-progreso" aria-hidden="true"><span id="barra"></span></div>
+      <p class="ob-paso" id="contador"></p>
+
+      <!-- 1 · Datos personales -->
+      <form class="card paso" data-paso="personales" novalidate hidden>
+        <h1 class="ob-h">Tus datos</h1>
+        <p class="ob-sub" id="contacto"></p>
+        <div class="dos">
+          <label class="field">Nombre <input name="nombre" autocomplete="given-name" required maxlength="80" /></label>
+          <label class="field">Apellidos <input name="apellidos" autocomplete="family-name" required maxlength="120" /></label>
+        </div>
+        <label class="field">Fecha de nacimiento <input name="fecha_nacimiento" type="date" required autocomplete="bday" /></label>
+        <label class="field">Municipio donde vives <input name="municipio" required maxlength="80" autocomplete="address-level2" /></label>
+        <label class="field">Instagram <small>Opcional, para etiquetarte en las fotos.</small><input name="instagram" maxlength="60" placeholder="@usuario" /></label>
+      </form>
+
+      <!-- 2 · Tutor (solo menores) -->
+      <form class="card paso" data-paso="tutor" novalidate hidden>
+        <h1 class="ob-h">Madre, padre o tutor</h1>
+        <p class="ob-sub">Como eres menor de 18 años, tu madre, padre o tutor legal tiene que dar sus datos y firmar los documentos.</p>
+        <div class="dos">
+          <label class="field">Nombre <input name="nombre" required maxlength="80" /></label>
+          <label class="field">Apellidos <input name="apellidos" required maxlength="120" /></label>
+        </div>
+        <label class="field">Relación
+          <select name="relacion" required><option value="">Elige</option><option value="madre">Madre</option><option value="padre">Padre</option><option value="tutor_legal">Tutor legal</option></select>
+        </label>
+        <div class="dos">
+          <label class="field">Teléfono <input name="telefono" type="tel" required autocomplete="tel" /></label>
+          <label class="field">Email <small>Opcional</small><input name="email" type="email" autocomplete="email" /></label>
+        </div>
+        <label class="field">DNI, NIE o pasaporte del tutor <small data-doc-guardado></small><input name="documento" required autocomplete="off" maxlength="20" /></label>
+      </form>
+
+      <!-- 3 · Perfil -->
+      <form class="card paso" data-paso="perfil" novalidate hidden>
+        <h1 class="ob-h">Tu perfil de piloto</h1>
+        <label class="field">Nombre de competición <small>Así aparecerás en la clasificación.</small><input name="nombre_competicion" required maxlength="24" /></label>
+        <label class="field">Dorsal <small id="ocupados"></small><input name="dorsal" type="number" min="1" max="999" inputmode="numeric" required /></label>
+        <div class="dos">
+          <label class="field">Experiencia en karting
+            <select name="experiencia" required><option value="">Elige</option><option value="ninguna">Ninguna</option><option value="ocasional">He ido alguna vez</option><option value="amateur">He corrido en ligas amateur</option><option value="competicion">He competido</option></select>
+          </label>
+          <label class="field">¿Cada cuánto vas a correr?
+            <select name="frecuencia" required><option value="">Elige</option><option value="ocasional">De vez en cuando</option><option value="mensual">Una vez al mes</option><option value="semanal">Cada semana</option><option value="varias_por_semana">Varias veces por semana</option></select>
+          </label>
+        </div>
+        <label class="field" data-si-ligas hidden>¿En qué ligas has corrido? <input name="ligas_previas" maxlength="300" /></label>
+        <label class="field">Circuitos donde has rodado <small>Opcional, separados por comas.</small><input name="circuitos_rodados" maxlength="400" /></label>
+        <label class="field">¿Qué quieres conseguir esta temporada? <small>Opcional</small><input name="objetivo" maxlength="500" /></label>
+        <label class="field">¿Cómo nos conociste? <small>Opcional</small><input name="como_nos_conocio" maxlength="200" /></label>
+        <label class="field">Comentarios <small>Opcional</small><textarea name="comentarios" rows="3" maxlength="1000"></textarea></label>
+      </form>
+
+      <!-- 4 · Datos físicos -->
+      <form class="card paso" data-paso="fisicos" novalidate hidden>
+        <h1 class="ob-h">Peso y categoría</h1>
+        <p class="ob-sub">La categoría sale del peso con el equipo puesto (mono, casco y botas). Se comprueba en el pesaje del circuito.</p>
+        <details class="doc" id="doc-peso" hidden><summary>Leer el consentimiento para tratar el peso</summary><div class="doc__txt"></div></details>
+        <label class="check"><input type="checkbox" name="consiente_peso" /> <span>Doy mi consentimiento para que RUKC guarde mi peso para asignar la categoría. Puedo retirarlo cuando quiera.</span></label>
+        <div data-si-peso hidden class="ob-grupo">
+          <label class="field">Peso con equipo (kg) <input name="peso_kg" type="number" min="30" max="200" step="0.1" inputmode="decimal" /></label>
+          <p class="ob-cat" id="cat-texto"></p>
+          <fieldset class="pay" id="cat-eleccion" hidden><legend>Elige tu categoría</legend></fieldset>
+          <label class="check" id="cat-ambas" hidden><input type="checkbox" name="quiere_ambas" /> <span>Quiero correr también en la otra categoría (te escribimos para ver cómo).</span></label>
+        </div>
+        <p class="ob-sub" data-sin-peso>Sin el peso, tu categoría se decide en el pesaje del circuito.</p>
+        <label class="field">Altura (cm) <small>Opcional</small><input name="altura_cm" type="number" min="120" max="230" inputmode="numeric" /></label>
+      </form>
+
+      <!-- 5 · Emergencia -->
+      <form class="card paso" data-paso="emergencia" novalidate hidden>
+        <h1 class="ob-h">Contacto de emergencia</h1>
+        <p class="ob-sub">A quién llamamos si te pasa algo en pista. Mejor alguien que no esté corriendo contigo.</p>
+        <label class="field">Nombre y apellidos <input name="nombre" required maxlength="120" /></label>
+        <div class="dos">
+          <label class="field">Teléfono <input name="telefono" type="tel" required /></label>
+          <label class="field">Relación <small>Opcional</small><input name="relacion" maxlength="40" placeholder="Pareja, madre, amigo…" /></label>
+        </div>
+      </form>
+
+      <!-- 6 · Foto -->
+      <form class="card paso" data-paso="foto" novalidate hidden>
+        <h1 class="ob-h">Tu foto de piloto</h1>
+        <p class="ob-sub">Una foto de la cara, con buena luz. Solo la ve el equipo de RUKC. Puedes subirla ahora o más tarde.</p>
+        <img class="ob-foto" id="foto-vista" alt="Tu foto" hidden />
+        <label class="btn btn--ghost card__btn ob-file">Elegir foto <input type="file" accept="image/jpeg,image/png,image/webp" id="foto-archivo" /></label>
+        <p class="ob-sub" id="foto-estado"></p>
+      </form>
+
+      <!-- 7 · Formación -->
+      <form class="card paso" data-paso="formacion" novalidate hidden>
+        <h1 class="ob-h">Formación</h1>
+        <p class="ob-sub">Antes de correr, mira estos contenidos. Marca cada uno cuando lo hayas visto.</p>
+        <div id="modulos" class="ob-grupo"></div>
+      </form>
+
+      <!-- 8 · Documentos -->
+      <form class="card paso" data-paso="documentos" novalidate hidden>
+        <h1 class="ob-h">Documentos</h1>
+        <p class="card__notice" id="docs-no-listos" hidden>Los documentos se están revisando. Te avisaremos por WhatsApp para firmarlos y terminar tu ficha.</p>
+        <p class="ob-sub" id="docs-quien"></p>
+        <details class="doc" data-doc="reglamento"><summary></summary><div class="doc__txt"></div></details>
+        <label class="check"><input type="checkbox" name="reglamento" /> <span>He leído y acepto el reglamento.</span></label>
+        <details class="doc" data-doc="cesion_imagen"><summary></summary><div class="doc__txt"></div></details>
+        <fieldset class="ob-grupo ob-opciones">
+          <legend>Fotos y vídeos en los que salgo. Puedo aceptar cada uso por separado:</legend>
+          <label class="check"><input type="checkbox" name="imagen_web" /> <span>En la web de RUKC</span></label>
+          <label class="check"><input type="checkbox" name="imagen_redes" /> <span>En las redes sociales de RUKC</span></label>
+          <label class="check" data-anuncios><input type="checkbox" name="imagen_anuncios" /> <span>En anuncios de RUKC</span></label>
+        </fieldset>
+        <details class="doc" data-doc="asuncion_riesgos"><summary></summary><div class="doc__txt"></div></details>
+        <label class="check"><input type="checkbox" name="riesgos" /> <span>He leído y acepto la asunción de riesgos.</span></label>
+        <div class="dos">
+          <label class="field"><span data-firma-nombre>Tu nombre y apellidos</span> <input name="nombre" required maxlength="160" autocomplete="off" /></label>
+          <label class="field"><span data-firma-doc>Tu DNI, NIE o pasaporte</span> <input name="documento" required maxlength="20" autocomplete="off" /></label>
+        </div>
+        <p class="aviso">Al firmar guardamos la versión de cada documento, la fecha, tu IP y tu navegador como prueba. Del documento solo se ven los 3 últimos caracteres.</p>
+      </form>
+
+      <p class="card__err" id="error" role="alert"></p>
+      <div class="ob-botones">
+        <button class="btn btn--ghost" type="button" id="atras">Atrás</button>
+        <button class="btn btn--gold" type="button" id="seguir">Guardar y seguir</button>
+      </div>
+      <p class="ob-guardado" id="guardado" aria-live="polite"></p>
+    </div>
+
+    <p class="ob-ayuda">¿Dudas? <a href={ayuda} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>.</p>
+  </main>
+
+  <script>
+    const token = (location.pathname.match(/^\/onboarding\/([\w-]{20,100})$/) || [])[1] || '';
+    const $ = <T extends HTMLElement = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T;
+    const $$ = (s: string, r: ParentNode = document) => [...r.querySelectorAll(s)] as HTMLElement[];
+    const TITULOS: Record<string, string> = { personales: 'Tus datos', tutor: 'Tutor', perfil: 'Perfil', fisicos: 'Peso y categoría', emergencia: 'Emergencia', foto: 'Foto', formacion: 'Formación', documentos: 'Documentos' };
+    const NO_AUTOGUARDAR = ['fecha_nacimiento', 'peso_kg', 'documento'];
+    let ficha: any = null;
+    let actual = '';
+
+    async function api(ruta: string, cuerpo?: unknown, tipo = 'application/json') {
+      const res = await fetch(`/api/onboarding/${ruta}`, {
+        method: cuerpo === undefined ? 'GET' : 'POST',
+        headers: { Authorization: `Bearer ${token}`, ...(cuerpo === undefined ? {} : { 'Content-Type': tipo }) },
+        body: cuerpo === undefined ? undefined : tipo === 'application/json' ? JSON.stringify(cuerpo) : (cuerpo as Blob),
+        referrerPolicy: 'no-referrer',
+      });
+      const datos = res.headers.get('content-type')?.includes('json') ? await res.json().catch(() => ({})) : {};
+      if (!res.ok) throw Object.assign(new Error(datos.error || 'No se ha podido guardar. Inténtalo de nuevo.'), { status: res.status, campo: datos.campo });
+      return datos;
+    }
+
+    // Markdown mínimo de los documentos legales: párrafos, **negrita** y listas con "- ". Se escapa todo antes.
+    function md(texto: string) {
+      const esc = texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return esc.split(/\n{2,}/).map((b) => {
+        const lineas = b.split('\n');
+        const neg = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        if (lineas.every((l) => /^\s*- /.test(l))) return `<ul>${lineas.map((l) => `<li>${neg(l.replace(/^\s*- /, ''))}</li>`).join('')}</ul>`;
+        const t = neg(lineas.join('<br>'));
+        return /^#+ /.test(b) ? `<h3>${t.replace(/^#+ /, '')}</h3>` : `<p>${t}</p>`;
+      }).join('');
+    }
+
+    const form = (p: string) => $<HTMLFormElement>(`form[data-paso="${p}"]`);
+    const campo = (f: HTMLFormElement, n: string) => f.elements.namedItem(n) as HTMLInputElement | null;
+    function poner(f: HTMLFormElement, valores: Record<string, any> = {}) {
+      for (const [k, v] of Object.entries(valores)) {
+        const el = campo(f, k);
+        if (!el || v == null) continue;
+        if (el.type === 'checkbox') el.checked = Boolean(v);
+        else el.value = Array.isArray(v) ? v.join(', ') : String(v);
+      }
+    }
+    function leer(f: HTMLFormElement) {
+      const o: Record<string, any> = {};
+      for (const el of [...f.elements] as HTMLInputElement[]) {
+        if (!el.name) continue;
+        o[el.name] = el.type === 'checkbox' ? el.checked : el.type === 'radio' ? (el.checked ? el.value : o[el.name] ?? null) : el.value.trim();
+      }
+      return o;
+    }
+    const num = (v: string) => (v === '' || v == null ? null : Number(String(v).replace(',', '.')));
+    const nulo = (v: string) => (v ? v : null);
+
+    /** Lo que se manda al guardar cada paso, con los nombres y tipos de la API. */
+    function datosDe(p: string) {
+      const v = leer(form(p));
+      switch (p) {
+        case 'personales': return { nombre: v.nombre, apellidos: v.apellidos, fecha_nacimiento: v.fecha_nacimiento, municipio: v.municipio, instagram: nulo(v.instagram) };
+        case 'tutor': return { nombre: v.nombre, apellidos: v.apellidos, relacion: v.relacion, telefono: v.telefono, email: nulo(v.email), documento: v.documento };
+        case 'perfil': return { nombre_competicion: v.nombre_competicion, dorsal: num(v.dorsal), experiencia: v.experiencia, frecuencia: v.frecuencia,
+          ligas_previas: ['amateur', 'competicion'].includes(v.experiencia) ? nulo(v.ligas_previas) : null,
+          circuitos_rodados: v.circuitos_rodados ? v.circuitos_rodados.split(',').map((s: string) => s.trim()).filter(Boolean) : null,
+          objetivo: nulo(v.objetivo), como_nos_conocio: nulo(v.como_nos_conocio), comentarios: nulo(v.comentarios) };
+        case 'fisicos': return { consiente_peso: v.consiente_peso, peso_kg: v.consiente_peso ? num(v.peso_kg) : null, altura_cm: num(v.altura_cm),
+          categoria: v.consiente_peso ? v.categoria ?? null : null, quiere_ambas: Boolean(v.quiere_ambas) };
+        case 'emergencia': return { nombre: v.nombre, telefono: v.telefono, relacion: nulo(v.relacion) };
+        case 'documentos': return { reglamento: v.reglamento, riesgos: v.riesgos, nombre: v.nombre, documento: v.documento,
+          imagen: { web: v.imagen_web, redes: v.imagen_redes, ...(ficha.menor ? {} : { anuncios: v.imagen_anuncios }) } };
+        default: return {};
+      }
+    }
+
+    // ---------- Pintar ----------
+
+    function categoriaPara(peso: number | null) {
+      if (peso == null || Number.isNaN(peso)) return null;
+      const r = ficha.reglas.find((x: any) => x.hasta_kg == null || peso <= x.hasta_kg);
+      return r?.resultado ?? null;
+    }
+    function pintarCategoria() {
+      const f = form('fisicos');
+      const consiente = campo(f, 'consiente_peso')!.checked;
+      $('[data-si-peso]', f).hidden = !consiente;
+      $('[data-sin-peso]', f).hidden = consiente;
+      const r = categoriaPara(num(campo(f, 'peso_kg')!.value));
+      const nombre = (c: string) => ficha.categorias.find((x: any) => x.codigo === c)?.nombre ?? c;
+      $('#cat-texto').textContent = !r ? '' : r === 'eleccion' ? 'Con este peso puedes elegir categoría.' : `Tu categoría: ${nombre(r)}.`;
+      $('#cat-eleccion').hidden = r !== 'eleccion';
+      $('#cat-ambas').hidden = r !== 'eleccion' || !ficha.franja_ambas_categorias;
+    }
+
+    function prepararFormularios() {
+      const v = ficha.valores;
+      const auto = ficha.autoguardado || {};
+      $('#temporada').textContent = `RUKC · ${ficha.temporada}`;
+      $('#contacto').textContent = [v.contacto.telefono, v.contacto.email].filter(Boolean).join(' · ') + '. Si tu teléfono o email no son correctos, escríbenos por WhatsApp.';
+      poner(form('personales'), { ...v.personales, ...auto.personales });
+      poner(form('tutor'), { ...(v.tutor ?? {}), ...auto.tutor });
+      $('[data-doc-guardado]').textContent = v.tutor?.documento_guardado ? `Guardado: ${v.tutor.documento_guardado}. Escríbelo otra vez si quieres cambiarlo.` : '';
+      poner(form('perfil'), { ...v.perfil, ...auto.perfil });
+      $('#ocupados').textContent = ficha.dorsales_ocupados.length ? `Ya cogidos: ${ficha.dorsales_ocupados.join(', ')}.` : 'Elige el que quieras.';
+      const eleccion = $('#cat-eleccion');
+      eleccion.replaceChildren(Object.assign(document.createElement('legend'), { textContent: 'Elige tu categoría' }),
+        ...ficha.categorias.map((c: any) => {
+          const l = document.createElement('label'); l.className = 'pay__opt';
+          l.innerHTML = `<input type="radio" name="categoria" value="${c.codigo}" /><span>${c.nombre}</span>`;
+          return l;
+        }));
+      poner(form('fisicos'), { ...v.fisicos, ...auto.fisicos });
+      const docPeso = ficha.documentos.find((d: any) => d.tipo === 'consentimiento_peso');
+      $('#doc-peso').hidden = !docPeso;
+      if (docPeso) $('.doc__txt', $('#doc-peso')).innerHTML = md(docPeso.contenido_md);
+      pintarCategoria();
+      poner(form('emergencia'), { ...(v.emergencia ?? {}), ...auto.emergencia });
+      for (const d of $$('details[data-doc]')) {
+        const doc = ficha.documentos.find((x: any) => x.tipo === d.dataset.doc);
+        $('summary', d).textContent = doc ? `Leer: ${doc.titulo}` : 'Documento pendiente de publicar';
+        $('.doc__txt', d).innerHTML = doc ? md(doc.contenido_md) : '';
+      }
+      $('#docs-no-listos').hidden = ficha.documentos_listos;
+      $('[data-anuncios]').hidden = ficha.menor;
+      $('#docs-quien').textContent = ficha.menor ? 'Firma tu madre, padre o tutor, con su nombre y su documento.' : 'Firmas tú, con tu nombre y tu documento.';
+      $('[data-firma-nombre]').textContent = ficha.menor ? 'Nombre y apellidos del tutor' : 'Tu nombre y apellidos';
+      $('[data-firma-doc]').textContent = ficha.menor ? 'DNI, NIE o pasaporte del tutor' : 'Tu DNI, NIE o pasaporte';
+      poner(form('documentos'), auto.documentos);
+      pintarLigas();
+      pintarModulos();
+      pintarFoto();
+    }
+
+    function pintarLigas() {
+      const e = campo(form('perfil'), 'experiencia')!.value;
+      $('[data-si-ligas]').hidden = !['amateur', 'competicion'].includes(e);
+    }
+
+    function pintarModulos() {
+      const c = $('#modulos');
+      c.replaceChildren(...ficha.formacion.map((m: any) => {
+        const fila = document.createElement('div'); fila.className = 'ob-modulo';
+        const a = Object.assign(document.createElement('a'), { href: m.url, target: '_blank', rel: 'noopener noreferrer', textContent: m.titulo + (m.obligatorio ? ' (obligatorio)' : '') });
+        const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn--ghost', textContent: m.visto ? 'Visto' : 'Marcar como visto', disabled: m.visto });
+        b.addEventListener('click', async () => {
+          try { await api(`formacion/${m.id}`, {}); m.visto = true; pintarModulos(); } catch (e) { error((e as Error).message); }
+        });
+        fila.append(a, b);
+        return fila;
+      }));
+    }
+
+    async function pintarFoto() {
+      const img = $<HTMLImageElement>('#foto-vista');
+      if (!ficha.foto) { img.hidden = true; return; }
+      try {
+        const res = await fetch('/api/onboarding/foto', { headers: { Authorization: `Bearer ${token}` }, referrerPolicy: 'no-referrer' });
+        if (!res.ok) return;
+        img.src = URL.createObjectURL(await res.blob());
+        img.hidden = false;
+        $('#foto-estado').textContent = 'Foto guardada. Puedes cambiarla eligiendo otra.';
+      } catch { /* sin vista previa */ }
+    }
+
+    function error(t = '') { $('#error').textContent = t; }
+
+    function ir(p: string) {
+      if (ficha.estado === 'completado' && p !== 'foto') return pintarFin();
+      actual = p;
+      $('#carga').hidden = true; $('#invalido').hidden = true; $('#fin').hidden = true; $('#pasos').hidden = false;
+      for (const f of $$('form.paso')) f.hidden = f.dataset.paso !== p;
+      const i = ficha.pasos.indexOf(p);
+      const total = ficha.estado === 'completado' ? 1 : ficha.pasos.length;
+      $('#contador').textContent = ficha.estado === 'completado' ? 'Foto de piloto' : `Paso ${i + 1} de ${total} · ${TITULOS[p]}`;
+      $('#barra').style.width = `${ficha.estado === 'completado' ? 100 : ((i + 1) / total) * 100}%`;
+      $<HTMLButtonElement>('#atras').hidden = ficha.estado === 'completado' ? false : i <= 0;
+      const seguir = $<HTMLButtonElement>('#seguir');
+      seguir.textContent = p === 'documentos' ? 'Firmar y terminar' : p === 'foto' ? (ficha.foto ? 'Seguir' : 'Más tarde') : 'Guardar y seguir';
+      if (ficha.estado === 'completado') seguir.textContent = 'Volver';
+      seguir.disabled = p === 'documentos' && !ficha.documentos_listos;
+      error(''); $('#guardado').textContent = '';
+      window.scrollTo({ top: 0 });
+    }
+
+    function pintarFin() {
+      $('#carga').hidden = true; $('#pasos').hidden = true; $('#invalido').hidden = true; $('#fin').hidden = false;
+      const g = ficha.grupo;
+      const txt: Record<string, string> = {
+        pendiente_aprobacion: 'John revisará tu acceso al grupo de WhatsApp de pilotos y te escribirá. No tienes que hacer nada más.',
+        aprobado: 'Tu acceso al grupo de pilotos está aprobado.',
+        enlace_enviado: 'Tu acceso al grupo de pilotos está aprobado.',
+        dentro: 'Ya estás en el grupo de pilotos.',
+        rechazado: 'Tenemos que revisar tu acceso al grupo de pilotos. Escríbenos por WhatsApp.',
+      };
+      $('#fin-grupo').textContent = g ? (g.enlace || !['aprobado', 'enlace_enviado'].includes(g.estado) ? txt[g.estado] ?? '' : 'Tu acceso al grupo de pilotos está aprobado. John te mandará el enlace por WhatsApp.') : '';
+      const a = $<HTMLAnchorElement>('#fin-enlace');
+      a.hidden = !g?.enlace;
+      if (g?.enlace) a.href = g.enlace;
+      $('#fin-foto').hidden = ficha.foto;
+    }
+
+    function primerPaso() {
+      if (ficha.estado === 'completado') return null;
+      return ficha.pasos.find((p: string) => !ficha.hechos.includes(p)) ?? ficha.pasos[ficha.pasos.length - 1];
+    }
+
+    // ---------- Autoguardado ----------
+
+    let temporizador: number | undefined;
+    function programarAutoguardado() {
+      if (!['personales', 'tutor', 'perfil', 'fisicos', 'emergencia', 'documentos'].includes(actual) || ficha.estado === 'completado') return;
+      window.clearTimeout(temporizador);
+      const paso = actual;
+      temporizador = window.setTimeout(async () => {
+        const v = leer(form(paso));
+        const campos = Object.fromEntries(Object.entries(v).filter(([k]) => !NO_AUTOGUARDAR.includes(k)).map(([k, x]) => [k, x === '' ? null : x]));
+        try { await api('borrador', { paso, campos }); $('#guardado').textContent = 'Borrador guardado'; } catch { /* se reintenta al seguir */ }
+      }, 1500);
+    }
+
+    // ---------- Foto: se reduce en el navegador antes de subirla ----------
+
+    async function reducir(archivo: File): Promise<Blob> {
+      const bmp = await createImageBitmap(archivo);
+      const escala = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+      const c = Object.assign(document.createElement('canvas'), { width: Math.round(bmp.width * escala), height: Math.round(bmp.height * escala) });
+      c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
+      return new Promise((ok, mal) => c.toBlob((b) => (b ? ok(b) : mal(new Error('No se ha podido leer la foto.'))), 'image/jpeg', 0.85));
+    }
+    $<HTMLInputElement>('#foto-archivo').addEventListener('change', async (e) => {
+      const archivo = (e.target as HTMLInputElement).files?.[0];
+      if (!archivo) return;
+      error(''); $('#foto-estado').textContent = 'Subiendo…';
+      try {
+        const blob = await reducir(archivo);
+        await api('foto', blob, 'image/jpeg');
+        ficha.foto = true;
+        await pintarFoto();
+        $<HTMLButtonElement>('#seguir').textContent = ficha.estado === 'completado' ? 'Volver' : 'Seguir';
+      } catch (err) { $('#foto-estado').textContent = ''; error((err as Error).message); }
+    });
+
+    // ---------- Navegación ----------
+
+    $('#atras').addEventListener('click', () => {
+      if (ficha.estado === 'completado') return pintarFin();
+      const i = ficha.pasos.indexOf(actual);
+      if (i > 0) ir(ficha.pasos[i - 1]);
+    });
+
+    $('#seguir').addEventListener('click', async () => {
+      if (ficha.estado === 'completado') return pintarFin();
+      const b = $<HTMLButtonElement>('#seguir');
+      const paso = actual;
+      error('');
+      window.clearTimeout(temporizador);
+      b.disabled = true;
+      try {
+        const r = await api(`paso/${paso}`, datosDe(paso));
+        ficha = r.ficha;
+        prepararFormularios();
+        if (ficha.estado === 'completado') return pintarFin();
+        const i = ficha.pasos.indexOf(paso);
+        ir(ficha.pasos[Math.min(i + 1, ficha.pasos.length - 1)] ?? primerPaso());
+      } catch (e: any) {
+        error(e.message);
+        const nombre = e.campo?.split('.')[0];
+        const el = nombre && campo(form(paso), nombre);
+        if (el) el.focus();
+      } finally { b.disabled = actual === 'documentos' && !ficha.documentos_listos; }
+    });
+
+    document.addEventListener('input', (e) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('form.paso')) return;
+      if (t.closest('form[data-paso="fisicos"]')) pintarCategoria();
+      if ((t as HTMLInputElement).name === 'experiencia') pintarLigas();
+      programarAutoguardado();
+    });
+    $$('[data-ir]').forEach((b) => b.addEventListener('click', () => ir(b.dataset.ir!)));
+
+    // ---------- Arranque ----------
+
+    (async () => {
+      if (!token) { $('#carga').hidden = true; $('#invalido').hidden = false; return; }
+      try {
+        ficha = await api('estado');
+      } catch (e: any) {
+        $('#carga').hidden = true;
+        if (e.status === 404) { $('#invalido').hidden = false; return; }
+        $('#carga').hidden = false; $('#carga').textContent = e.message; return;
+      }
+      prepararFormularios();
+      const p = primerPaso();
+      if (p) ir(p); else pintarFin();
+    })();
+  </script>
+</body>
+</html>
+
+<style>
+  .ob-cab { display: flex; align-items: center; gap: 12px; padding-top: 20px; padding-bottom: 8px; }
+  .ob-cab .eyebrow { font-size: 11px; }
+  .ob-cab__t { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+  .ob { max-width: 640px; display: grid; gap: 16px; padding-bottom: 64px; }
+  .ob-carga { color: var(--muted); }
+  .ob-h { font-size: clamp(26px, 6vw, 34px); font-weight: 900; }
+  .ob-sub { margin: 0; font-size: 14px; color: var(--muted); }
+  .ob-progreso { height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 8px; }
+  .ob-progreso span { display: block; height: 100%; width: 0; background: var(--grad-gold); transition: width 0.3s; }
+  .ob-paso { margin: 8px 0 12px; font-size: 13px; color: var(--muted); }
+  .ob-grupo { display: grid; gap: 14px; }
+  .ob-grupo[hidden] { display: none; }
+  .ob-cat { margin: 0; color: var(--gold-hi); font-weight: 600; }
+  .ob-cat:empty { display: none; }
+  .ob-opciones { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .ob-opciones legend { padding: 0; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
+  .ob-botones { display: flex; gap: 10px; justify-content: space-between; }
+  .ob-botones .btn { flex: 1; border: 0; cursor: pointer; }
+  .ob-botones .btn--ghost { flex: 0 0 auto; border: 1px solid rgba(246, 243, 236, 0.28); }
+  .ob-botones .btn[hidden] { display: none; }
+  .ob-botones .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .ob-guardado { margin: 0; font-size: 12px; color: var(--muted-2); text-align: right; min-height: 1em; }
+  .ob-ayuda { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+  .ob-ayuda a { color: var(--gold-hi); }
+  .ob-foto { width: 160px; height: 160px; object-fit: cover; border-radius: 16px; border: 1px solid var(--line); }
+  .ob-foto[hidden] { display: none; }
+  .ob-file { position: relative; overflow: hidden; cursor: pointer; }
+  .ob-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .ob-modulo { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .ob-modulo a { color: var(--gold-hi); }
+  .ob-modulo .btn { min-height: 40px; padding: 0 16px; font-size: 14px; flex: none; }
+
+  .card { display: grid; gap: 18px; padding: clamp(20px, 4vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); min-width: 0; }
+  .card[hidden], .paso[hidden], #pasos[hidden] { display: none; }
+  .card p { margin: 0; }
+  .card__notice { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); font-size: 14px; }
+  .card__notice[hidden] { display: none; }
+  .card__btn { width: 100%; border: 0; cursor: pointer; text-align: center; }
+  .card__btn[hidden] { display: none; }
+  .card__err { margin: 0; color: #ff6b6b; font-size: 14px; }
+  .card__err:empty { display: none; }
+  .dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .field { display: grid; gap: 7px; font-size: 14px; font-weight: 600; min-width: 0; }
+  .field[hidden] { display: none; }
+  .field input, .field select, .field textarea {
+    width: 100%; min-width: 0; min-height: 50px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18);
+    background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-weight: 500; font-size: 16px;
+  }
+  .field textarea { padding: 12px 14px; resize: vertical; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+  .field small { font-weight: 400; font-size: 13px; color: var(--muted); }
+  .check { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; line-height: 1.5; }
+  .check[hidden] { display: none; }
+  .check input { margin-top: 3px; width: 20px; height: 20px; flex: none; accent-color: var(--gold); }
+  .pay { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; }
+  .pay[hidden] { display: none; }
+  .pay legend { padding: 0; margin-bottom: 7px; font-size: 14px; font-weight: 600; }
+  .pay :global(.pay__opt) { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18); cursor: pointer; }
+  .pay :global(.pay__opt:has(input:checked)) { border-color: var(--gold); background: rgba(212, 166, 42, 0.08); }
+  .pay :global(.pay__opt input) { accent-color: var(--gold); }
+  .doc { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: rgba(10, 10, 11, 0.4); }
+  .doc[hidden] { display: none; }
+  .doc summary { cursor: pointer; font-weight: 600; color: var(--gold-hi); font-size: 15px; }
+  .doc__txt { max-height: 320px; overflow: auto; margin-top: 10px; font-size: 14px; color: #dcd8cf; }
+  .doc__txt :global(p) { margin: 0 0 10px; }
+  .doc__txt :global(h3) { font-size: 16px; margin: 12px 0 6px; }
+  .aviso { font-size: 13px; line-height: 1.5; color: var(--muted); }
+  @media (max-width: 520px) { .dos { grid-template-columns: minmax(0, 1fr); } }
+</style>
