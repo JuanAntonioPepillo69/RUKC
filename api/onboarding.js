@@ -87,7 +87,7 @@ async function responder(request) {
   } catch (e) {
     if (e.status) return json({ error: e.message, campo: e.campo ?? null }, e.status);
     if (e.code === '23505') return json({ error: 'Ese dato ya lo tiene otra persona. Revísalo.' }, 409);
-    if (e.code === '23514') return json({ error: e.message.replace(/^.*?: /, '') || 'Revisa los datos.' }, 400);
+    if (e.code === '23514') return json({ error: e.message.replace(/^error:\s*/i, '') || 'Revisa los datos.' }, 400);
     console.error('onboarding', e);
     return json({ error: 'No se ha podido guardar. Inténtalo de nuevo.' }, 500);
   }
