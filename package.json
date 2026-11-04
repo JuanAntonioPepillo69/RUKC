@@ -17,7 +17,8 @@
     "db:crear-admin": "node --env-file-if-exists=.env db/crear-admin.mjs",
     "db:documentos-prueba": "node --env-file-if-exists=.env db/documentos-prueba.mjs",
     "db:documentos": "node --env-file-if-exists=.env db/documentos-reglamento.mjs",
-    "db:restaurar": "node --env-file-if-exists=.env db/restaurar-copia.mjs"
+    "db:restaurar": "node --env-file-if-exists=.env db/restaurar-copia.mjs",
+    "db:comprobar": "node --env-file-if-exists=.env.produccion db/comprobar-produccion.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.3.0",
