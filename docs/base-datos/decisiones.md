@@ -57,6 +57,24 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Mensaje de confirmación por WhatsApp:** genera un enlace de onboarding nuevo y marca `enlace_enviado_en`; desde ese momento la página de éxito ya no genera otro.
 - **Pantallas que llegan después:** Catálogo, Onboarding y grupo (fase 4), Feedback (fase 5), Documentos y RGPD (fase 6), como en el prompt maestro.
 
+## Fase 4 · decisiones de implementación del onboarding y el grupo
+
+- **Página y estado HTTP:** la web es estática, así que `/onboarding/<token>` es siempre la misma página (vercel.json la reescribe) y responde 200. Quien decide es la API: con un token falso, caducado, sin token o de una persona anonimizada, `/api/onboarding/*` responde siempre `404 {"error":"No encontrado."}` y la página muestra "Este enlace no es válido" sin más pistas. El token va a la API en la cabecera `Authorization`, nunca en la URL de la API.
+- **Una sola función** `api/onboarding.js` para todo el onboarding (9 funciones de 12 en Hobby).
+- **Dónde se guarda cada paso:** en su tabla en cuanto se puede (persona, tutela, perfil, dorsal, datos sensibles, aceptaciones). `datos_sensibles_piloto` exige el contacto de emergencia, así que la fecha de nacimiento y el peso esperan hasta ese paso dentro de `onboarding.borrador`, **cifrados** con `RUKC_DATA_KEY`. El autoguardado de lo que se está escribiendo nunca guarda fecha de nacimiento, peso ni documento. Al completar se borra la parte cifrada.
+- **Documento del tutor:** se pide en el paso del tutor y se comprueba que coincide con el de la firma. No hay columna para el documento completo del tutor: solo quedan sus 3 últimos caracteres en cada aceptación que firma. El documento completo solo se guarda (cifrado) para pilotos adultos.
+- **Tutor con el mismo teléfono que el piloto** (el menor reservó con el móvil de su madre): el tutor se crea como persona aparte sin repetir ese teléfono, con una nota en su ficha. Necesita entonces un email propio.
+- **Consentimiento de peso:** firma el piloto o, si es menor, su tutor. Sin consentimiento no se guarda el peso y la categoría se decide en el pesaje. Si lo retira, se revoca la aceptación y se borra el peso.
+- **Categoría:** sale de `regla_categoria` y se aplica a sus inscripciones activas de la temporada (`por_peso`, o `eleccion_franja` si elige en la franja). No se toca una ronda donde ya corre en las dos categorías. Si en la franja quiere correr en las dos y la temporada lo permite, queda una nota en su ficha (la segunda inscripción se vende aparte).
+- **Cesión de imagen:** una aceptación con `opciones` {web, redes, anuncios}; `aceptado` es verdadero si marca al menos un uso. A un menor nunca se le guarda `anuncios = true`, aunque llegue en la petición.
+- **Documentos sin publicar:** mientras los documentos reales sigan en BORRADOR, el último paso no deja terminar ("Los documentos todavía no están publicados"). En producción, ningún piloto puede completar el onboarding hasta que el abogado revise y se activen reglamento, cesión de imagen y asunción de riesgos.
+- **Documentos de prueba (solo desarrollo):** `npm run db:documentos-prueba` activa versiones `prueba-1` con texto "PRUEBA · no es un texto legal" y una fecha de revisión ficticia, para poder probar el flujo. Exige `RUKC_ENTORNO=desarrollo` y se niega si hay algún documento real vigente. Nunca se ejecuta en producción. Las aceptaciones no se borran, así que las personas de los tests que firmaron quedan anonimizadas en la rama de desarrollo.
+- **Foto:** el navegador la reduce a 1200 px en JPEG antes de subirla (el límite de una función de Vercel es 4,5 MB; el servidor acepta hasta 4 MB y comprueba que de verdad es JPG, PNG o WebP). Va al almacén privado de Vercel Blob y solo se sirve por la API: al piloto con su token y al panel con sesión, con `Cache-Control: private, no-store`. En local y en los tests se guarda en `RUKC_BLOB_LOCAL_DIR`.
+- **Límite de peticiones:** 400 cada 10 min por IP en el onboarding (el autoguardado hace muchas) y 20 cada 10 min para tokens que no existen.
+- **Aviso de edad mínima:** sale en "Hoy" y en "Onboarding y grupo" en cuanto existe la fila de datos sensibles (paso de emergencia). Compara la edad el día de la ronda con `circuito.edad_minima`.
+- **Grupo:** el enlace del grupo se guarda en `temporada.enlace_grupo_whatsapp` desde la pantalla "Onboarding y grupo" (solo el propietario). "Ya está dentro" desde `aprobado` pasa antes por `enlace_enviado`, como exige la máquina de estados.
+- **Acreditación:** en Rondas, botón "Acreditación" por ronda. Asistió sin onboarding completado pide motivo; la base de datos también lo impide sin motivo.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
