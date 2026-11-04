@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { Pool } from '@neondatabase/serverless';
 
 const raiz = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -29,13 +30,26 @@ const VARIABLES = [
   ['CRON_SECRET', (v) => (v || '').length >= 32, '32 caracteres o más'],
   ['NEON_API_KEY', (v) => (v || '').length > 20, 'clave de proyecto de Neon'],
   ['NEON_PROJECT_ID', (v) => /^[a-z]+-[a-z]+-\d+$/.test(v || ''), 'id del proyecto (no el de la organización org-…)'],
-  ['META_CAPI_TOKEN', (v) => (v || '').length > 20, 'token de la API de conversiones'],
-  ['RUKC_SHEET_ID', (v) => (v || '').length > 20, 'hoja de la temporada'],
 ];
+// Solo hacen falta en Vercel (la web las usa; las herramientas locales no): se comprueban en la lista de Vercel.
+const SOLO_VERCEL = ['STRIPE_WEBHOOK_SECRET', 'META_CAPI_TOKEN', 'RUKC_SHEET_ID', 'BLOB_READ_WRITE_TOKEN'];
 for (const [nombre, valida, pista] of VARIABLES) {
-  if (!env[nombre]) falta(`Variable ${nombre}`, pista);
+  if (!env[nombre]) (SOLO_VERCEL.includes(nombre) ? () => {} : falta)(`Variable ${nombre}`, pista);
   else if (!valida(env[nombre])) revisar(`Variable ${nombre}`, `formato inesperado: ${pista}`);
   else ok(`Variable ${nombre}`);
+}
+
+// Nombres (nunca valores) de las variables de Vercel en Production.
+function comprobarVercel() {
+  let salida;
+  try {
+    salida = execFileSync('npx', ['vercel', 'env', 'ls', 'production'], { cwd: raiz, encoding: 'utf8', shell: true, timeout: 90000, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) { revisar('Vercel Production', `no se pudo leer la lista de variables (${e.message.split('\n')[0]})`); return; }
+  const nombres = new Set([...salida.matchAll(/^\s+([A-Z][A-Z0-9_]+)\s/gm)].map((m) => m[1]));
+  const necesarias = [...VARIABLES.map(([n]) => n).filter((n) => n !== 'DATABASE_URL_MIGRACIONES'), ...SOLO_VERCEL.filter((n) => !VARIABLES.some(([v]) => v === n))];
+  for (const n of necesarias) (nombres.has(n) ? ok : falta)(`Vercel Production: ${n}`, nombres.has(n) ? '' : 'no está');
+  for (const n of ['DATABASE_URL_MIGRACIONES', 'RUKC_ENTORNO', 'RUKC_BLOB_LOCAL_DIR'])
+    if (nombres.has(n)) revisar(`Vercel Production: ${n}`, 'no debe estar en producción');
 }
 if (env.RUKC_DATA_KEY && env.RUKC_DATA_KEY === env.RUKC_BACKUP_KEY) revisar('RUKC_DATA_KEY y RUKC_BACKUP_KEY', 'son iguales; tienen que ser distintas');
 for (const v of ['RUKC_ENTORNO', 'RUKC_BLOB_LOCAL_DIR']) if (env[v]) revisar(`Variable ${v}`, 'es solo de desarrollo; no la pongas en producción');
@@ -146,6 +160,7 @@ async function comprobarBlob() {
   } catch (e) { falta('Blob', e.message.split('\n')[0]); }
 }
 
+comprobarVercel();
 await comprobarNeon();
 await comprobarBase();
 await comprobarStripe();
