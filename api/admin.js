@@ -7,6 +7,7 @@ import * as listas from '../lib/panel/listas.js';
 import * as acciones from '../lib/panel/acciones.js';
 import * as ventas from '../lib/panel/ventas.js';
 import * as onboarding from '../lib/panel/onboarding.js';
+import * as feedback from '../lib/panel/feedback.js';
 
 const RUTAS = [
   ['GET', 'yo', ({ admin }) => ({ admin })],
@@ -60,6 +61,18 @@ const RUTAS = [
   ['GET', 'personas/:id/foto', onboarding.foto],
   ['GET', 'rondas/:id/acreditacion', onboarding.acreditacion],
   ['POST', 'inscripciones/:id/asistencia', onboarding.asistencia],
+  // Feedback post-carrera (F6)
+  ['GET', 'feedback/plantillas', feedback.plantillas],
+  ['POST', 'feedback/plantillas', feedback.crearPlantilla],
+  ['POST', 'feedback/plantillas/:id', feedback.editarPlantilla],
+  ['POST', 'feedback/plantillas/:id/duplicar', feedback.duplicarPlantilla],
+  ['POST', 'feedback/plantillas/:id/activar', feedback.activarPlantilla],
+  ['GET', 'feedback/rondas', feedback.rondas],
+  ['GET', 'feedback/rondas/:id', feedback.ronda],
+  ['GET', 'feedback/rondas/:id/exportar', feedback.exportar],
+  ['POST', 'feedback/rondas/:id/generar', feedback.generar],
+  ['POST', 'feedback/envios/:id/enviar', feedback.enviar],
+  ['POST', 'feedback/envios/:id/recordar', feedback.recordar],
   // Ajustes
   ['GET', 'entidad', acciones.entidad],
   ['POST', 'entidad', acciones.guardarEntidad, ['propietario']],

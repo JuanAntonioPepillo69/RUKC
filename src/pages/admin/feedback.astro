@@ -1,0 +1,182 @@
+---
+// Feedback post-carrera (F6): rondas con sus contadores, generar los envíos de una ronda celebrada, enviar y recordar
+// por WhatsApp, ver las respuestas con filtro por pregunta, exportar, y editor de plantillas (una plantilla usada no
+// se edita: se duplica como versión nueva).
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Feedback" seccion="feedback">
+  <section class="caja" id="rondas"><p class="vacio">Cargando…</p></section>
+  <section class="caja" id="detalle" hidden></section>
+  <section class="caja">
+    <h2>Plantillas <button class="b b--peq" type="button" id="nueva">Nueva plantilla</button></h2>
+    <p class="sub">La plantilla activa es la que se usa al generar el feedback de una ronda. Una plantilla que ya se ha usado no se edita: duplícala como versión nueva.</p>
+    <div id="plantillas"></div>
+  </section>
+
+  <dialog class="dlg" id="editor">
+    <form class="form" id="form-plantilla">
+      <h2 style="margin:0" id="editor-titulo">Plantilla</h2>
+      <label class="campo">Versión <input name="version" required maxlength="30" placeholder="v2" /></label>
+      <div id="preguntas" class="form"></div>
+      <button class="b b--peq" type="button" id="anadir">Añadir pregunta</button>
+      <div class="acciones">
+        <button class="b b--oro" type="submit">Guardar</button>
+        <button class="b" type="button" id="cerrar">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+</Admin>
+
+<script>
+  import { api, accion, aviso, etiquetaEstado, fecha, fechaHora, h } from '../../scripts/admin/api';
+
+  const TIPOS: Record<string, string> = { escala_0_10: 'Escala 0 a 10', escala_1_5: 'Escala 1 a 5', opcion_unica: 'Una opción', opcion_multiple: 'Varias opciones', texto: 'Texto libre' };
+  const cajaRondas = document.getElementById('rondas')!;
+  const detalle = document.getElementById('detalle')!;
+  const abrir = (url: string) => window.open(url, '_blank', 'noopener');
+  const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
+  const contadores = (c: any) => `${c.respondidos ?? 0} respondidos · ${c.abiertos ?? 0} abiertos sin responder · ${c.enviados ?? 0} enviados sin abrir · ${c.generados ?? 0} sin enviar · ${c.caducados ?? 0} caducados`;
+  let rondaAbierta: any = null;
+
+  // ---------- Rondas ----------
+
+  async function cargarRondas() {
+    const d = await api('feedback/rondas');
+    const activa = d.plantilla_activa;
+    cajaRondas.replaceChildren(
+      h('h2', {}, `Rondas · ${d.temporada}`),
+      h('p', { class: 'sub' }, activa ? `Plantilla activa: ${activa.version} (${activa.preguntas} preguntas).` : 'No hay plantilla activa: crea una abajo y actívala antes de generar.'),
+      ...d.rondas.map((r: any) => h('div', { class: 'fila' },
+        h('div', { class: 'txt' }, h('span', {}, `R${r.numero} · ${r.circuito} · ${fecha(r.fecha)}`),
+          h('span', { class: 'sub' }, r.estado !== 'celebrada' ? `Ronda ${r.estado.replace('_', ' ')}` : `${r.asistentes} asistentes · ${r.envios ? contadores(r) : 'sin feedback'}`)),
+        h('div', { class: 'acciones' },
+          r.estado === 'celebrada' && r.sin_envio > 0 ? boton(`Generar feedback (${r.sin_envio})`, async () => {
+            if (!confirm(`¿Generar el feedback de la R${r.numero} para ${r.sin_envio} pilotos? Caduca en 14 días.`)) return;
+            const res = await accion(() => api<{ generados: number }>(`feedback/rondas/${r.id}/generar`, {}), '');
+            if (res) { aviso(`Generados ${res.generados} envíos.`); await cargarRondas(); verRonda(r.id); }
+          }, 'b b--peq b--oro') : null,
+          r.envios ? boton('Ver', () => verRonda(r.id)) : null))));
+  }
+
+  // ---------- Detalle de una ronda ----------
+
+  async function verRonda(id: string, filtro: Record<string, string> | null = null) {
+    const qs = filtro ? `?${new URLSearchParams(filtro)}` : '';
+    const d = await api(`feedback/rondas/${id}${qs}`);
+    rondaAbierta = { id, filtro, preguntas: d.preguntas };
+    const numericas = d.preguntas.filter((p: any) => p.tipo.startsWith('escala'));
+    const selPregunta = h('select', { class: 'ctrl', 'aria-label': 'Pregunta' }, ...d.preguntas.map((p: any) => h('option', { value: p.id, selected: filtro?.pregunta === p.id }, p.texto.slice(0, 60))));
+    const selOp = h('select', { class: 'ctrl', 'aria-label': 'Operador' }, ...[['lt', 'menor que'], ['lte', 'menor o igual que'], ['eq', 'igual a'], ['gte', 'mayor o igual que'], ['gt', 'mayor que'], ['contiene', 'contiene']]
+      .map(([v, t]) => h('option', { value: v, selected: (filtro?.op ?? 'lt') === v }, t)));
+    const valor = h('input', { class: 'ctrl', 'aria-label': 'Valor', value: filtro?.valor ?? (numericas.length ? '7' : ''), size: 8 }) as HTMLInputElement;
+    const aplicar = () => verRonda(id, { pregunta: (selPregunta as HTMLSelectElement).value, op: (selOp as HTMLSelectElement).value, valor: valor.value });
+    const exportar = (formato: string) => `/api/admin/feedback/rondas/${id}/exportar?${new URLSearchParams({ ...(filtro ?? {}), formato })}`;
+    const resp = (e: any) => d.preguntas.filter((p: any) => e.respuestas?.[p.id] != null)
+      .map((p: any) => `${p.texto.slice(0, 40)}: ${Array.isArray(e.respuestas[p.id]) ? e.respuestas[p.id].join(', ') : e.respuestas[p.id]}`).join(' · ');
+    detalle.hidden = false;
+    detalle.replaceChildren(...[
+      h('h2', {}, `R${d.ronda.numero} · ${d.ronda.circuito}`, boton('Cerrar', () => { detalle.hidden = true; })),
+      h('p', { class: 'sub' }, `${d.contadores.envios} envíos: ${contadores(d.contadores)}.`),
+      d.preguntas.length ? h('div', { class: 'acciones' }, selPregunta, selOp, valor, boton('Filtrar', aplicar, 'b b--peq b--oro'),
+        filtro ? boton('Quitar filtro', () => verRonda(id)) : null,
+        h('a', { class: 'b b--peq', href: exportar('csv') }, 'CSV'), h('a', { class: 'b b--peq', href: exportar('xlsx') }, 'XLSX')) : null,
+      filtro ? h('p', { class: 'sub' }, `${d.envios.length} con ese filtro.`) : null,
+      ...(d.envios.length ? d.envios.map((e: any) => h('div', { class: 'fila' },
+        h('div', { class: 'txt' }, h('span', {}, e.piloto),
+          h('span', { class: 'sub' }, [e.enviado_en && `enviado ${fechaHora(e.enviado_en)}`, e.recordatorio_en && `recordado ${fechaHora(e.recordatorio_en)}`,
+            e.respondido_en && `respondido ${fechaHora(e.respondido_en)}`, !e.respondido_en && `caduca ${fecha(e.expira_en)}`].filter(Boolean).join(' · ')),
+          e.respuestas ? h('span', { class: 'sub' }, resp(e)) : null),
+        h('div', { class: 'acciones' }, etiquetaEstado(e.estado),
+          e.estado === 'generado' ? boton('Enviar', () => whatsapp(e.id, 'enviar'), 'b b--peq b--oro') : null,
+          ['enviado', 'abierto'].includes(e.estado) ? boton('Recordar', () => whatsapp(e.id, 'recordar')) : null)))
+        : [h('p', { class: 'vacio' }, filtro ? 'Nadie con ese filtro.' : 'Sin envíos.')])].filter((x): x is HTMLElement => x != null));
+    detalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function whatsapp(envio: string, tipo: 'enviar' | 'recordar') {
+    if (tipo === 'recordar' && !confirm('Se crea un enlace nuevo: el del primer mensaje deja de valer. ¿Preparar el recordatorio?')) return;
+    const r = await accion(() => api<{ url: string }>(`feedback/envios/${envio}/${tipo}`, {}), 'Mensaje preparado y registrado.');
+    if (!r) return;
+    abrir(r.url);
+    await cargarRondas();
+    if (rondaAbierta) verRonda(rondaAbierta.id, rondaAbierta.filtro);
+  }
+
+  // ---------- Plantillas ----------
+
+  const dlg = document.getElementById('editor') as HTMLDialogElement;
+  const form = document.getElementById('form-plantilla') as HTMLFormElement;
+  const lista = document.getElementById('preguntas')!;
+  let editando: string | null = null;
+
+  function filaPregunta(p: any = { id: '', tipo: 'escala_0_10', texto: '', obligatoria: true, opciones: [] }) {
+    const opciones = h('label', { class: 'campo' }, 'Opciones (una por línea)', h('textarea', { name: 'opciones', rows: 3 }, (p.opciones ?? []).join('\n')));
+    const tipo = h('select', { name: 'tipo', onchange: () => { opciones.hidden = !String((tipo as HTMLSelectElement).value).startsWith('opcion'); } },
+      ...Object.entries(TIPOS).map(([v, t]) => h('option', { value: v, selected: p.tipo === v }, t))) as HTMLSelectElement;
+    opciones.hidden = !p.tipo.startsWith('opcion');
+    const caja: HTMLElement = h('fieldset', { class: 'caja pregunta' },
+      h('label', { class: 'campo' }, 'Pregunta', h('input', { name: 'texto', value: p.texto, maxLength: 300, required: true })),
+      h('div', { class: 'dos' },
+        h('label', { class: 'campo' }, 'Identificador', h('input', { name: 'id', value: p.id, placeholder: 'nota_general', pattern: '[a-z][a-z0-9_]*', maxLength: 31, required: true })),
+        h('label', { class: 'campo' }, 'Tipo', tipo)),
+      opciones,
+      h('label', { class: 'campo', style: 'flex-direction:row;display:flex;gap:8px;align-items:center' }, h('input', { type: 'checkbox', name: 'obligatoria', checked: p.obligatoria }), 'Obligatoria'),
+      h('div', { class: 'acciones' },
+        boton('Subir', () => { caja.previousElementSibling?.before(caja); }),
+        boton('Quitar', () => caja.remove(), 'b b--peq b--peligro')));
+    return caja;
+  }
+
+  function abrirEditor(p: any | null, soloLectura = false) {
+    editando = p?.id ?? null;
+    document.getElementById('editor-titulo')!.textContent = p ? `Plantilla ${p.version}` : 'Nueva plantilla';
+    (form.elements.namedItem('version') as HTMLInputElement).value = p?.version ?? '';
+    lista.replaceChildren(...(p?.preguntas ?? []).map((x: any) => filaPregunta(x)));
+    for (const el of form.querySelectorAll('input, select, textarea, button[type="submit"], #anadir')) (el as HTMLInputElement).disabled = soloLectura;
+    dlg.showModal();
+  }
+
+  function leerPlantilla() {
+    return {
+      version: (form.elements.namedItem('version') as HTMLInputElement).value.trim(),
+      preguntas: [...lista.querySelectorAll<HTMLFieldSetElement>('.pregunta')].map((f) => {
+        const v = (n: string) => (f.querySelector(`[name="${n}"]`) as HTMLInputElement);
+        const tipo = v('tipo').value;
+        return {
+          id: v('id').value.trim(), tipo, texto: v('texto').value.trim(), obligatoria: v('obligatoria').checked,
+          ...(tipo.startsWith('opcion') ? { opciones: v('opciones').value.split('\n').map((x) => x.trim()).filter(Boolean) } : {}),
+        };
+      }),
+    };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const datos = leerPlantilla();
+    const ok = await accion(() => api(editando ? `feedback/plantillas/${editando}` : 'feedback/plantillas', datos), 'Plantilla guardada.');
+    if (ok) { dlg.close(); cargarPlantillas(); cargarRondas(); }
+  });
+  document.getElementById('anadir')!.addEventListener('click', () => lista.append(filaPregunta()));
+  document.getElementById('cerrar')!.addEventListener('click', () => dlg.close());
+  document.getElementById('nueva')!.addEventListener('click', () => abrirEditor(null));
+
+  async function cargarPlantillas() {
+    const d = await api('feedback/plantillas');
+    document.getElementById('plantillas')!.replaceChildren(...(d.plantillas.length ? d.plantillas.map((p: any) => h('div', { class: 'fila' },
+      h('div', { class: 'txt' }, h('span', {}, `${p.version}${p.activa ? ' · ACTIVA' : ''}`),
+        h('span', { class: 'sub' }, `${p.preguntas.length} preguntas · ${p.usos ? `usada en ${p.usos} envíos` : 'sin usar'}`)),
+      h('div', { class: 'acciones' },
+        boton(p.usos ? 'Ver' : 'Editar', () => abrirEditor(p, p.usos > 0)),
+        boton('Duplicar', async () => {
+          const version = prompt('Versión de la copia (por ejemplo, v2):');
+          if (version && await accion(() => api(`feedback/plantillas/${p.id}/duplicar`, { version }), 'Copia creada: ya puedes editarla.')) cargarPlantillas();
+        }),
+        p.activa ? null : boton('Activar', async () => {
+          if (await accion(() => api(`feedback/plantillas/${p.id}/activar`, {}), `Plantilla ${p.version} activa.`)) { cargarPlantillas(); cargarRondas(); }
+        }, 'b b--peq b--oro'))))
+      : [h('p', { class: 'vacio' }, 'Sin plantillas.')]));
+  }
+
+  cargarRondas().catch(() => {});
+  cargarPlantillas().catch(() => {});
+</script>
