@@ -10,6 +10,22 @@ Cómo está hoy:
 - Vercel Production solo tiene `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RUKC_SHEET_ID` y `META_CAPI_TOKEN`.
 - Las funciones pasan a Fráncfort (`fra1`), junto a Neon. Era una petición del diseño ("fijar región UE"), y la tarea diaria ha bajado de unos 1000 ms a unos 40 ms por consulta.
 
+### Avance (4 de noviembre de 2026, tarde)
+
+`npm run db:comprobar`: 41 OK, 0 FALTA. Quedan 3 REVISAR que solo se pueden ver a mano o después del despliegue: los permisos de escritura de Stripe, los eventos del webhook y el Blob.
+
+- **Hecho:**
+  - puntos 1, 1b y 1c: 9 migraciones, la T2 y los 4 textos del reglamento v1.1, con el mismo hash que en desarrollo;
+  - punto 2: claves nuevas generadas, copia de las dos de cifrado en el gestor de John y 8 variables subidas a Vercel Production;
+  - punto 3: almacén `rukc-produccion`, privado, en fra1 y solo en Production;
+  - punto 4: John añadió los dos eventos al webhook;
+  - punto 4b: clave restringida `raceupkc-web`, guardada en `.env.produccion` y en Vercel Production;
+  - punto 9: administrador propietario creado; el TOTP se activa en el primer acceso.
+- **Pendiente:**
+  - puntos 5, 6 y 7: DPA, aviso de borradores y política de privacidad;
+  - punto 8: importar las reservas de la T2 (D4);
+  - punto 10: registro de actividades.
+
 ## 1. Lista de comprobación previa
 
 Nadie pega secretos en el chat. Los valores van a `.env.produccion` y a Vercel.
