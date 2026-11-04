@@ -87,6 +87,21 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Mensajes de error de la base de datos:** el panel y el onboarding ya no cortan el texto por los dos puntos (antes "Esta plantilla ya se ha usado: duplícala…" llegaba como "duplícala…"); solo quitan un prefijo "error:".
 - **Preguntas (regla 8):** la plantilla `v1` sigue vacía. Las preguntas las define John desde el editor del panel.
 
+## Fase 6 · decisiones de implementación de la operación
+
+- **Traslado:** la inscripción destino copia pedido, producto, precio y categoría; se mueven los pagos aplicados y los canjes de crédito. Con menos días de aviso de los de la temporada (14) hace falta motivo; lo exige la base de datos. Una inscripción de una ronda cancelada también se traslada: queda cancelada con resolución "traslado".
+- **Cancelación:** cancelar una ronda (solo el propietario) pone sus inscripciones activas en "cancelada" con resolución pendiente, y "Hoy" avisa hasta que se resuelven. También se puede cancelar una inscripción suelta desde la ficha.
+- **Crédito por cancelación:** se abona a quien pagó (y a quien canjeó crédito) por el importe cobrado en esa inscripción. Los pagos siguen aplicados a la inscripción cancelada, porque el dinero se cobró. Sin caducidad salvo que se indique (regla 3: abonos solo manuales).
+- **Reembolsos:** primero se libera lo aplicado (lo de la inscripción indicada, luego lo que el pago tenga sin aplicar y, al final, lo de las rondas más lejanas). Los pagos de Stripe se devuelven por la API en tres pasos (preparar, pedir a Stripe con clave de idempotencia y guardar el resultado), así que repetirlo no devuelve dos veces. Si Stripe falla, el reembolso queda "fallido", lo aplicado ya liberado y aviso en "Hoy". Los pagos manuales quedan como registro: la devolución la hace John. Reembolsar es solo del propietario.
+- **Tareas programadas (D7):** una sola llamada diaria a `/api/cron` (03:00 UTC, `CRON_SECRET`). Cada paso es independiente y deja su resultado o su error en `evento`; responde siempre 200 y no reintenta. A mano: `/api/cron?tareas=copia,neon`. Vercel solo ejecuta las tareas programadas en producción: en la versión de prueba se lanzan a mano.
+- **Copia de seguridad:** todas las tablas a JSON generado por Postgres, gzip y AES-256-GCM con `RUKC_BACKUP_KEY` (distinta de `RUKC_DATA_KEY`), en el almacén privado de Blob. Se conservan 30 diarias y 12 mensuales. Se restaura con `npm run db:restaurar` en una rama nueva y vacía de Neon, con las migraciones aplicadas; se comparan los conteos por tabla.
+- **Consumo de Neon:** con la API (`compute_time_seconds` del proyecto) y un límite de 100 CU-horas al mes (plan Free; `NEON_LIMITE_CU_HORAS`). "Hoy" avisa al pasar el 70 %. Necesita una clave de la API de Neon con acceso solo al proyecto.
+- **Plazo de conservación (propuesta del diseño, a confirmar):** más de 12 meses sin actividad (inscripción, pago, mensaje, solicitud, firma o crédito) y nada pendiente. La lista solo propone; John confirma cada anonimización.
+- **Anonimización:** vacía nombre, contacto, notas y textos libres; borra los datos sensibles y la foto; revoca los consentimientos; deja los importes y las firmas (las aceptaciones no se tocan). Las solicitudes web no descartadas exigen un contacto, así que se quedan con `anonimizada@rukc.invalid`. No se anonimiza a quien tiene inscripciones activas.
+- **Exportación RGPD:** un JSON con todo lo de la persona, incluido su documento descifrado (es su dato). La descarga queda en `evento`. Solo el propietario.
+- **Documentos:** la pantalla solo deja pegar el texto revisado, anotar la fecha del abogado y activar; activar cierra la versión anterior y pide volver a firmar si el documento es obligatorio (misma lógica que `npm run db:documentos`, ahora en `lib/documentos.js`).
+- **Tests:** los de feedback y operación crean su propia temporada de prueba (en borrador) para no depender de los datos de desarrollo.
+
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
