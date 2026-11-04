@@ -1,9 +1,9 @@
 // Restaura una copia de seguridad (lib/copia.js) en una base de datos VACÍA con el esquema ya creado: una rama nueva
 // de Neon en la que se han aplicado las migraciones (npm run db:migrar con su cadena). Nunca contra producción ni
 // contra una base con datos: se niega si la tabla persona ya tiene filas.
-// Inserta las tablas en orden de dependencias con los triggers de usuario apagados (los de estados rechazarían
-// filas que no empiezan en su estado inicial), vuelve a encenderlos, pone las secuencias donde estaban y compara
-// los conteos con los de la copia.
+// En una sola transacción quita las claves foráneas (hay ciclos), inserta las tablas con los triggers de usuario
+// apagados (los de estados rechazarían filas que no empiezan en su estado inicial), vuelve a crear las claves (lo que
+// comprueba todas las referencias), enciende los triggers, pone las secuencias donde estaban y compara los conteos.
 // Uso: node --env-file=.env db/restaurar-copia.mjs <copia.rukc> <cadena de conexión del rol rukc_migraciones de la rama>
 // (o RESTAURAR_URL en vez del segundo argumento). Necesita RUKC_BACKUP_KEY.
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ async function orden(db, tablas) {
   const hechas = new Set();
   while (lista.length < tablas.length) {
     const listas = tablas.filter((t) => !hechas.has(t) && [...deps.get(t)].every((m) => hechas.has(m)));
-    if (!listas.length) throw new Error(`Dependencias circulares entre: ${tablas.filter((t) => !hechas.has(t)).join(', ')}`);
+    if (!listas.length) { lista.push(...tablas.filter((t) => !hechas.has(t))); break; }   // ciclo: las claves se quitan antes de insertar
     for (const t of listas) { lista.push(t); hechas.add(t); }
   }
   return lista;
@@ -40,6 +40,12 @@ export async function restaurar(copia, url) {
     if (faltan.length) throw new Error(`Faltan tablas en el destino (¿migraciones sin aplicar?): ${faltan.join(', ')}`);
     const tablas = await orden(db, Object.keys(copia.tablas).filter((t) => !SALTAR.includes(t)));
     await q('BEGIN');
+    // Hay claves foráneas en ciclo (inscripción ↔ traslado, solicitud, pedido…), así que ningún orden de inserción
+    // vale: como pg_restore, se quitan dentro de la transacción y se vuelven a crear al final, lo que comprueba
+    // de nuevo todas las referencias de la copia.
+    const claves = (await q(`SELECT conrelid::regclass::text AS tabla, conname AS nombre, pg_get_constraintdef(oid) AS def
+      FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace`)).rows;
+    for (const k of claves) await q(`ALTER TABLE ${k.tabla} DROP CONSTRAINT ${ident(k.nombre)}`);
     // Los datos iniciales que creen las migraciones se sustituyen por los de la copia.
     for (const t of [...tablas].reverse()) {
       await q(`ALTER TABLE ${ident(t)} DISABLE TRIGGER USER`);
@@ -51,6 +57,7 @@ export async function restaurar(copia, url) {
         await q(`INSERT INTO ${ident(t)} SELECT * FROM json_populate_recordset(NULL::${ident(t)}, $1::json)`, [JSON.stringify(filas.slice(i, i + 500))]);
       }
     }
+    for (const k of claves) await q(`ALTER TABLE ${k.tabla} ADD CONSTRAINT ${ident(k.nombre)} ${k.def}`);
     for (const t of tablas) await q(`ALTER TABLE ${ident(t)} ENABLE TRIGGER USER`);
     for (const [s, v] of Object.entries(copia.secuencias ?? {})) {
       if (v != null) await q('SELECT setval($1::regclass, $2)', [`public.${ident(s)}`, v]);
