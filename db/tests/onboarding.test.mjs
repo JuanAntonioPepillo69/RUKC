@@ -177,6 +177,19 @@ test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la 
   assert.ok((await admin.panel('hoy')).grupo.some((x) => x.persona_id === adulto.persona), 'El panel avisa del grupo por aprobar');
 });
 
+test('Exportación con datos sensibles: el propietario recibe el documento completo y queda anotado', async () => {
+  const [{ codigo }] = await q('SELECT codigo FROM inscripcion WHERE id = $1', [adulto.inscripcion]);
+  const sin = Buffer.from(await admin.panel(`exportar/inscripciones?formato=csv&q=${codigo}`)).toString('utf8');
+  assert.ok(sin.includes(codigo) && !sin.includes('12345678Z'), 'Sin la casilla de sensibles no sale el documento');
+  const con = Buffer.from(await admin.panel(`exportar/inscripciones?formato=csv&q=${codigo}&sensibles=1&confirmo=1`)).toString('utf8');
+  const [cab, fila] = con.replace(/^﻿/, '').split('\r\n');
+  assert.ok(cab.includes('Tipo de documento') && cab.includes('Documento'), cab);
+  assert.ok(fila.includes(codigo) && fila.includes(';dni;12345678Z'), fila);
+  const [ev] = await q(`SELECT despues FROM evento WHERE accion = 'exportacion_sensible' ORDER BY ocurrido_en DESC LIMIT 1`);
+  assert.ok(ev.despues.columnas.includes('documento') && ev.despues.filas === 1, JSON.stringify(ev.despues));
+  assert.ok(!JSON.stringify(ev.despues).includes('12345678'), 'El historial no guarda el documento');
+});
+
 test('El enlace del grupo solo se muestra al piloto cuando está aprobado', async () => {
   await admin.panel('onboarding/enlace-grupo', { enlace: 'https://chat.whatsapp.com/PruebaGrupoRukc' });
   assert.equal((await ok(adulto.token, 'estado')).grupo.enlace, null);

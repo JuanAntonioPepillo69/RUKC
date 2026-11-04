@@ -138,7 +138,7 @@ export function crearLista(op: OpcionesLista) {
     p.delete('pagina');
     p.set('formato', formato);
     if (op.sensibles && sensibles.checked) {
-      if (!confirm('Vas a exportar datos sensibles (fecha de nacimiento y peso). Quedará registrado en el historial. ¿Seguir?')) return;
+      if (!confirm('Vas a exportar datos sensibles: fecha de nacimiento, peso y documento de identidad (completo solo para el propietario). Quedará registrado en el historial. ¿Seguir?')) return;
       p.set('sensibles', '1');
       p.set('confirmo', '1');
     }
