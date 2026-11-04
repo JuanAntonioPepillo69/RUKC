@@ -73,3 +73,38 @@ export async function whatsapp(datos: Record<string, string>) {
   const r = await accion(() => api<{ url: string }>('whatsapp', datos), 'Mensaje preparado y registrado.');
   if (r) window.open(r.url, '_blank', 'noopener');
 }
+
+export type Campo = { nombre: string; etiqueta: string; tipo?: 'text' | 'number' | 'date' | 'select' | 'textarea'; opciones?: [string, string][]; valor?: string; requerido?: boolean; ayuda?: string };
+
+/**
+ * Formulario en una ventana modal. Devuelve los valores (texto) o null si se cancela.
+ * Uso: const v = await formulario('Trasladar', [{ nombre: 'ronda', etiqueta: 'Ronda', tipo: 'select', opciones: [['id', 'R3']] }], 'Trasladar');
+ */
+export function formulario(titulo: string, campos: Campo[], boton = 'Aceptar', explicacion = ''): Promise<Record<string, string> | null> {
+  return new Promise((ok) => {
+    const dlg = h('dialog', { class: 'dlg' }) as HTMLDialogElement;
+    const form = h('form', { class: 'form' },
+      h('h2', { style: 'margin:0' }, titulo),
+      explicacion ? h('p', { class: 'sub' }, explicacion) : null,
+      ...campos.map((c) => h('label', { class: 'campo' }, c.etiqueta,
+        c.tipo === 'select' ? h('select', { name: c.nombre, required: c.requerido }, ...(c.opciones ?? []).map(([v, t]) => h('option', { value: v, selected: v === c.valor }, t)))
+          : c.tipo === 'textarea' ? h('textarea', { name: c.nombre, required: c.requerido }, c.valor ?? '')
+            : h('input', { name: c.nombre, type: c.tipo ?? 'text', value: c.valor ?? '', required: c.requerido, step: c.tipo === 'number' ? '0.01' : undefined }),
+        c.ayuda ? h('small', { class: 'sub' }, c.ayuda) : null)),
+      h('div', { class: 'acciones' }, h('button', { class: 'b b--oro', type: 'submit' }, boton), h('button', { class: 'b', type: 'button', onclick: () => dlg.close() }, 'Cancelar'))) as HTMLFormElement;
+    let enviado = false;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviado = true;
+      ok(Object.fromEntries(campos.map((c) => [c.nombre, ((form.elements.namedItem(c.nombre) as HTMLInputElement).value ?? '').trim()])));
+      dlg.close();
+    });
+    dlg.addEventListener('close', () => { if (!enviado) ok(null); dlg.remove(); });
+    dlg.append(form);
+    document.body.append(dlg);
+    dlg.showModal();
+  });
+}
+
+/** "12,50" → 1250 céntimos (o NaN). */
+export const aCentimos = (t: string) => Math.round(Number(String(t).replace(',', '.')) * 100);
