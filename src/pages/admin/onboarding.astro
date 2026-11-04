@@ -1,0 +1,85 @@
+---
+// Onboarding y grupo: enlace del grupo de la temporada, accesos al grupo por aprobar (aprobar, rechazar con motivo,
+// enviar el enlace por WhatsApp, marcar dentro), avisos de edad mínima del circuito y lista de onboardings
+// (reenviar el enlace, ver la foto).
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Onboarding y grupo" seccion="onboarding">
+  <section class="caja">
+    <h2>Enlace del grupo de pilotos <span class="n" id="temporada"></span></h2>
+    <p class="sub">Invitación al grupo de WhatsApp de la temporada. Solo se manda a pilotos aprobados. Activa en el grupo la aprobación de nuevos participantes, así un enlace reenviado no deja entrar a nadie sin tu visto bueno.</p>
+    <form class="form" id="enlace">
+      <label class="campo">Enlace <input name="enlace" type="url" placeholder="https://chat.whatsapp.com/..." /></label>
+      <button class="b" type="submit">Guardar enlace</button>
+    </form>
+  </section>
+  <section class="caja" id="edad" hidden></section>
+  <section class="caja" id="grupo"><p class="vacio">Cargando…</p></section>
+  <section class="caja"><h2>Onboardings</h2><div id="lista"></div></section>
+  <dialog class="dlg" id="dlg-foto">
+    <img id="foto" alt="Foto del piloto" style="max-width:100%;border-radius:12px" />
+    <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
+  </dialog>
+</Admin>
+
+<script>
+  import { api, accion, etiquetaEstado, fechaHora, h } from '../../scripts/admin/api';
+  import { crearLista } from '../../scripts/admin/lista';
+
+  const formEnlace = document.getElementById('enlace') as HTMLFormElement;
+  const caja = document.getElementById('grupo')!;
+  const edad = document.getElementById('edad')!;
+  const fila = (texto: string, sub: string, ...botones: (Node | null)[]) => h('div', { class: 'fila' }, h('div', { class: 'txt' }, h('span', {}, texto), h('span', { class: 'sub' }, sub)), h('div', { class: 'acciones' }, ...botones));
+  const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
+  const ficha = (id: string) => h('a', { class: 'b b--peq', href: `/admin/persona?id=${id}` }, 'Ficha');
+  const abrir = (url: string) => window.open(url, '_blank', 'noopener');
+
+  async function cargar() {
+    const d = await api('onboarding');
+    document.getElementById('temporada')!.textContent = d.temporada ?? '';
+    (formEnlace.elements.namedItem('enlace') as HTMLInputElement).value = d.enlace_grupo ?? '';
+    edad.hidden = !d.edad.length;
+    edad.replaceChildren(h('h2', {}, 'Edad mínima del circuito', h('span', { class: 'n' }, String(d.edad.length))),
+      ...d.edad.map((e: any) => fila(e.piloto, `R${e.ronda} · ${e.circuito}: tendrá ${e.edad_en_ronda} años y el mínimo es ${e.edad_minima}`, ficha(e.persona_id))));
+    const pendientes = d.grupo.filter((g: any) => g.estado === 'pendiente_aprobacion').length;
+    caja.replaceChildren(h('h2', {}, 'Acceso al grupo', h('span', { class: 'n' }, String(pendientes))),
+      ...(d.grupo.length ? d.grupo.map((g: any) => fila(g.piloto, `${g.telefono ?? 'sin teléfono'} · pedido ${fechaHora(g.solicitado_en)}${g.motivo_rechazo ? ` · ${g.motivo_rechazo}` : ''}`,
+        etiquetaEstado(g.estado),
+        g.estado === 'pendiente_aprobacion' ? boton('Aprobar', async () => { if (await accion(() => api(`grupo/${g.id}/aprobar`, {}), 'Acceso aprobado.')) cargar(); }, 'b b--peq b--oro') : null,
+        g.estado === 'pendiente_aprobacion' ? boton('Rechazar', async () => {
+          const motivo = prompt('Motivo del rechazo (obligatorio):');
+          if (motivo && await accion(() => api(`grupo/${g.id}/rechazar`, { motivo }), 'Acceso rechazado.')) cargar();
+        }, 'b b--peq b--peligro') : null,
+        g.estado === 'rechazado' ? boton('Volver a revisar', async () => { if (await accion(() => api(`grupo/${g.id}/reabrir`, {}))) cargar(); }) : null,
+        ['aprobado', 'enlace_enviado'].includes(g.estado) ? boton(g.estado === 'aprobado' ? 'Enviar enlace' : 'Reenviar enlace', async () => {
+          const r = await accion(() => api<{ url: string }>(`grupo/${g.id}/enviar`, {}), 'Mensaje preparado y registrado.');
+          if (r) { abrir(r.url); cargar(); }
+        }, 'b b--peq b--oro') : null,
+        ['aprobado', 'enlace_enviado'].includes(g.estado) ? boton('Ya está dentro', async () => { if (await accion(() => api(`grupo/${g.id}/dentro`, {}), 'Marcado dentro del grupo.')) cargar(); }) : null,
+        ficha(g.persona_id)))
+        : [h('p', { class: 'vacio' }, 'Nadie pendiente de entrar al grupo.')]));
+  }
+
+  formEnlace.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const enlace = (formEnlace.elements.namedItem('enlace') as HTMLInputElement).value.trim() || null;
+    await accion(() => api('onboarding/enlace-grupo', { enlace }), 'Enlace guardado.');
+  });
+
+  const dlg = document.getElementById('dlg-foto') as HTMLDialogElement;
+  crearLista({
+    vista: 'onboarding',
+    contenedor: document.getElementById('lista')!,
+    alPulsar: (f) => { location.href = `/admin/persona?id=${f.persona_id}`; },
+    acciones: (f) => h('span', { class: 'acciones' },
+      f.estado !== 'completado' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
+        const r = await accion(() => api<{ url: string }>(`onboarding/${f.id}/enlace`, {}), 'Enlace nuevo preparado. El anterior ya no vale.');
+        if (r) abrir(r.url);
+      } }, 'Reenviar enlace') : null,
+      f.tiene_foto ? h('button', { class: 'b b--peq', type: 'button', onclick: () => {
+        (document.getElementById('foto') as HTMLImageElement).src = `/api/admin/personas/${f.persona_id}/foto`;
+        dlg.showModal();
+      } }, 'Ver foto') : null),
+  });
+  cargar().catch(() => {});
+</script>

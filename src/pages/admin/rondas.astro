@@ -1,6 +1,7 @@
 ---
 // Rondas: calendario con la parrilla por categoría, interruptores de inscripción, aplazar o volver a programar,
-// lista para el circuito y cobro en el circuito en un toque.
+// lista para el circuito, cobro en el circuito en un toque y acreditación (asistió o no presentado; asistió exige
+// onboarding completado o un motivo de excepción).
 import Admin from '../../layouts/Admin.astro';
 ---
 <Admin titulo="Rondas" seccion="rondas">
@@ -8,6 +9,11 @@ import Admin from '../../layouts/Admin.astro';
   <dialog class="dlg" id="cobros">
     <h2 style="margin-top:0">Cobro en circuito</h2>
     <div id="cobros-lista"></div>
+    <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
+  </dialog>
+  <dialog class="dlg" id="acreditacion">
+    <h2 style="margin-top:0">Acreditación</h2>
+    <div id="acreditacion-lista"></div>
     <form method="dialog"><button class="b" style="margin-top:12px">Cerrar</button></form>
   </dialog>
 </Admin>
@@ -40,6 +46,34 @@ import Admin from '../../layouts/Admin.astro';
     dlg.showModal();
   }
 
+  const dlgAcr = document.getElementById('acreditacion') as HTMLDialogElement;
+  async function abrirAcreditacion(r: any) {
+    const lista = document.getElementById('acreditacion-lista')!;
+    const marcar = async (i: any, estado: string) => {
+      let motivo: string | undefined;
+      if (estado === 'asistio' && i.onboarding !== 'completado') {
+        motivo = prompt(`${i.piloto} no ha completado el onboarding. Motivo de la excepción (obligatorio):`) ?? '';
+        if (!motivo.trim()) return;
+      }
+      if (await accion(() => api(`inscripciones/${i.id}/asistencia`, { estado, motivo }), estado === 'asistio' ? 'Marcado: asistió.' : 'Marcado: no presentado.')) pintar();
+    };
+    const pintar = async () => {
+      const d = await api(`rondas/${r.id}/acreditacion`);
+      lista.replaceChildren(h('p', { class: 'sub' }, `R${r.numero} · ${r.circuito}`),
+        ...(d.inscripciones.length ? d.inscripciones.map((i: any) => h('div', { class: 'fila' },
+          h('div', { class: 'txt' }, h('span', {}, `${i.dorsal ? `#${i.dorsal} ` : ''}${i.piloto}`),
+            h('span', { class: 'sub' }, `${i.categoria ?? '-'} · onboarding ${(i.onboarding ?? 'sin empezar').replace('_', ' ')}${i.saldo_cent > 0 ? ` · debe ${euros(i.saldo_cent)}` : ''}${i.motivo ? ` · ${i.motivo}` : ''}`)),
+          h('div', { class: 'acciones' },
+            ['asistio', 'no_presentado'].includes(i.estado) ? etiquetaEstado(i.estado) : null,
+            i.estado === 'pendiente_pago' ? h('span', { class: 'sub' }, 'Sin pago confirmado') : null,
+            ['reservada', 'pagada'].includes(i.estado) ? h('button', { class: 'b b--peq b--oro', type: 'button', onclick: () => marcar(i, 'asistio') }, 'Asistió') : null,
+            ['reservada', 'pagada'].includes(i.estado) ? h('button', { class: 'b b--peq', type: 'button', onclick: () => marcar(i, 'no_presentado') }, 'No presentado') : null)))
+          : [h('p', { class: 'vacio' }, 'No hay inscritos en esta ronda.')]));
+    };
+    await pintar();
+    dlgAcr.showModal();
+  }
+
   async function cargar() {
     const d = await api('rondas');
     raiz.replaceChildren(...d.rondas.map((r: any) => h('section', { class: 'caja' },
@@ -53,6 +87,7 @@ import Admin from '../../layouts/Admin.astro';
         }, e === 'lista_espera' ? 'Lista de espera' : e === 'abierta' ? 'Abrir' : 'Cerrar'))))),
       h('div', { class: 'acciones' },
         h('button', { class: 'b b--peq', type: 'button', onclick: () => abrirCobros(r) }, 'Cobro en circuito'),
+        h('button', { class: 'b b--peq', type: 'button', onclick: () => abrirAcreditacion(r) }, 'Acreditación'),
         h('a', { class: 'b b--peq', href: `/api/admin/exportar/circuito?formato=xlsx&f=${encodeURIComponent(JSON.stringify([{ c: 'ronda', op: 'eq', v: r.numero }]))}` }, 'Lista para el circuito'),
         r.estado === 'programada' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
           const f = prompt('Nueva fecha (AAAA-MM-DD):', r.fecha);

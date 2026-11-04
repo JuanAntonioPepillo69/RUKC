@@ -6,6 +6,7 @@ import { hoy } from '../lib/panel/hoy.js';
 import * as listas from '../lib/panel/listas.js';
 import * as acciones from '../lib/panel/acciones.js';
 import * as ventas from '../lib/panel/ventas.js';
+import * as onboarding from '../lib/panel/onboarding.js';
 
 const RUTAS = [
   ['GET', 'yo', ({ admin }) => ({ admin })],
@@ -47,6 +48,18 @@ const RUTAS = [
   ['POST', 'pagos/:id/factura', ventas.anotarFactura],
   ['POST', 'solicitudes/:id/confirmar-bizum', ventas.confirmarBizumWeb],
   ['POST', 'solicitudes/:id/rechazar-bizum', ventas.rechazarBizumWeb],
+  // Onboarding y grupo (F5), foto del piloto y acreditación
+  ['GET', 'onboarding', onboarding.resumen],
+  ['POST', 'onboarding/enlace-grupo', onboarding.guardarEnlaceGrupo, ['propietario']],
+  ['POST', 'onboarding/:id/enlace', onboarding.reenviarEnlace],
+  ['POST', 'grupo/:id/aprobar', onboarding.aprobarGrupo],
+  ['POST', 'grupo/:id/rechazar', onboarding.rechazarGrupo],
+  ['POST', 'grupo/:id/reabrir', onboarding.reabrirGrupo],
+  ['POST', 'grupo/:id/enviar', onboarding.enviarGrupo],
+  ['POST', 'grupo/:id/dentro', onboarding.marcarDentro],
+  ['GET', 'personas/:id/foto', onboarding.foto],
+  ['GET', 'rondas/:id/acreditacion', onboarding.acreditacion],
+  ['POST', 'inscripciones/:id/asistencia', onboarding.asistencia],
   // Ajustes
   ['GET', 'entidad', acciones.entidad],
   ['POST', 'entidad', acciones.guardarEntidad, ['propietario']],

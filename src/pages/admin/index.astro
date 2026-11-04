@@ -36,7 +36,8 @@ import Admin from '../../layouts/Admin.astro';
         boton('WhatsApp', () => whatsapp({ tipo: 'lead', persona_id: l.persona_id }))))),
       caja('Próxima ronda', proxima ? `R${proxima.ronda}` : '-', ...(d.proxima ?? []).map((p: any) => fila(`${p.categoria}: ${p.inscritos}/${p.plazas}`, `${p.circuito} · inscripción ${p.estado_cupo.replace('_', ' ')} · ${p.pagados} pagados`))),
       caja('Onboarding pendiente', d.onboarding.length, ...d.onboarding.slice(0, 15).map((o: any) => fila(o.piloto, `${o.estado.replace('_', ' ')}${o.menor ? ' · menor' : ''}`, ficha(o.persona_id)))),
-      caja('Grupo por aprobar', d.grupo.length, ...d.grupo.map((g: any) => fila(g.piloto, fechaHora(g.solicitado_en), ficha(g.persona_id)))),
+      caja('Grupo por aprobar', d.grupo.length, ...d.grupo.map((g: any) => fila(g.piloto, fechaHora(g.solicitado_en), h('a', { class: 'b b--peq b--oro', href: '/admin/onboarding' }, 'Revisar')))),
+      ...(d.edad.length ? [caja('Edad mínima del circuito', d.edad.length, ...d.edad.map((e: any) => fila(e.piloto, `R${e.ronda} · ${e.circuito}: tendrá ${e.edad_en_ronda} años y el mínimo es ${e.edad_minima}`, ficha(e.persona_id))))] : []),
       caja('Feedback', `${d.feedback.por_enviar + d.feedback.sin_responder}`, fila('Por enviar', String(d.feedback.por_enviar)), fila('Sin responder', String(d.feedback.sin_responder))),
       caja('Sobrecupo', d.sobrecupo.length, ...d.sobrecupo.map((s: any) => fila(`R${s.ronda} · ${s.categoria}`, `${s.inscritos} inscritos para ${s.plazas} plazas`))),
     );
