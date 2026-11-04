@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { activar } from '../lib/documentos.js';
 
 export const VERSION = 'reglamento-v1.1';
 export const REVISADO_ABOGADO = '2026-11-04';
@@ -75,7 +76,7 @@ export function documentos(html = fs.readFileSync(RUTA, 'utf8')) {
 /** Carga y activa los documentos con el cliente `c` dentro de una transacción. Devuelve un resumen por tipo. */
 export async function cargarDocumentos(c) {
   const resumen = [];
-  const nuevos = [];
+  let requieren = 0;
   for (const d of documentos()) {
     const hash = crypto.createHash('sha256').update(d.texto).digest('hex');
     const { rows: [ya] } = await c.query('SELECT id, hash_sha256, vigente_desde FROM documento_legal WHERE tipo = $1 AND version = $2', [d.tipo, VERSION]);
@@ -89,18 +90,11 @@ export async function cargarDocumentos(c) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, 'sistema') RETURNING id`, [d.tipo, VERSION, d.titulo, d.texto, d.obligatorio, d.revocable, REVISADO_ABOGADO]));
     }
     if (ya?.vigente_desde) { resumen.push(`${d.tipo}: ya vigente`); continue; }
-    const cerradas = await c.query(`UPDATE documento_legal SET vigente_hasta = now()
-      WHERE tipo = $1 AND id <> $2 AND vigente_desde IS NOT NULL AND (vigente_hasta IS NULL OR vigente_hasta > now()) RETURNING version`, [d.tipo, id]);
-    await c.query('UPDATE documento_legal SET vigente_desde = now() WHERE id = $1', [id]);
-    if (d.obligatorio) nuevos.push(id);
-    resumen.push(`${d.tipo}: activado ${VERSION} (${d.texto.length} caracteres)${cerradas.rowCount ? `, cierra ${cerradas.rows.map((r) => r.version).join(', ')}` : ''}`);
+    const a = await activar(c, id);
+    requieren += a.requieren_firma;
+    resumen.push(`${d.tipo}: activado ${VERSION} (${d.texto.length} caracteres)${a.cerradas.length ? `, cierra ${a.cerradas.join(', ')}` : ''}`);
   }
-  if (nuevos.length) {
-    const r = await c.query(`UPDATE onboarding o SET estado = 'requiere_actualizacion' WHERE o.estado = 'completado'
-      AND EXISTS (SELECT 1 FROM unnest($1::uuid[]) d(id) WHERE NOT EXISTS (
-        SELECT 1 FROM aceptacion a WHERE a.persona_id = o.persona_id AND a.documento_legal_id = d.id AND a.revocada_en IS NULL))`, [nuevos]);
-    resumen.push(`onboardings completados que tienen que firmar la versión nueva: ${r.rowCount}`);
-  }
+  if (resumen.some((l) => l.includes('activado'))) resumen.push(`onboardings completados que tienen que firmar la versión nueva: ${requieren}`);
   return resumen;
 }
 

@@ -1,0 +1,68 @@
+---
+// Documentos legales: versiones por tipo, fecha de revisión del abogado y activación. Los textos los redacta y revisa
+// el abogado; aquí solo se pegan. Una versión activada o ya aceptada no se edita: se crea otra. Al activar una
+// versión obligatoria del onboarding, quien ya lo había completado tiene que volver a firmar.
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="Documentos" seccion="documentos">
+  <section class="caja">
+    <h2>Versiones <button class="b b--peq" type="button" id="nueva">Nueva versión</button></h2>
+    <p class="sub">Solo se puede activar una versión con la fecha en que la revisó el abogado. Al activarla se cierra la anterior del mismo tipo.</p>
+    <div id="lista"><p class="vacio">Cargando…</p></div>
+  </section>
+</Admin>
+
+<script>
+  import { api, accion, aviso, fecha, fechaHora, formulario, h } from '../../scripts/admin/api';
+
+  const NOMBRES: Record<string, string> = {
+    reglamento: 'Reglamento', asuncion_riesgos: 'Asunción de riesgos', cesion_imagen: 'Imagen y vídeo', consentimiento_peso: 'Consentimiento de peso',
+    privacidad: 'Política de privacidad', condiciones_reserva: 'Condiciones de la reserva', aviso_borradores: 'Aviso de borradores',
+  };
+  const lista = document.getElementById('lista')!;
+  const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
+
+  async function editor(base: any | null, editar = false) {
+    const v = await formulario(editar ? `Editar ${base.version}` : 'Nueva versión', [
+      { nombre: 'tipo', etiqueta: 'Documento', tipo: 'select', opciones: Object.entries(NOMBRES), valor: base?.tipo },
+      { nombre: 'version', etiqueta: 'Versión', valor: editar ? base.version : '', requerido: true, ayuda: 'Por ejemplo, v2 o reglamento-v1.2.' },
+      { nombre: 'titulo', etiqueta: 'Título', valor: base?.titulo ?? '', requerido: true },
+      { nombre: 'contenido_md', etiqueta: 'Texto completo', tipo: 'textarea', valor: base?.contenido_md ?? '', requerido: true, ayuda: 'El texto revisado por el abogado, tal cual. Admite **negrita**, listas con "- " y títulos con "## ".' },
+      { nombre: 'obligatorio_onboarding', etiqueta: '¿Se firma en el onboarding?', tipo: 'select', opciones: [['true', 'Sí'], ['false', 'No']], valor: String(base?.obligatorio_onboarding ?? false) },
+      { nombre: 'revocable', etiqueta: '¿Se puede retirar después?', tipo: 'select', opciones: [['false', 'No'], ['true', 'Sí (imagen, peso)']], valor: String(base?.revocable ?? false) },
+    ], 'Guardar', editar ? '' : 'Se guarda sin activar. Después anota la fecha de revisión del abogado y actívala.');
+    if (!v) return;
+    const cuerpo = { ...v, obligatorio_onboarding: v.obligatorio_onboarding === 'true', revocable: v.revocable === 'true' };
+    if (await accion(() => api(editar ? `documentos/${base.id}` : 'documentos', cuerpo), 'Versión guardada.')) cargar();
+  }
+
+  async function cargar() {
+    const d = await api('documentos');
+    const porTipo = new Map<string, any[]>();
+    for (const x of d.documentos) porTipo.set(x.tipo, [...(porTipo.get(x.tipo) ?? []), x]);
+    lista.replaceChildren(...Object.keys(NOMBRES).filter((t) => porTipo.has(t)).map((t) => h('div', { class: 'caja' },
+      h('h2', {}, NOMBRES[t]),
+      ...porTipo.get(t)!.map((x: any) => h('div', { class: 'fila' },
+        h('div', { class: 'txt' },
+          h('span', {}, `${x.version}${x.vigente ? ' · VIGENTE' : ''}`),
+          h('span', { class: 'sub' }, [x.titulo, `${x.caracteres} caracteres`, x.obligatorio_onboarding ? 'se firma en el onboarding' : null,
+            x.revisado_abogado_en ? `revisado por el abogado el ${fecha(x.revisado_abogado_en)}` : 'SIN revisión del abogado',
+            x.vigente_desde ? `vigente desde ${fechaHora(x.vigente_desde)}` : null, x.vigente_hasta ? `hasta ${fechaHora(x.vigente_hasta)}` : null,
+            `${x.aceptaciones} aceptaciones`].filter(Boolean).join(' · '))),
+        h('div', { class: 'acciones' },
+          !x.vigente_desde && !x.aceptaciones ? boton('Editar', async () => editor((await api(`documentos/${x.id}`)).documento, true)) : null,
+          boton('Nueva versión desde esta', async () => editor((await api(`documentos/${x.id}`)).documento)),
+          !x.vigente_desde ? boton(x.revisado_abogado_en ? 'Cambiar fecha del abogado' : 'Fecha del abogado', async () => {
+            const v = await formulario('Revisión del abogado', [{ nombre: 'fecha', etiqueta: 'Fecha en que la revisó', tipo: 'date', valor: x.revisado_abogado_en ?? '', requerido: true }], 'Guardar');
+            if (v && await accion(() => api(`documentos/${x.id}/revision`, { revisado_abogado_en: v.fecha }), 'Fecha guardada.')) cargar();
+          }) : null,
+          !x.vigente_desde && x.revisado_abogado_en ? boton('Activar', async () => {
+            if (!confirm(`¿Activar ${x.version} de ${NOMBRES[t]}? Sustituye a la vigente${x.obligatorio_onboarding ? ' y quien ya completó el onboarding tendrá que volver a firmar' : ''}.`)) return;
+            const r = await accion(() => api<any>(`documentos/${x.id}/activar`, {}), '');
+            if (r) { aviso(`Activada.${r.requieren_firma ? ` ${r.requieren_firma} pilotos tienen que volver a firmar.` : ''}`); cargar(); }
+          }, 'b b--peq b--oro') : null))))));
+  }
+
+  document.getElementById('nueva')!.addEventListener('click', () => editor(null));
+  cargar().catch(() => {});
+</script>

@@ -1,0 +1,64 @@
+---
+// RGPD: solicitudes de derechos con su plazo de un mes, exportar todo lo de una persona, anonimizar, y la lista de
+// personas con el plazo de conservación vencido (nadie se anonimiza sin confirmarlo aquí).
+import Admin from '../../layouts/Admin.astro';
+---
+<Admin titulo="RGPD" seccion="rgpd">
+  <section class="caja">
+    <h2>Solicitudes <button class="b b--peq" type="button" id="nueva">Registrar solicitud</button></h2>
+    <p class="sub">Plazo de respuesta: un mes desde que llega. Acceso y portabilidad: exporta sus datos desde aquí o desde su ficha. Supresión: anonimiza.</p>
+    <div id="solicitudes"><p class="vacio">Cargando…</p></div>
+  </section>
+  <section class="caja">
+    <h2>Plazo de conservación vencido</h2>
+    <p class="sub">Personas sin ninguna actividad en más de 12 meses y sin nada pendiente (propuesta del diseño: mientras participa + 1 temporada). Al anonimizar se vacían sus datos personales, se borran sus datos sensibles y su foto, y se conservan los importes y las firmas.</p>
+    <div id="candidatos"></div>
+  </section>
+</Admin>
+
+<script>
+  import { api, accion, fecha, formulario, h } from '../../scripts/admin/api';
+  import { anonimizar, exportar } from '../../scripts/admin/rgpd';
+
+  const TIPOS: Record<string, string> = { acceso: 'Acceso', rectificacion: 'Rectificación', supresion: 'Supresión', oposicion: 'Oposición', limitacion: 'Limitación', portabilidad: 'Portabilidad', retirada_consentimiento: 'Retirada de consentimiento' };
+  const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
+
+  async function cargar() {
+    const d = await api('rgpd');
+    document.getElementById('solicitudes')!.replaceChildren(...(d.solicitudes.length ? d.solicitudes.map((s: any) => h('div', { class: 'fila' },
+      h('div', { class: 'txt' }, h('span', {}, `${TIPOS[s.tipo]} · ${s.persona ?? s.contacto}`),
+        h('span', { class: 'sub' }, s.estado === 'pendiente'
+          ? `Recibida ${fecha(s.recibida_en)} · vence ${fecha(s.vence_en)}${s.dias <= 7 ? ` · ${s.dias < 0 ? 'VENCIDA' : `quedan ${s.dias} días`}` : ''}`
+          : `${s.estado} · ${s.resolucion}`)),
+      h('div', { class: 'acciones' },
+        s.persona_id ? h('a', { class: 'b b--peq', href: `/admin/persona?id=${s.persona_id}` }, 'Ficha') : null,
+        s.persona_id && s.estado === 'pendiente' && ['acceso', 'portabilidad'].includes(s.tipo) ? boton('Exportar datos', () => exportar(s.persona_id)) : null,
+        s.persona_id && s.estado === 'pendiente' && s.tipo === 'supresion' ? boton('Anonimizar', async () => { if (await anonimizar(s.persona_id, s.persona)) cargar(); }, 'b b--peq b--peligro') : null,
+        s.estado === 'pendiente' ? boton('Cerrar', async () => {
+          const v = await formulario('Cerrar la solicitud', [
+            { nombre: 'estado', etiqueta: 'Resultado', tipo: 'select', opciones: [['resuelta', 'Resuelta'], ['rechazada', 'Rechazada']] },
+            { nombre: 'resolucion', etiqueta: 'Qué se hizo y cuándo se respondió', tipo: 'textarea', requerido: true }], 'Cerrar');
+          if (v && await accion(() => api(`rgpd/${s.id}/resolver`, v), 'Solicitud cerrada.')) cargar();
+        }, 'b b--peq b--oro') : null)))
+      : [h('p', { class: 'vacio' }, 'Ninguna solicitud.')]));
+    document.getElementById('candidatos')!.replaceChildren(...(d.candidatos.length ? d.candidatos.map((p: any) => h('div', { class: 'fila' },
+      h('div', { class: 'txt' }, h('span', {}, p.persona), h('span', { class: 'sub' }, `${p.telefono ?? p.email ?? ''} · última actividad ${fecha(p.ultima_actividad)}`)),
+      h('div', { class: 'acciones' }, h('a', { class: 'b b--peq', href: `/admin/persona?id=${p.id}` }, 'Ficha'),
+        boton('Anonimizar', async () => { if (await anonimizar(p.id, p.persona)) cargar(); }, 'b b--peq b--peligro'))))
+      : [h('p', { class: 'vacio' }, 'Nadie con el plazo vencido.')]));
+  }
+
+  document.getElementById('nueva')!.addEventListener('click', async () => {
+    const v = await formulario('Registrar solicitud', [
+      { nombre: 'tipo', etiqueta: 'Derecho', tipo: 'select', opciones: Object.entries(TIPOS) },
+      { nombre: 'contacto', etiqueta: 'Quién la pide (teléfono o email)', requerido: true },
+      { nombre: 'recibida_en', etiqueta: 'Fecha en que llegó', tipo: 'date', valor: new Date().toISOString().slice(0, 10) },
+    ], 'Registrar', 'Si la persona está en la base de datos, se une sola por su teléfono o email.');
+    if (!v) return;
+    const busca = await api(`buscar-personas?q=${encodeURIComponent(v.contacto)}`);
+    const persona = busca.personas.length === 1 ? busca.personas[0].id : null;
+    if (await accion(() => api('rgpd', { tipo: v.tipo, contacto: v.contacto, recibida_en: v.recibida_en || undefined, persona_id: persona }),
+      persona ? 'Solicitud registrada y unida a su ficha.' : 'Solicitud registrada (no se ha encontrado una ficha con ese contacto).')) cargar();
+  });
+  cargar().catch(() => {});
+</script>
