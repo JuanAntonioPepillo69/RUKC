@@ -1,0 +1,196 @@
+---
+// Feedback post-carrera (F6). Se abre con el enlace personal /feedback/<token> (vercel.json reescribe esa ruta a esta
+// página). La página no lleva datos: lee el token de la dirección y lo manda a /api/feedback/* en la cabecera
+// Authorization. Las preguntas salen de la plantilla del envío. Sin indexar, sin referrer, sin píxel ni scripts de
+// terceros (no usa Base.astro).
+import '../styles/global.css';
+import { whatsappUrl } from '../config/site.js';
+
+const ayuda = whatsappUrl('Hola, tengo un problema con el enlace del feedback.');
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <title>Feedback · RUKC</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+</head>
+<body>
+  <header class="fb-cab wrap">
+    <img src="/brand/escudo-96.webp" width="36" height="34" alt="" />
+    <div><p class="eyebrow" id="temporada">RUKC</p><p class="fb-cab__t">Feedback de la carrera</p></div>
+  </header>
+
+  <main class="fb wrap">
+    <p class="fb-sub" id="carga">Cargando…</p>
+
+    <section class="card" id="invalido" hidden>
+      <h1 class="fb-h">Este enlace no es válido</h1>
+      <p>Puede que haya caducado o que te hayamos mandado uno nuevo. Si quieres contarnos algo, escríbenos por WhatsApp.</p>
+      <a class="btn btn--gold card__btn" href={ayuda} target="_blank" rel="noopener">Escribir por WhatsApp</a>
+    </section>
+
+    <section class="card" id="gracias" hidden>
+      <p class="eyebrow">Respuestas enviadas</p>
+      <h1 class="fb-h">Gracias</h1>
+      <p>Lo leemos todo. Nos vemos en la próxima ronda.</p>
+    </section>
+
+    <form class="card" id="form" novalidate hidden>
+      <h1 class="fb-h" id="titulo"></h1>
+      <p class="fb-sub" id="intro"></p>
+      <div id="preguntas" class="fb-preguntas"></div>
+      <p class="card__err" id="error" role="alert"></p>
+      <button class="btn btn--gold card__btn" type="submit" id="enviar">Enviar respuestas</button>
+    </form>
+  </main>
+
+  <script>
+    const token = (location.pathname.match(/^\/feedback\/([\w-]{20,100})$/) || [])[1] || '';
+    const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
+    type Pregunta = { id: string; tipo: string; texto: string; obligatoria: boolean; opciones?: string[] };
+    let preguntas: Pregunta[] = [];
+
+    const mostrar = (id: string) => { for (const x of ['carga', 'invalido', 'gracias', 'form']) $(`#${x}`).hidden = x !== id; };
+
+    async function api(ruta: string, cuerpo?: unknown) {
+      const res = await fetch(`/api/feedback/${ruta}`, {
+        method: cuerpo === undefined ? 'GET' : 'POST',
+        headers: { Authorization: `Bearer ${token}`, ...(cuerpo === undefined ? {} : { 'Content-Type': 'application/json' }) },
+        body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+        referrerPolicy: 'no-referrer',
+      });
+      const datos = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(datos.error || 'No se han podido enviar. Inténtalo de nuevo.'), { status: res.status, campo: datos.campo });
+      return datos;
+    }
+
+    const el = (tag: string, props: Record<string, any> = {}, ...hijos: (Node | string)[]) => {
+      const e = Object.assign(document.createElement(tag), props);
+      e.append(...hijos);
+      return e;
+    };
+
+    function pintar() {
+      const c = $('#preguntas');
+      c.replaceChildren(...preguntas.map((p) => {
+        const caja = el('fieldset', { className: 'fb-p' });
+        caja.dataset.id = p.id;
+        caja.append(el('legend', {}, p.texto, p.obligatoria ? '' : el('small', {}, ' (opcional)')));
+        if (p.tipo === 'escala_0_10' || p.tipo === 'escala_1_5') {
+          const [min, max] = p.tipo === 'escala_0_10' ? [0, 10] : [1, 5];
+          const fila = el('div', { className: `fb-escala fb-escala--${max - min + 1}` });
+          for (let n = min; n <= max; n++) fila.append(el('label', {}, el('input', { type: 'radio', name: p.id, value: String(n) }), el('span', {}, String(n))));
+          caja.append(fila);
+          caja.append(el('p', { className: 'fb-extremos' }, el('span', {}, 'Muy mal'), el('span', {}, 'Muy bien')));
+        } else if (p.tipo === 'opcion_unica' || p.tipo === 'opcion_multiple') {
+          for (const o of p.opciones ?? []) {
+            caja.append(el('label', { className: 'check' }, el('input', { type: p.tipo === 'opcion_unica' ? 'radio' : 'checkbox', name: p.id, value: o }), el('span', {}, o)));
+          }
+        } else {
+          caja.append(el('textarea', { name: p.id, rows: 4, maxLength: 2000, className: 'fb-texto' }));
+        }
+        return caja;
+      }));
+    }
+
+    function respuestas() {
+      const f = $<HTMLFormElement>('#form');
+      const r: Record<string, unknown> = {};
+      for (const p of preguntas) {
+        if (p.tipo === 'opcion_multiple') {
+          const v = [...f.querySelectorAll<HTMLInputElement>(`input[name="${p.id}"]:checked`)].map((x) => x.value);
+          if (v.length) r[p.id] = v;
+        } else if (p.tipo === 'texto') {
+          const v = (f.elements.namedItem(p.id) as HTMLTextAreaElement).value.trim();
+          if (v) r[p.id] = v;
+        } else {
+          const v = f.querySelector<HTMLInputElement>(`input[name="${p.id}"]:checked`)?.value;
+          if (v != null) r[p.id] = p.tipo.startsWith('escala') ? Number(v) : v;
+        }
+      }
+      return r;
+    }
+
+    $('#form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const b = $<HTMLButtonElement>('#enviar');
+      const r = respuestas();
+      const falta = preguntas.find((p) => p.obligatoria && r[p.id] == null);
+      $('#error').textContent = '';
+      if (falta) {
+        $('#error').textContent = `Responde: «${falta.texto}»`;
+        document.querySelector(`[data-id="${falta.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      b.disabled = true;
+      try {
+        await api('responder', { respuestas: r });
+        mostrar('gracias');
+        window.scrollTo({ top: 0 });
+      } catch (err: any) {
+        if (err.status === 404) return mostrar('invalido');
+        if (err.status === 409) return mostrar('gracias');
+        $('#error').textContent = err.message;
+      } finally { b.disabled = false; }
+    });
+
+    (async () => {
+      if (!token) return mostrar('invalido');
+      try {
+        const d = await api('estado');
+        $('#temporada').textContent = `RUKC · ${d.ronda.temporada}`;
+        if (d.respondido) return mostrar('gracias');
+        preguntas = d.preguntas;
+        $('#titulo').textContent = `¿Qué tal la R${d.ronda.numero}, ${d.nombre}?`;
+        $('#intro').textContent = `${d.ronda.circuito}. Son un par de minutos. Tus respuestas solo las lee el equipo de RUKC.`;
+        pintar();
+        mostrar('form');
+      } catch (err: any) {
+        if (err.status === 404) return mostrar('invalido');
+        $('#carga').textContent = err.message;
+      }
+    })();
+  </script>
+</body>
+</html>
+
+<style>
+  .fb-cab { display: flex; align-items: center; gap: 12px; padding-top: 20px; padding-bottom: 8px; }
+  .fb-cab .eyebrow { font-size: 11px; }
+  .fb-cab__t { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+  .fb { max-width: 640px; display: grid; gap: 16px; padding-top: 8px; padding-bottom: 64px; }
+  .fb-h { font-size: clamp(26px, 6vw, 34px); font-weight: 900; }
+  .fb-sub { margin: 0; font-size: 14px; color: var(--muted); }
+  .fb-sub[hidden] { display: none; }
+  .card { display: grid; gap: 18px; padding: clamp(20px, 4vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); min-width: 0; }
+  .card[hidden] { display: none; }
+  .card p { margin: 0; }
+  .card__btn { width: 100%; border: 0; cursor: pointer; text-align: center; }
+  .card__btn:disabled { opacity: 0.6; cursor: progress; }
+  .card__err { color: #ff6b6b; font-size: 14px; }
+  .card__err:empty { display: none; }
+  .fb-preguntas { display: grid; gap: 26px; }
+  .fb-preguntas :global(.fb-p) { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 10px; }
+  .fb-preguntas :global(legend) { padding: 0; margin-bottom: 10px; font-weight: 600; font-size: 16px; line-height: 1.4; }
+  .fb-preguntas :global(legend small) { font-weight: 400; color: var(--muted); }
+  .fb-preguntas :global(.fb-escala) { display: grid; gap: 6px; }
+  .fb-preguntas :global(.fb-escala--11) { grid-template-columns: repeat(11, minmax(0, 1fr)); }
+  .fb-preguntas :global(.fb-escala--5) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .fb-preguntas :global(.fb-escala label) { position: relative; }
+  .fb-preguntas :global(.fb-escala input) { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .fb-preguntas :global(.fb-escala span) { display: grid; place-items: center; min-height: 44px; border-radius: 10px; border: 1px solid rgba(246, 243, 236, 0.18); font-weight: 700; font-size: 15px; }
+  .fb-preguntas :global(.fb-escala input:checked + span) { border-color: var(--gold); background: var(--grad-gold); color: #0a0a0b; }
+  .fb-preguntas :global(.fb-escala input:focus-visible + span) { box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.35); }
+  .fb-preguntas :global(.fb-extremos) { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .fb-preguntas :global(.check) { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; line-height: 1.5; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.12); cursor: pointer; }
+  .fb-preguntas :global(.check:has(input:checked)) { border-color: var(--gold); background: rgba(212, 166, 42, 0.08); }
+  .fb-preguntas :global(.check input) { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+  .fb-preguntas :global(.fb-texto) { width: 100%; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18); background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-size: 16px; resize: vertical; }
+  .fb-preguntas :global(.fb-texto:focus) { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+  @media (max-width: 400px) { .fb-preguntas :global(.fb-escala span) { min-height: 38px; font-size: 13px; } .fb-preguntas :global(.fb-escala--11) { gap: 3px; } }
+</style>
