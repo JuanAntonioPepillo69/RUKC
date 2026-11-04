@@ -101,6 +101,9 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Exportación RGPD:** un JSON con todo lo de la persona, incluido su documento descifrado (es su dato). La descarga queda en `evento`. Solo el propietario.
 - **Documentos:** la pantalla solo deja pegar el texto revisado, anotar la fecha del abogado y activar; activar cierra la versión anterior y pide volver a firmar si el documento es obligatorio (misma lógica que `npm run db:documentos`, ahora en `lib/documentos.js`).
 - **Tests:** los de feedback y operación crean su propia temporada de prueba (en borrador) para no depender de los datos de desarrollo.
+- **Restauración:** hay claves foráneas en ciclo (inscripción ↔ traslado, solicitud, pedido…), así que `db:restaurar` las quita dentro de la transacción y las vuelve a crear al final, como pg_restore; al recrearlas se comprueban todas las referencias. La rama de destino se crea desde `production` y se migra con `db:migrar`: una rama `schema-only` de Neon no conserva los dueños de las tablas y `rukc_migraciones` se queda sin permisos.
+- **Descarga de copias:** el parámetro es `?copia=`, no `?ruta=`, porque la reescritura de `/api/admin/*` en vercel.json ya usa `ruta` y lo pisaba.
+- **Clave de Neon:** de proyecto (solo ve RUKC). `NEON_PROJECT_ID` es el id del proyecto (`broad-salad-…`), no el de la organización (`org-…`).
 
 ## Pendiente de confirmar
 
