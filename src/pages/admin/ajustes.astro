@@ -48,7 +48,7 @@ import Admin from '../../layouts/Admin.astro';
       d.neon ? fila(`Neon: ${d.neon.cu_horas} de ${d.neon.limite_cu_horas} CU-horas este mes (${d.neon.porcentaje} %)`, d.neon.aviso ? 'Pasa del 70 %: revisa el consumo o el plan.' : `Medido ${fechaHora(d.neon.cuando)}`) : null,
       h('h3', {}, `Copias (${d.copias.length})`),
       ...d.copias.map((c: any) => h('div', { class: 'fila' }, h('div', { class: 'txt' }, h('span', {}, c.ruta.replace('copias/', '')), h('span', { class: 'sub' }, `${mb(c.tamano)} · ${fechaHora(c.subido_en)}`)),
-        h('div', { class: 'acciones' }, h('a', { class: 'b b--peq', href: `/api/admin/copias/descargar?ruta=${encodeURIComponent(c.ruta)}` }, 'Descargar (cifrada)')))),
+        h('div', { class: 'acciones' }, h('a', { class: 'b b--peq', href: `/api/admin/copias/descargar?copia=${encodeURIComponent(c.ruta)}` }, 'Descargar (cifrada)')))),
     ].filter((x): x is HTMLElement => x != null));
   }).catch(() => {});
 </script>
