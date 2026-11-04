@@ -140,8 +140,9 @@ export const casos = [
 
   ['9. Una aceptación no se puede editar', async (db) => {
     const b = await base(db);
+    // Tipo sin versión vigente en desarrollo (las de prueba del onboarding ocupan reglamento, imagen, riesgos y peso).
     const d = await uno(db, `INSERT INTO documento_legal (tipo, version, titulo, contenido_md, revocable, revisado_abogado_en, vigente_desde)
-      VALUES ('cesion_imagen', 'prueba-esquema', 'Prueba', 'Texto de prueba', true, current_date, now() - interval '1 minute') RETURNING id, hash_sha256`);
+      VALUES ('privacidad', 'prueba-esquema', 'Prueba', 'Texto de prueba', true, current_date, now() - interval '1 minute') RETURNING id, hash_sha256`);
     assert.match(d.hash_sha256, /^[0-9a-f]{64}$/);
     const a = await uno(db, `INSERT INTO aceptacion (persona_id, firmante_persona_id, documento_legal_id, aceptado, contexto)
       VALUES ($1, $1, $2, true, 'onboarding') RETURNING id, documento_hash`, [b.persona, d.id]);
