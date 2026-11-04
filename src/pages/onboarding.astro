@@ -105,16 +105,16 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       <!-- 4 · Datos físicos -->
       <form class="card paso" data-paso="fisicos" novalidate hidden>
         <h1 class="ob-h">Peso y categoría</h1>
-        <p class="ob-sub">La categoría sale del peso con el equipo puesto (mono, casco y botas). Se comprueba en el pesaje del circuito.</p>
-        <details class="doc" id="doc-peso" hidden><summary>Leer el consentimiento para tratar el peso</summary><div class="doc__txt"></div></details>
-        <label class="check"><input type="checkbox" name="consiente_peso" /> <span>Doy mi consentimiento para que RUKC guarde mi peso para asignar la categoría. Puedo retirarlo cuando quiera.</span></label>
+        <p class="ob-sub">La categoría sale de tu peso de competición. Se comprueba en el pesaje del circuito.</p>
+        <details class="doc" id="doc-peso" hidden><summary>Leer el pesaje y los datos de peso (Arts. 23 bis y 59)</summary><div class="doc__txt"></div></details>
+        <label class="check"><input type="checkbox" name="consiente_peso" /> <span>Consiento expresamente el pesaje y el registro de mi peso para asignar mi categoría y mi lastre. Si no lo marco, corro en la categoría Pesados con 10 kg de lastre (Art. 23 bis f).</span></label>
         <div data-si-peso hidden class="ob-grupo">
-          <label class="field">Peso con equipo (kg) <input name="peso_kg" type="number" min="30" max="200" step="0.1" inputmode="decimal" /></label>
+          <label class="field">Peso de competición (kg) <small>Tu peso con la ropa, el calzado, los guantes y las protecciones con los que vas a correr, más 1,5 kg del casco (Art. 23 bis b).</small><input name="peso_kg" type="number" min="30" max="200" step="0.1" inputmode="decimal" /></label>
           <p class="ob-cat" id="cat-texto"></p>
           <fieldset class="pay" id="cat-eleccion" hidden><legend>Elige tu categoría</legend></fieldset>
           <label class="check" id="cat-ambas" hidden><input type="checkbox" name="quiere_ambas" /> <span>Quiero correr también en la otra categoría (te escribimos para ver cómo).</span></label>
         </div>
-        <p class="ob-sub" data-sin-peso>Sin el peso, tu categoría se decide en el pesaje del circuito.</p>
+        <p class="ob-sub" data-sin-peso>Sin tu consentimiento no guardamos tu peso y corres en Pesados con 10 kg de lastre.</p>
         <label class="field">Altura (cm) <small>Opcional</small><input name="altura_cm" type="number" min="120" max="230" inputmode="numeric" /></label>
       </form>
 
@@ -151,14 +151,12 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
         <p class="card__notice" id="docs-no-listos" hidden>Los documentos se están revisando. Te avisaremos por WhatsApp para firmarlos y terminar tu ficha.</p>
         <p class="ob-sub" id="docs-quien"></p>
         <details class="doc" data-doc="reglamento"><summary></summary><div class="doc__txt"></div></details>
+        <p class="ob-sub">También puedes leerlo con su formato en <a class="ob-enlace" href="/reglamento" target="_blank" rel="noopener">raceupkc.com/reglamento</a>.</p>
         <label class="check"><input type="checkbox" name="reglamento" /> <span>He leído y acepto el reglamento.</span></label>
         <details class="doc" data-doc="cesion_imagen"><summary></summary><div class="doc__txt"></div></details>
-        <fieldset class="ob-grupo ob-opciones">
-          <legend>Fotos y vídeos en los que salgo. Puedo aceptar cada uso por separado:</legend>
-          <label class="check"><input type="checkbox" name="imagen_web" /> <span>En la web de RUKC</span></label>
-          <label class="check"><input type="checkbox" name="imagen_redes" /> <span>En las redes sociales de RUKC</span></label>
-          <label class="check" data-anuncios><input type="checkbox" name="imagen_anuncios" /> <span>En anuncios de RUKC</span></label>
-        </fieldset>
+        <p class="ob-sub">La Liga graba y fotografía los eventos para publicar resultados, crónicas y retransmisiones en su web y sus redes. Puedes oponerte por el canal oficial (Art. 60 a).</p>
+        <label class="check" data-anuncios><input type="checkbox" name="imagen_anuncios" /> <span>Autorizo el uso de mi imagen en publicidad de RUKC (anuncios, cartelería y campañas) (Art. 60 b). Es opcional.</span></label>
+        <p class="ob-sub" data-anuncios-menor hidden>La imagen de menores no se utiliza con fines publicitarios (Art. 60 c).</p>
         <details class="doc" data-doc="asuncion_riesgos"><summary></summary><div class="doc__txt"></div></details>
         <label class="check"><input type="checkbox" name="riesgos" /> <span>He leído y acepto la asunción de riesgos.</span></label>
         <div class="dos">
@@ -247,7 +245,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
           categoria: v.consiente_peso ? v.categoria ?? null : null, quiere_ambas: Boolean(v.quiere_ambas) };
         case 'emergencia': return { nombre: v.nombre, telefono: v.telefono, relacion: nulo(v.relacion) };
         case 'documentos': return { reglamento: v.reglamento, riesgos: v.riesgos, nombre: v.nombre, documento: v.documento,
-          imagen: { web: v.imagen_web, redes: v.imagen_redes, ...(ficha.menor ? {} : { anuncios: v.imagen_anuncios }) } };
+          imagen: ficha.menor ? {} : { anuncios: v.imagen_anuncios } };
         default: return {};
       }
     }
@@ -301,6 +299,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       }
       $('#docs-no-listos').hidden = ficha.documentos_listos;
       $('[data-anuncios]').hidden = ficha.menor;
+      $('[data-anuncios-menor]').hidden = !ficha.menor;
       $('#docs-quien').textContent = ficha.menor ? 'Firma tu madre, padre o tutor, con su nombre y su documento.' : 'Firmas tú, con tu nombre y tu documento.';
       $('[data-firma-nombre]').textContent = ficha.menor ? 'Nombre y apellidos del tutor' : 'Tu nombre y apellidos';
       $('[data-firma-doc]').textContent = ficha.menor ? 'DNI, NIE o pasaporte del tutor' : 'Tu DNI, NIE o pasaporte';
@@ -501,7 +500,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
   .ob-botones .btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .ob-guardado { margin: 0; font-size: 12px; color: var(--muted-2); text-align: right; min-height: 1em; }
   .ob-ayuda { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
-  .ob-ayuda a { color: var(--gold-hi); }
+  .ob-ayuda a, .ob-enlace { color: var(--gold-hi); }
   .ob-foto { width: 160px; height: 160px; object-fit: cover; border-radius: 16px; border: 1px solid var(--line); }
   .ob-foto[hidden] { display: none; }
   .ob-file { position: relative; overflow: hidden; cursor: pointer; }

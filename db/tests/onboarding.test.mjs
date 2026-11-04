@@ -1,5 +1,5 @@
 // Onboarding (F5) y grupo contra Neon desarrollo, llamando a /api/onboarding y /api/admin como lo haría Vercel.
-// Usa los documentos de prueba (npm run db:documentos-prueba; el test los activa si faltan) y guarda las fotos en
+// Usa los documentos vigentes (los del reglamento v1.1: npm run db:documentos); si no hay, activa los de prueba y guarda las fotos en
 // RUKC_BLOB_LOCAL_DIR. Las aceptaciones no se pueden borrar: al terminar, las personas del test que firmaron quedan
 // anonimizadas; el resto de sus datos se borra.
 import { after, before, test } from 'node:test';
@@ -40,6 +40,7 @@ async function ob(token, ruta, cuerpo, tipo = 'application/json') {
 const ok = async (...a) => { const r = await ob(...a); assert.equal(r.status, 200, JSON.stringify(r.datos)); return r.datos; };
 
 let admin, ronda, temporada, enlaceAntes, edadAntes;
+const version = {};
 const personas = [];
 const fotos = [];
 
@@ -65,7 +66,9 @@ async function dorsalLibre() {
 }
 
 before(async () => {
-  await activarDocumentosPrueba(pool);
+  const vigentes = await q(`SELECT tipo, version FROM documento_legal WHERE vigente_desde <= now() AND (vigente_hasta IS NULL OR vigente_hasta > now())`);
+  if (!['reglamento', 'cesion_imagen', 'asuncion_riesgos'].every((t) => vigentes.some((v) => v.tipo === t))) await activarDocumentosPrueba(pool);
+  for (const v of await q(`SELECT tipo, version FROM documento_legal WHERE vigente_desde <= now() AND (vigente_hasta IS NULL OR vigente_hasta > now())`)) version[v.tipo] = v.version;
   admin = await adminConSesion();
   const cat = await admin.panel('catalogo-venta');
   ronda = cat.rondas[0];
@@ -139,7 +142,7 @@ test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la 
   fotos.push((await q('SELECT foto_blob_path FROM perfil_piloto WHERE persona_id = $1', [adulto.persona]))[0].foto_blob_path);
   await ok(adulto.token, 'paso/foto', {});
 
-  const docs = await ok(adulto.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Adulto Onboarding Prueba', documento: '12345678-z', imagen: { web: true, redes: false, anuncios: true } });
+  const docs = await ok(adulto.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Adulto Onboarding Prueba', documento: '12345678-z', imagen: { anuncios: true } });
   assert.equal(docs.estado, 'completado');
 
   const acept = await q(`SELECT d.tipo, d.version, a.aceptado, a.opciones, a.contexto, a.ip, a.user_agent, a.nombre_tecleado, a.documento_ultimos3,
@@ -147,14 +150,14 @@ test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la 
     FROM aceptacion a JOIN documento_legal d ON d.id = a.documento_legal_id WHERE a.persona_id = $1 ORDER BY d.tipo`, [adulto.persona]);
   assert.deepEqual(acept.map((a) => a.tipo), ['asuncion_riesgos', 'cesion_imagen', 'consentimiento_peso', 'reglamento']);
   for (const a of acept) {
-    assert.equal(a.version, 'prueba-1');
+    assert.equal(a.version, version[a.tipo], 'Versión vigente del documento');
     assert.equal(a.contexto, 'onboarding');
     assert.equal(a.ip, '10.9.9.9');
     assert.equal(a.user_agent, UA);
     assert.ok(a.firma_el && a.hash_ok && a.aceptado);
   }
   const imagen = acept.find((a) => a.tipo === 'cesion_imagen');
-  assert.deepEqual(imagen.opciones, { web: true, redes: false, anuncios: true });
+  assert.deepEqual(imagen.opciones, { anuncios: true }, 'Web y redes son cobertura informativa (Art. 60 a); solo anuncios lleva casilla');
   const riesgos = acept.find((a) => a.tipo === 'asuncion_riesgos');
   assert.equal(riesgos.nombre_tecleado, 'Adulto Onboarding Prueba');
   assert.equal(riesgos.documento_ultimos3, '78Z');
@@ -194,7 +197,7 @@ test('Menor de 18: no se completa sin tutor, firma el tutor y no se guarda la ce
   const p = await ok(m.token, 'paso/personales', { nombre: 'Menor', apellidos: 'Onboarding', fecha_nacimiento: hace(15), municipio: 'Mijas' });
   assert.equal(p.estado, 'falta_tutor');
   assert.ok(p.ficha.menor && p.ficha.pasos.includes('tutor'));
-  const sinTutor = await ob(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Alguien', documento: '12345678Z', imagen: { web: true, redes: true } });
+  const sinTutor = await ob(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Alguien', documento: '12345678Z', imagen: {} });
   assert.equal(sinTutor.status, 400);
   assert.match(sinTutor.datos.error, /tutor/);
   const [o0] = await q('SELECT estado FROM onboarding WHERE persona_id = $1', [m.persona]);
@@ -204,12 +207,15 @@ test('Menor de 18: no se completa sin tutor, firma el tutor y no se guarda la ce
   const t = await ok(m.token, 'paso/tutor', { nombre: 'Madre', apellidos: 'Del Menor', telefono: m.telefono, email: `madre+${Date.now()}@example.com`, relacion: 'madre', documento: 'X1234567L' });
   assert.equal(t.estado, 'en_curso');
   await ok(m.token, 'paso/perfil', { nombre_competicion: 'Menor O.', dorsal: await dorsalLibre(), experiencia: 'ninguna', frecuencia: 'ocasional' });
-  await ok(m.token, 'paso/fisicos', { consiente_peso: false });
+  const sinPeso = await ok(m.token, 'paso/fisicos', { consiente_peso: false });
+  assert.deepEqual([sinPeso.categoria, sinPeso.categoria_origen], ['PES', 'sin_consentimiento_peso'], 'Sin consentimiento: Pesados con 10 kg (Art. 23 bis f)');
+  const [cat] = await q('SELECT cat.codigo, i.categoria_origen FROM inscripcion i JOIN categoria cat ON cat.id = i.categoria_id WHERE i.id = $1', [m.inscripcion]);
+  assert.deepEqual(cat, { codigo: 'PES', categoria_origen: 'sin_consentimiento_peso' });
   await ok(m.token, 'paso/emergencia', { nombre: 'Padre Del Menor', telefono: '622333444' });
   await ok(m.token, 'paso/foto', {});
-  const distinto = await ob(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Madre Del Menor', documento: '12345678Z', imagen: { web: true, redes: true, anuncios: true } });
+  const distinto = await ob(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Madre Del Menor', documento: '12345678Z', imagen: { anuncios: true } });
   assert.equal(distinto.status, 400, 'El documento de la firma tiene que ser el del tutor');
-  const fin = await ok(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Madre Del Menor', documento: 'X1234567L', imagen: { web: true, redes: true, anuncios: true } });
+  const fin = await ok(m.token, 'paso/documentos', { reglamento: true, riesgos: true, nombre: 'Madre Del Menor', documento: 'X1234567L', imagen: { anuncios: true } });
   assert.equal(fin.estado, 'completado');
 
   const [tu] = await q('SELECT tutor_persona_id, relacion FROM tutela WHERE menor_persona_id = $1', [m.persona]);
@@ -218,7 +224,7 @@ test('Menor de 18: no se completa sin tutor, firma el tutor y no se guarda la ce
     WHERE a.persona_id = $1 ORDER BY d.tipo`, [m.persona]);
   assert.deepEqual(acept.map((a) => a.tipo), ['asuncion_riesgos', 'cesion_imagen', 'reglamento'], 'Sin consentimiento de peso no hay aceptación de peso');
   assert.ok(acept.every((a) => a.firmante_persona_id === tu.tutor_persona_id && a.documento_ultimos3 === '67L'), 'Firma el tutor');
-  assert.deepEqual(acept.find((a) => a.tipo === 'cesion_imagen').opciones, { web: true, redes: true, anuncios: false }, 'Anuncios nunca para un menor');
+  assert.deepEqual(acept.find((a) => a.tipo === 'cesion_imagen').opciones, { anuncios: false }, 'Anuncios nunca para un menor, aunque llegue en la petición');
   const [ds] = await q('SELECT documento_cifrado, peso_declarado_kg FROM datos_sensibles_piloto WHERE persona_id = $1', [m.persona]);
   assert.equal(ds.documento_cifrado, null);
   assert.equal(ds.peso_declarado_kg, null);
