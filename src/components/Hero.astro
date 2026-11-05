@@ -97,6 +97,7 @@ const tags = [
     </div>
 
     <p class="hero__hint" data-hint aria-hidden="true"><span></span>Desliza</p>
+    <button class="hero__skip" type="button" data-skip hidden>Saltar intro</button>
   </div>
 </section>
 
@@ -174,6 +175,16 @@ const tags = [
   .hero__hint span { width: 1px; height: 36px; background: linear-gradient(180deg, transparent, var(--gold)); animation: hint 1.8s ease-in-out infinite; }
   @keyframes hint { 0%, 100% { transform: scaleY(0.4); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } }
 
+  /* Saltar la cinemática: discreto, para quien ya la ha visto. Sale con JS (sin animación no hay nada que saltar). */
+  .hero__skip {
+    position: absolute; left: 50%; bottom: 8px; translate: -50% 0; z-index: 4; padding: 8px 12px;
+    border: 0; background: none; cursor: pointer; color: var(--muted); opacity: 0.75;
+    font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    text-shadow: 0 1px 10px rgba(10, 10, 11, 0.9); transition: color 0.2s, opacity 0.2s;
+  }
+  .hero__skip[hidden] { display: none; }
+  .hero__skip:hover, .hero__skip:focus-visible { color: var(--paper); opacity: 1; }
+
   /* ---------- vertical (móvil): titulares arriba o abajo, la acción en el centro ---------- */
   @media (max-aspect-ratio: 9/10) and (max-width: 899px) {
     .hero { height: 760svh; }
@@ -186,6 +197,7 @@ const tags = [
     .beat__desc { margin-top: 10px; font-size: 15px; }
     .beat__ctas .btn { flex: 1 1 100%; }
     .hero__hint { display: none; }
+    .hero__skip { left: auto; right: calc(var(--gutter) - 12px); bottom: auto; top: 50px; translate: none; font-size: 10px; }
     .tag__box { padding: 7px 10px; border-radius: 8px; }
     .tag__box strong { font-size: 14px; }
     .tag__sub { font-size: 12px; }

@@ -166,7 +166,7 @@ export function initHero(root: HTMLElement) {
 
   // ---- scroll ----
   const st = { trigger: root, start: 'top top', end: 'bottom bottom', scrub: true } as const;
-  ScrollTrigger.create({
+  const recorrido = ScrollTrigger.create({
     ...st,
     onUpdate: (self) => {
       target = self.progress * (v.frames - 1);
@@ -196,6 +196,15 @@ export function initHero(root: HTMLElement) {
   const crest = manifest.cues.crest as number[];
   tl.fromTo(root.querySelector('[data-beat="final"]'), { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.02 }, crest[1] - 0.025);
   tl.set({}, {}, 1); // la línea de tiempo dura exactamente 1 = todo el recorrido del hero
+
+  // Saltar la cinemática: va directo al último frame, con el titular final y sus botones, y se oculta al llegar ahí.
+  const skip = root.querySelector<HTMLButtonElement>('[data-skip]')!;
+  skip.hidden = false;
+  tl.to(skip, { autoAlpha: 0, duration: 0.01 }, crest[1] - 0.04);
+  skip.addEventListener('click', () => {
+    synced = false; // sin recorrer los frames intermedios a toda velocidad
+    scrollTo({ top: recorrido.end, behavior: 'instant' });
+  });
 
   addEventListener('resize', resize);
   resize();
