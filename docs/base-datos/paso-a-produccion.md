@@ -23,7 +23,7 @@ Cómo está hoy:
   - punto 9: administrador propietario creado; el TOTP se activa en el primer acceso.
 - **Pendiente:**
   - puntos 5, 6 y 7: DPA, aviso de borradores y política de privacidad;
-  - punto 8: importar las reservas de la T2 (D4);
+  - punto 8: **hecho el 5-11-2026**, 11 reservas de Stripe y 8 Bizum (ver decisiones.md);
   - punto 10: registro de actividades.
 
 ## 1. Lista de comprobación previa

@@ -111,7 +111,11 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **Comprobación previa:** `npm run db:comprobar` lee `.env.produccion` y solo hace lecturas. La lista y el plan están en docs/base-datos/paso-a-produccion.md.
 - **Blob de producción:** un almacén nuevo, `rukc-produccion`, conectado solo a Production, para que no se mezcle con las fotos y copias de prueba.
 - **Aviso de borradores:** John da por bueno el texto provisional, revisado por el abogado el 4-11-2026. Se carga como `aviso_borradores` versión `aviso-v1` (`db/documento-aviso-borradores.mjs`), en desarrollo y en producción.
-- **Plazas al publicar (provisionales hasta el D4):** las reservas antiguas de la T2 aún no están importadas, así que John fija las plazas que quedan libres de verdad. Por categoría: R2 20, R3 30, R4 29, R5 28, R6 27, R7 26 y R8 25, todas abiertas; la R1 sigue cerrada. **Cuando se importe el D4, las plazas vuelven a la capacidad real**: si no, las reservas importadas se descontarían dos veces.
+- **Plazas al publicar (provisionales hasta el D4):** las reservas antiguas de la T2 aún no están importadas, así que John fija las plazas que quedan libres de verdad. Por categoría: R2 20, R3 30, R4 29, R5 28, R6 27, R7 26 y R8 25, todas abiertas; la R1 sigue cerrada.
+- **D4, reservas de Stripe (5-11-2026):** se leen de la API de Stripe, sin CSV (`db/importar-stripe.mjs`), con el mismo flujo que el webhook: 11 reservas, 330 €, todas de la R2. Antes se ensayó en una rama copia de producción. No se crean consentimientos ni aceptaciones: Stripe no guarda qué casillas marcó cada uno. Las plazas de la R2 subieron en lo importado con categoría (Ligeros 2, Pesados 3) para no descontarlas dos veces, y quedan 22 y 23.
+- **D4, Bizum (5-11-2026):** John confirma que las 8 altas manuales del 5-11 pagaron 30 € por Bizum. Una ya estaba anotada; las otras 7 se anotan como Nueva venta: carrera suelta de la R2, sin categoría, Bizum confirmado (`T2-R2-0014` a `0020`). La ronda es una suposición: todas las reservas conocidas son de la R2. Si alguna es de otra, se corrige con Trasladar.
+- **Sin categoría no ocupa plaza:** quien entra sin categoría (14 reservas) no cuenta en el cupo hasta que su ficha se la asigne. Entonces bajan las plazas libres de la R2.
+- **Los 4 pagos sin terminar de Stripe** no se importan como leads hasta que lo valore el abogado.
 
 ## Pendiente de confirmar
 
