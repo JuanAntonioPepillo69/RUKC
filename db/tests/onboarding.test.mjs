@@ -285,3 +285,37 @@ test('Marcar asistió sin onboarding pide motivo', async () => {
   const lista = await admin.panel(`rondas/${ronda.id}/acreditacion`);
   assert.equal(lista.inscripciones.find((x) => x.id === adulto.inscripcion).estado, 'asistio', 'Con el onboarding completado no pide motivo');
 });
+
+test('Seguimiento de la ficha: sin enviar → enviada → sin respuesta a los 3 días → recordatorio', async () => {
+  const p = await nuevoPiloto('Seguimiento Ficha Prueba');
+  const [{ id }] = await q('SELECT id FROM onboarding WHERE persona_id = $1', [p.persona]);
+  const fila = async () => (await q('SELECT seguimiento, envios, dias_sin_movimiento FROM v_onboarding WHERE id = $1', [id]))[0];
+  const enHoy = async () => (await admin.panel('hoy')).onboarding.find((o) => o.id === id)?.seguimiento ?? null;
+
+  assert.deepEqual(await fila(), { seguimiento: 'sin_enviar', envios: 0, dias_sin_movimiento: null });
+  assert.equal(await enHoy(), 'sin_enviar', 'Hoy la lista entre las fichas por enviar');
+
+  const r1 = await admin.panel(`onboarding/${id}/enlace`, {});
+  assert.ok(r1.texto.includes('Te dejo el enlace para completar tu ficha') && r1.envios === 1, r1.texto);
+  assert.equal((await fila()).seguimiento, 'enviada');
+  assert.equal(await enHoy(), null, 'Recién enviada no pide nada');
+
+  // Cuatro días sin movimiento (solo en la prueba se retrasa actualizado_en, que marca la actividad).
+  const mig = new Pool({ connectionString: process.env.DATABASE_URL_MIGRACIONES });
+  const c = await mig.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query('ALTER TABLE onboarding DISABLE TRIGGER onboarding_actualizado_en');
+    await c.query(`UPDATE onboarding SET actualizado_en = now() - interval '4 days' WHERE id = $1`, [id]);
+    await c.query('ALTER TABLE onboarding ENABLE TRIGGER onboarding_actualizado_en');
+    await c.query('COMMIT');
+  } finally { c.release(); await mig.end(); }
+  assert.deepEqual(await fila(), { seguimiento: 'sin_respuesta', envios: 1, dias_sin_movimiento: 4 });
+  assert.equal(await enHoy(), 'sin_respuesta', 'Hoy avisa para hacer seguimiento');
+
+  const r2 = await admin.panel(`onboarding/${id}/enlace`, {});
+  assert.ok(r2.texto.includes('Te recuerdo que tienes pendiente tu ficha') && r2.envios === 2, r2.texto);
+  assert.equal((await fila()).seguimiento, 'enviada', 'Tras el recordatorio vuelve a contar desde cero');
+  const notas = (await q(`SELECT resumen FROM interaccion WHERE persona_id = $1 AND tipo = 'whatsapp_saliente' ORDER BY creado_en`, [p.persona])).map((r) => r.resumen);
+  assert.deepEqual(notas, ['WhatsApp preparado: enlace de onboarding', 'WhatsApp preparado: recordatorio de la ficha (envío 2)']);
+});

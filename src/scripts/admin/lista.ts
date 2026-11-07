@@ -16,7 +16,7 @@ const OPS: Record<string, [string, string][]> = {
   json: [['contiene', 'contiene']],
 };
 const SIN_VALOR = ['vacio', 'no_vacio', 'si', 'no'];
-const ES_ESTADO = (c: string) => c === 'estado' || c === 'etapa' || c.endsWith('_estado') || ['onboarding', 'grupo', 'feedback', 'estado_cupo'].includes(c);
+const ES_ESTADO = (c: string) => c === 'estado' || c === 'etapa' || c.endsWith('_estado') || ['onboarding', 'grupo', 'feedback', 'estado_cupo', 'seguimiento'].includes(c);
 
 export function celda(col: Col, v: any): Node | string {
   if (v == null || v === '') return '';

@@ -72,10 +72,11 @@ import Admin from '../../layouts/Admin.astro';
     contenedor: document.getElementById('lista')!,
     alPulsar: (f) => { location.href = `/admin/persona?id=${f.persona_id}`; },
     acciones: (f) => h('span', { class: 'acciones' },
-      f.estado !== 'completado' ? h('button', { class: 'b b--peq', type: 'button', onclick: async () => {
-        const r = await accion(() => api<{ url: string }>(`onboarding/${f.id}/enlace`, {}), 'Enlace nuevo preparado. El anterior ya no vale.');
+      f.estado !== 'completado' ? h('button', { class: `b b--peq${f.envios ? '' : ' b--oro'}`, type: 'button', onclick: async () => {
+        const r = await accion(() => api<{ url: string }>(`onboarding/${f.id}/enlace`, {}),
+          f.envios ? 'Recordatorio preparado. El enlace anterior ya no vale.' : 'Mensaje preparado y registrado como enviado.');
         if (r) abrir(r.url);
-      } }, 'Reenviar enlace') : null,
+      } }, f.envios ? 'Recordar' : 'Enviar enlace') : null,
       f.tiene_foto ? h('button', { class: 'b b--peq', type: 'button', onclick: () => {
         (document.getElementById('foto') as HTMLImageElement).src = `/api/admin/personas/${f.persona_id}/foto`;
         dlg.showModal();

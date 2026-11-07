@@ -28,6 +28,13 @@ import Admin from '../../layouts/Admin.astro';
         boton('No llegó', async () => { const motivo = prompt('Motivo (opcional):') ?? undefined; if (await accion(() => api(`pagos/${p.id}/rechazar`, { motivo: motivo || undefined }))) cargar(); }, 'b b--peq b--peligro'))),
     ];
     const proxima = d.proxima?.[0];
+    const sinRespuesta = d.onboarding.filter((o: any) => o.seguimiento === 'sin_respuesta');
+    const sinEnviar = d.onboarding.filter((o: any) => o.seguimiento === 'sin_enviar');
+    // Abre WhatsApp con el enlace nuevo de la ficha (bienvenida o recordatorio) y queda registrado como enviado.
+    const enviarFicha = (o: any, texto: string) => boton(texto, async () => {
+      const r = await accion(() => api<{ url: string }>(`onboarding/${o.id}/enlace`, {}), 'Mensaje preparado y registrado como enviado.');
+      if (r) { window.open(r.url, '_blank', 'noopener'); cargar(); }
+    }, 'b b--peq b--oro');
     const a = d.avisos;
     const NOMBRES: Record<string, string> = { bizum: 'Bizum sin confirmar', feedback: 'Feedback caducado', copia: 'Copia de seguridad', neon: 'Consumo de Neon', anonimizacion: 'Plazo de conservación' };
     const avisos = [
@@ -46,7 +53,12 @@ import Admin from '../../layouts/Admin.astro';
       caja('Leads con acción vencida', d.leadsVencidos.length, ...d.leadsVencidos.map((l: any) => fila(l.persona, `${l.proxima_accion ?? ''} · ${fechaHora(l.proxima_accion_en)}`, ficha(l.persona_id),
         boton('WhatsApp', () => whatsapp({ tipo: 'lead', persona_id: l.persona_id }))))),
       caja('Próxima ronda', proxima ? `R${proxima.ronda}` : '-', ...(d.proxima ?? []).map((p: any) => fila(`${p.categoria}: ${p.inscritos}/${p.plazas}`, `${p.circuito} · inscripción ${p.estado_cupo.replace('_', ' ')} · ${p.pagados} pagados`))),
-      caja('Onboarding pendiente', d.onboarding.length, ...d.onboarding.slice(0, 15).map((o: any) => fila(o.piloto, `${o.estado.replace('_', ' ')}${o.menor ? ' · menor' : ''}`, ficha(o.persona_id)))),
+      caja('Fichas sin respuesta', sinRespuesta.length, ...sinRespuesta.map((o: any) => fila(o.piloto,
+        `${o.dias_sin_movimiento} días sin moverse · ${o.envios} ${o.envios === 1 ? 'envío' : 'envíos'}${o.estado === 'en_curso' ? ' · la empezó' : ''}${o.menor ? ' · menor' : ''}`,
+        enviarFicha(o, 'Recordar'), ficha(o.persona_id)))),
+      caja('Fichas por enviar', sinEnviar.length, ...sinEnviar.slice(0, 20).map((o: any) => fila(o.piloto, `sin enviar${o.menor ? ' · menor' : ''}`,
+        enviarFicha(o, 'Enviar enlace'), ficha(o.persona_id))),
+        ...(sinEnviar.length > 20 ? [h('a', { class: 'b b--peq', href: '/admin/onboarding' }, `Ver las ${sinEnviar.length}`)] : [])),
       caja('Grupo por aprobar', d.grupo.length, ...d.grupo.map((g: any) => fila(g.piloto, fechaHora(g.solicitado_en), h('a', { class: 'b b--peq b--oro', href: '/admin/onboarding' }, 'Revisar')))),
       ...(d.edad.length ? [caja('Edad mínima del circuito', d.edad.length, ...d.edad.map((e: any) => fila(e.piloto, `R${e.ronda} · ${e.circuito}: tendrá ${e.edad_en_ronda} años y el mínimo es ${e.edad_minima}`, ficha(e.persona_id))))] : []),
       caja('Feedback', `${d.feedback.por_enviar + d.feedback.sin_responder}`, fila('Por enviar', String(d.feedback.por_enviar)), fila('Sin responder', String(d.feedback.sin_responder))),

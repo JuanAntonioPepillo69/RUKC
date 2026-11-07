@@ -52,8 +52,8 @@ export const euros = (cent: number | string | null | undefined) =>
 export const fecha = (v: string | null | undefined) => (v ? new Date(v.length === 10 ? `${v}T12:00:00` : v).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' }) : '');
 export const fechaHora = (v: string | null | undefined) => (v ? new Date(v).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
-const ESTADOS_OK = ['pagada', 'confirmado', 'ganada', 'completado', 'dentro', 'aprobado', 'abierta', 'asistio', 'respondido', 'celebrada'];
-const ESTADOS_MAL = ['cancelada', 'fallido', 'perdida', 'rechazado', 'pago_abandonado', 'descartada', 'no_presentado', 'cerrada', 'caducado'];
+const ESTADOS_OK = ['pagada', 'confirmado', 'ganada', 'completado', 'completada', 'dentro', 'aprobado', 'abierta', 'asistio', 'respondido', 'celebrada'];
+const ESTADOS_MAL = ['cancelada', 'sin_respuesta', 'fallido', 'perdida', 'rechazado', 'pago_abandonado', 'descartada', 'no_presentado', 'cerrada', 'caducado'];
 export function etiquetaEstado(e: string) {
   const s = document.createElement('span');
   s.className = `estado ${ESTADOS_OK.includes(e) ? 'ok' : ESTADOS_MAL.includes(e) ? 'mal' : 'medio'}`;

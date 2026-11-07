@@ -27,6 +27,10 @@ export const MENSAJES = {
   onboarding: ({ nombre, enlace }) =>
     `Hola ${nombre}, soy John, de RUKC. Te dejo el enlace para completar tu ficha de piloto (datos, contacto de emergencia y documentos). Es obligatoria para correr: ${enlace}`,
 
+  /** Recordatorio de la ficha de piloto a quien no la ha terminado (el enlace anterior deja de valer). */
+  onboarding_recordatorio: ({ nombre, enlace }) =>
+    `Hola ${nombre}, soy John, de RUKC. Te recuerdo que tienes pendiente tu ficha de piloto: son unos minutos y es obligatoria para correr. Te dejo el enlace otra vez: ${enlace}`,
+
   /** Acceso aprobado al grupo de pilotos. */
   grupo: ({ nombre, enlace }) =>
     `Hola ${nombre}, tu ficha de piloto está completa. Este es el enlace al grupo de WhatsApp de pilotos de la temporada: ${enlace}`,
