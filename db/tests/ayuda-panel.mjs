@@ -47,7 +47,8 @@ export async function adminConSesion() {
   const n = navegador();
   await n.auth('sign-in/email', { email, password: pass });
   const alta = await (await n.auth('two-factor/enable', { password: pass })).json();
-  const r = await n.auth('two-factor/verify-totp', { code: totp(new URL(alta.totpURI).searchParams.get('secret')) });
+  const secreto = new URL(alta.totpURI).searchParams.get('secret');
+  const r = await n.auth('two-factor/verify-totp', { code: totp(secreto) });
   if (r.status !== 200) throw new Error(`No se pudo activar el TOTP: ${await r.text()}`);
   const panel = async (ruta, cuerpo) => {
     const res = await n.panel(ruta, cuerpo);
@@ -55,5 +56,14 @@ export async function adminConSesion() {
     if (!res.ok) throw Object.assign(new Error(datos.error || `HTTP ${res.status}`), { status: res.status, datos });
     return datos;
   };
-  return { email, panel, crudo: n.panel };
+  /** Abre una segunda sesión del mismo administrador, como desde otro dispositivo (el código TOTP es de un solo uso). */
+  const otroDispositivo = async () => {
+    const m = navegador();
+    await m.auth('sign-in/email', { email, password: pass });
+    const siguiente = totp(secreto, Date.now() + 30_000);
+    const v = await m.auth('two-factor/verify-totp', { code: siguiente });
+    if (v.status !== 200) throw new Error(`Segundo dispositivo: ${await v.text()}`);
+    return m;
+  };
+  return { email, panel, crudo: n.panel, auth: n.auth, otroDispositivo };
 }

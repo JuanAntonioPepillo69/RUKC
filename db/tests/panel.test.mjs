@@ -128,3 +128,14 @@ test('listas: filtros combinados con Y y vistas guardadas', async () => {
   const v = await admin.panel('vistas/inscripciones');
   assert.ok(v.vistas.some((x) => x.nombre === 'Pagadas por otros'));
 });
+
+test('Cerrar sesión en todos los dispositivos: las dos sesiones dejan de valer', async () => {
+  const otro = await adminConSesion();
+  const movil = await otro.otroDispositivo();
+  assert.equal((await movil.panel('hoy')).status, 200, 'El segundo dispositivo entra');
+  assert.ok(await otro.panel('hoy'), 'El primero también');
+  const r = await otro.auth('revoke-sessions', {});
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await movil.panel('hoy')).status, 401, 'El otro dispositivo queda fuera');
+  assert.equal((await otro.crudo('hoy')).status, 401, 'Y este también');
+});

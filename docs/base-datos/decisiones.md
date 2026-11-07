@@ -116,6 +116,8 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - **D4, Bizum (5-11-2026):** John confirma que las 8 altas manuales del 5-11 pagaron 30 € por Bizum. Una ya estaba anotada; las otras 7 se anotan como Nueva venta: carrera suelta de la R2, sin categoría, Bizum confirmado (`T2-R2-0014` a `0020`). La ronda es una suposición: todas las reservas conocidas son de la R2. Si alguna es de otra, se corrige con Trasladar.
 - **Sin categoría no ocupa plaza:** quien entra sin categoría (14 reservas) no cuenta en el cupo hasta que su ficha se la asigne. Entonces bajan las plazas libres de la R2.
 - **Los 4 pagos sin terminar de Stripe** no se importan como leads hasta que lo valore el abogado.
+- **Sesión del panel (7-11-2026), cambia el diseño:** John pide no entrar cada día. La sesión pasa de 12 horas a 30 días y se renueva una vez al día mientras se use; la cookie sigue siendo HttpOnly, Secure y SameSite=Strict. En Ajustes hay un botón "Cerrar sesión en todos los dispositivos" (`revoke-sessions` de Better Auth), por si se pierde un móvil o un portátil.
+- **Grupo de WhatsApp (7-11-2026), cambia el diseño:** al terminar la ficha, el acceso al grupo queda aprobado y el piloto ve el enlace en ese momento. Pide entrar en WhatsApp y John lo admite allí, con la aprobación de nuevos participantes del grupo activada. El panel sigue ofreciendo "Enviar enlace" y "Ya está dentro".
 
 ## Pendiente de confirmar
 

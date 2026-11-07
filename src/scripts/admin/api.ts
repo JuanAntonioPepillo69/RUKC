@@ -19,6 +19,13 @@ export async function api<T = any>(ruta: string, cuerpo?: unknown): Promise<T> {
   return datos as T;
 }
 
+/** Cierra todas las sesiones del administrador (todos los dispositivos, también este) y vuelve a la entrada. */
+export async function salirDeTodos() {
+  const res = await fetch('/api/auth/revoke-sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', credentials: 'same-origin' });
+  if (!res.ok) throw new ErrorApi(res.status, 'No se han podido cerrar las sesiones.');
+  location.href = '/admin/entrar';
+}
+
 export async function salir() {
   await fetch('/api/auth/sign-out', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', credentials: 'same-origin' }).catch(() => {});
   location.href = '/admin/entrar';

@@ -104,14 +104,14 @@ test('con el segundo factor activado, la contraseña sola no basta: hace falta e
   assert.ok(cookie, 'Hay cookie de sesión');
 });
 
-test('cookie de sesión HttpOnly y SameSite=Strict, 12 h', async () => {
+test('cookie de sesión HttpOnly y SameSite=Strict, 30 días', async () => {
   const n = navegador();
   await n.auth('sign-in/email', { email: EMAIL, password: PASS });
   const res = await n.auth('two-factor/verify-totp', { code: totp(secreto) });
   const c = res.headers.getSetCookie().find((x) => x.includes('session_token'));
   assert.match(c, /HttpOnly/i);
   assert.match(c, /SameSite=Strict/i);
-  assert.match(c, /Max-Age=43200/i);
+  assert.match(c, /Max-Age=2592000/i);
 });
 
 test('cinco contraseñas mal en 15 min bloquean el acceso, incluso con la buena', async () => {

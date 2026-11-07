@@ -106,7 +106,7 @@ after(async () => {
 let adulto;
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), crypto.randomBytes(200), Buffer.from([0xff, 0xd9])]);
 
-test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la tabla y acceso al grupo pendiente', async () => {
+test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la tabla y acceso al grupo aprobado', async () => {
   adulto = await nuevoPiloto('Adulto Onboarding');
   const e0 = await ok(adulto.token, 'estado');
   assert.equal(e0.estado, 'en_curso', 'Al abrir el enlace pasa a en_curso');
@@ -173,8 +173,8 @@ test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la 
   assert.equal(o.estado, 'completado');
   assert.ok(o.fecha && !o.borrador.cifrado, 'Al completar se borra la parte cifrada del borrador');
   const [g] = await q('SELECT estado FROM acceso_grupo WHERE persona_id = $1', [adulto.persona]);
-  assert.equal(g.estado, 'pendiente_aprobacion');
-  assert.ok((await admin.panel('hoy')).grupo.some((x) => x.persona_id === adulto.persona), 'El panel avisa del grupo por aprobar');
+  assert.equal(g.estado, 'aprobado', 'Al terminar la ficha el acceso al grupo queda aprobado: John admite en WhatsApp');
+  assert.ok(!(await admin.panel('hoy')).grupo.some((x) => x.persona_id === adulto.persona), 'No queda nada por aprobar en el panel');
 });
 
 test('Exportación con datos sensibles: el propietario recibe el documento completo y queda anotado', async () => {
@@ -190,14 +190,12 @@ test('Exportación con datos sensibles: el propietario recibe el documento compl
   assert.ok(!JSON.stringify(ev.despues).includes('12345678'), 'El historial no guarda el documento');
 });
 
-test('El enlace del grupo solo se muestra al piloto cuando está aprobado', async () => {
+test('Con la ficha terminada el piloto ve el enlace del grupo sin esperar al panel', async () => {
   await admin.panel('onboarding/enlace-grupo', { enlace: 'https://chat.whatsapp.com/PruebaGrupoRukc' });
-  assert.equal((await ok(adulto.token, 'estado')).grupo.enlace, null);
+  assert.equal((await ok(adulto.token, 'estado')).grupo.enlace, 'https://chat.whatsapp.com/PruebaGrupoRukc');
   const { grupo } = await admin.panel('onboarding');
   const g = grupo.find((x) => x.persona_id === adulto.persona);
-  await assert.rejects(admin.panel(`grupo/${g.id}/rechazar`, {}), (e) => e.status === 400, 'Rechazar exige motivo');
-  await admin.panel(`grupo/${g.id}/aprobar`, {});
-  assert.equal((await ok(adulto.token, 'estado')).grupo.enlace, 'https://chat.whatsapp.com/PruebaGrupoRukc');
+  assert.equal(g.estado, 'aprobado');
   const envio = await admin.panel(`grupo/${g.id}/enviar`, {});
   assert.ok(envio.url.startsWith('https://wa.me/') && decodeURIComponent(envio.url).includes('chat.whatsapp.com/PruebaGrupoRukc'));
   await admin.panel(`grupo/${g.id}/dentro`, {});

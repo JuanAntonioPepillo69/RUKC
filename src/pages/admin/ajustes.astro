@@ -23,10 +23,18 @@ import Admin from '../../layouts/Admin.astro';
     <div id="sistema"><p class="vacio">Cargando…</p></div>
   </section>
   <section class="caja"><h2>Historial</h2><div id="historial"></div></section>
+  <section class="caja">
+    <h2>Sesiones</h2>
+    <p class="sub">El panel te recuerda 30 días en cada dispositivo donde entres. Si pierdes el móvil o el portátil, cierra todas las sesiones: tendrás que volver a entrar con contraseña y código en todos.</p>
+    <button class="b b--peligro" type="button" id="salir-todos">Cerrar sesión en todos los dispositivos</button>
+  </section>
 </Admin>
 
 <script>
-  import { api, accion, fechaHora, h } from '../../scripts/admin/api';
+  import { api, accion, fechaHora, h, salirDeTodos } from '../../scripts/admin/api';
+  document.getElementById('salir-todos')!.addEventListener('click', async () => {
+    if (confirm('Se cerrará la sesión en todos tus dispositivos, también en este. ¿Seguir?')) await accion(() => salirDeTodos());
+  });
   import { crearLista } from '../../scripts/admin/lista';
   const form = document.getElementById('entidad') as HTMLFormElement;
   const campos = ['nombre_comercial', 'titular_legal', 'nif', 'tipo', 'activa_desde'];
