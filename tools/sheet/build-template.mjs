@@ -33,7 +33,7 @@ sheet('Config', [['clave', 18], ['valor', 70]], [
 
 sheet('Rondas', [['ronda', 8], ['fecha', 13], ['circuito', 24], ['estado', 14], ['carrera', 12], ['nota', 30], ['fotos', 50], ['videos', 50]], [
   [1, '17/10/2026', 'Karting Mijas', '', '', ''],
-  [2, '21/11/2026', 'Karting Campillos', '', '', ''],
+  [2, '22/11/2026', 'Karting Campillos', '', '', ''],
   [3, '12/12/2026', 'Kart&Fun Málaga', '', '', ''],
   [4, '06/02/2027', 'Karting del Sol', '', '', ''],
   [5, '13/03/2027', 'Kart&Fun Málaga', '', '', ''],

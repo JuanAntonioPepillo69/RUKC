@@ -12,7 +12,7 @@ export type CircuitoId = keyof typeof CIRCUITOS;
 
 export const RONDAS: { ronda: number; fecha: string; circuito: CircuitoId; nota?: string }[] = [
   { ronda: 1, fecha: '2026-10-17', circuito: 'mijas' },
-  { ronda: 2, fecha: '2026-11-21', circuito: 'campillos' },
+  { ronda: 2, fecha: '2026-11-22', circuito: 'campillos' },
   { ronda: 3, fecha: '2026-12-12', circuito: 'kfmalaga' },
   { ronda: 4, fecha: '2027-02-06', circuito: 'delsol' },
   { ronda: 5, fecha: '2027-03-13', circuito: 'kfmalaga' },

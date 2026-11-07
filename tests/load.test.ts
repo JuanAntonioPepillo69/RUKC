@@ -92,6 +92,6 @@ test('calendario: fecha y circuito salen de la base de datos; si no coinciden co
   const cancelada = cotejarCalendario(t, bd.map((b) => (b.numero === 3 ? { ...b, estado: 'cancelada' as const } : b)));
   assert.equal(cancelada.rondas.find((r) => r.ronda === 3)!.estado, 'cancelada');
   assert.throws(() => cotejarCalendario(t, bd.map((b) => (b.numero === 2 ? { ...b, fecha: '2026-11-28' } : b))),
-    /R2: fecha 2026-11-21 en la hoja y 2026-11-28 en la base de datos/);
+    /R2: fecha 2026-11-22 en la hoja y 2026-11-28 en la base de datos/);
   assert.throws(() => cotejarCalendario(t, bd.filter((b) => b.numero !== 8)), /R8 está en la hoja pero no en la base de datos/);
 });

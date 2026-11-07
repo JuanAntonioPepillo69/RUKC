@@ -33,7 +33,7 @@ const proxima = t.rondas.find((r) => r.fecha >= hoy && r.estado !== 'cancelada')
       <p class="eyebrow">RaceUp Karting Championship · 2026-2027</p>
       <h1 class="h2">Temporada 2</h1>
       {primera && ultima && (
-        <p class="lead">{t.rondas.length} rondas en sábado, del {fechaLarga(primera.fecha)} al {fechaLarga(ultima.fecha)}. Dos campeonatos: Ligeros y Pesados.</p>
+        <p class="lead">{t.rondas.length} rondas, del {fechaLarga(primera.fecha)} al {fechaLarga(ultima.fecha)}. Dos campeonatos: Ligeros y Pesados.</p>
       )}
       <ul class="kpis">
         <li><strong class="tnum">{disputadas.length}<span>/{t.rondas.length}</span></strong> rondas disputadas</li>

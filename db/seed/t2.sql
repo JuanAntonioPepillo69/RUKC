@@ -18,7 +18,7 @@ INSERT INTO ronda (temporada_id, numero, circuito_id, fecha, notas)
 SELECT t.id, v.numero, c.id, v.fecha::date, v.notas
 FROM (VALUES
   (1, 'Karting Mijas',     '2026-10-17', NULL),
-  (2, 'Karting Campillos', '2026-11-21', NULL),
+  (2, 'Karting Campillos', '2026-11-22', NULL),
   (3, 'Kart&Fun Málaga',   '2026-12-12', NULL),
   (4, 'Karting del Sol',   '2027-02-06', NULL),
   (5, 'Kart&Fun Málaga',   '2027-03-13', NULL),
