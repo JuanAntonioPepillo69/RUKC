@@ -121,6 +121,10 @@ test('Adulto completa el onboarding: aceptaciones correctas, DNI ilegible en la 
   const [b1] = await q('SELECT borrador::text AS b FROM onboarding WHERE persona_id = $1', [adulto.persona]);
   assert.ok(!b1.b.includes('1990-05-10'), 'La fecha de nacimiento va cifrada hasta que existe su fila');
 
+  const reservado = await ob(adulto.token, 'paso/perfil', { nombre_competicion: 'Adulto O.', dorsal: 98, experiencia: 'amateur', frecuencia: 'mensual', ligas_previas: 'Liga X', circuitos_rodados: ['Campillos'] });
+  assert.equal(reservado.status, 409, 'Un dorsal de la R1 no lo puede elegir otra persona');
+  assert.match(reservado.datos.error, /piloto de la R1/);
+
   const dorsal = await dorsalLibre();
   await ok(adulto.token, 'paso/perfil', { nombre_competicion: 'Adulto O.', dorsal, experiencia: 'amateur', frecuencia: 'mensual', ligas_previas: 'Liga X', circuitos_rodados: ['Campillos'] });
 

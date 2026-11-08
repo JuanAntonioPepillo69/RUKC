@@ -125,3 +125,5 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
 
 - **Caché de `/_astro/` (8-11-2026):** 10 minutos en vez de un año con `immutable`. Vercel aplica esa cabecera también a los 404, y un 404 durante una publicación dejó el panel sin estilos en el navegador hasta forzar la recarga. Pasados los 10 minutos el navegador revalida el archivo.
+
+- **Dorsales de la R1 (8-11-2026):** la R1 solo está en la hoja, así que la ficha no veía sus dorsales y se repitieron 15. Los 35 publicados quedan reservados en `src/config/dorsales-r1.js`: solo los puede elegir la persona cuyo nombre incluye el nombre publicado; a un piloto con apodo se le atiende por WhatsApp.
