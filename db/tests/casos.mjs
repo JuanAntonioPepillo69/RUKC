@@ -215,10 +215,10 @@ export const casos = [
       VALUES ($1, $2, $3, $4, 9900, $5, 'por_peso') RETURNING id`, [b.pedido, b.persona, b.ronda3, b.producto, b.lig])).id;
     // Aviso un día antes de la R2: fuera de plazo (14 días).
     await falla(db, `INSERT INTO traslado (inscripcion_origen_id, inscripcion_destino_id, solicitado_en)
-      VALUES ($1, $2, '2026-11-20 10:00+01')`, [b.inscripcion, destino], /traslado_motivo/);
+      VALUES ($1, $2, '2026-11-21 10:00+01')`, [b.inscripcion, destino], /traslado_motivo/);
     await falla(db, `UPDATE inscripcion SET estado = 'trasladada' WHERE id = $1`, [b.inscripcion], /registra el traslado/);
     const t = await uno(db, `INSERT INTO traslado (inscripcion_origen_id, inscripcion_destino_id, solicitado_en, motivo_excepcion)
-      VALUES ($1, $2, '2026-11-20 10:00+01', 'Lesión') RETURNING dias_antelacion, fuera_de_plazo`, [b.inscripcion, destino]);
+      VALUES ($1, $2, '2026-11-21 10:00+01', 'Lesión') RETURNING dias_antelacion, fuera_de_plazo`, [b.inscripcion, destino]);
     assert.deepEqual(t, { dias_antelacion: 1, fuera_de_plazo: true });
     await db.query(`UPDATE inscripcion SET estado = 'trasladada' WHERE id = $1`, [b.inscripcion]);
   }],

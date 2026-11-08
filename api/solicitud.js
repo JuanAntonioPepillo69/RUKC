@@ -12,6 +12,9 @@ import { actualizarSolicitud, crearSolicitud, mensajeError } from '../lib/valida
 const COLUMNAS = ['ronda_id', 'categoria_elegida', 'pagador_nombre', 'pagador_email', 'pagador_telefono', 'piloto_es_pagador',
   'piloto_nombre', 'piloto_telefono', 'metodo_elegido', 'paso_actual', 'acepta_comunicaciones'];
 const EDITABLE = ['borrador', 'enviada', 'pago_abandonado'];
+// Quién corre, quién paga, qué ronda y qué categoría: una vez dado el código de Bizum, cambiarlos es otra reserva.
+const DATOS_RESERVA = ['ronda_id', 'categoria_elegida', 'pagador_nombre', 'pagador_email', 'pagador_telefono', 'piloto_es_pagador',
+  'piloto_nombre', 'piloto_telefono'];
 
 /** La ronda tiene que ser de la temporada y estar por celebrar; si no, se ignora. */
 async function rondaValida(c, rondaId, temporadaId) {
@@ -84,12 +87,18 @@ export async function PATCH(request) {
     const r = await conTransaccion(async (c) => {
       if (!(await dentroDelLimite(c, request, 'solicitud-patch', 120))) return { limite: true };
       const { rows: [s] } = await c.query(
-        'SELECT id, codigo, estado, temporada_id FROM solicitud_inscripcion WHERE borrador_token_hash = $1 FOR UPDATE', [hashToken(token)]);
+        'SELECT * FROM solicitud_inscripcion WHERE borrador_token_hash = $1 FOR UPDATE', [hashToken(token)]);
       if (!s) return { noExiste: true };
       if (!EDITABLE.includes(s.estado)) return { estado: s.estado, cerrada: true, codigo: s.codigo };
 
       const datos = { ...campos };
       if ('ronda_id' in datos) datos.ronda_id = await rondaValida(c, datos.ronda_id, s.temporada_id);
+      // Con el código de Bizum ya entregado no se sobrescribe: el dinero puede estar en camino con ese código. El 409
+      // hace que el formulario abra una solicitud nueva con otro código.
+      if (s.estado !== 'borrador' && s.metodo_elegido === 'bizum'
+        && DATOS_RESERVA.some((k) => k in datos && (datos[k] ?? null) !== (s[k] ?? null))) {
+        return { estado: s.estado, cerrada: true, codigo: s.codigo };
+      }
       if (consentimiento_medicion !== undefined) datos.consentimiento_medicion = consentimiento_medicion;
       const cols = Object.keys(datos).filter((k) => COLUMNAS.includes(k) || k === 'consentimiento_medicion');
       const sets = cols.map((k, i) => `${k} = $${i + 2}`);

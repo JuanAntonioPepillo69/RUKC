@@ -255,6 +255,24 @@ test('Bizum: solicitud enviada con su código y ningún dato personal en el enla
   assert.ok(s.acepta_documentos.condiciones_reserva && s.acepta_documentos.privacidad);
 });
 
+test('Bizum: con el código ya dado, cambiar el piloto no sobrescribe la reserva; volver sin cambios sí conserva el código', async () => {
+  const { cuerpo } = await nuevaSolicitud();
+  await completar(cuerpo.token, { pagador_nombre: 'Paga Prueba', piloto_es_pagador: true });
+  const dar = await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
+  assert.equal(dar.status, 200);
+
+  const igual = await actualizar(peticion('PATCH', '/api/solicitud', { token: cuerpo.token, cuerpo: { campos: {
+    pagador_nombre: 'Paga Prueba', piloto_es_pagador: true, piloto_nombre: '', metodo_elegido: 'bizum', paso_actual: 3, acepta_comunicaciones: true } } }));
+  assert.equal(igual.status, 200, 'sin cambios en los datos sigue siendo la misma reserva');
+
+  const otro = await actualizar(peticion('PATCH', '/api/solicitud', { token: cuerpo.token, cuerpo: { campos: {
+    piloto_es_pagador: false, piloto_nombre: 'Amigo Prueba' } } }));
+  assert.equal(otro.status, 409);
+  assert.equal((await otro.json()).estado, 'enviada');
+  const [s] = await q('SELECT piloto_es_pagador, piloto_nombre FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  assert.deepEqual(s, { piloto_es_pagador: true, piloto_nombre: null });
+});
+
 test('paga otra persona: el webhook crea pagador y piloto por separado', async () => {
   await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
   const { cuerpo } = await nuevaSolicitud();
