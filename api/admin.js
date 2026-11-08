@@ -3,6 +3,7 @@
 // Las pantallas (src/pages/admin) no llevan datos: todo se pide aquí.
 import { despachar } from '../lib/admin.js';
 import { hoy } from '../lib/panel/hoy.js';
+import { resumenPagos } from '../lib/panel/resumen-pagos.js';
 import * as listas from '../lib/panel/listas.js';
 import * as acciones from '../lib/panel/acciones.js';
 import * as ventas from '../lib/panel/ventas.js';
@@ -14,6 +15,7 @@ import * as sistema from '../lib/panel/sistema.js';
 const RUTAS = [
   ['GET', 'yo', ({ admin }) => ({ admin })],
   ['GET', 'hoy', hoy],
+  ['GET', 'pagos/resumen', resumenPagos, ['propietario']],
   // Listas con filtros, vistas guardadas y exportación
   ['GET', 'lista/:vista', listas.lista],
   ['GET', 'exportar/:vista', listas.exportar],

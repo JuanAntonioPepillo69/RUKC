@@ -72,3 +72,13 @@ dialog.dlg::backdrop { background: rgba(0, 0, 0, 0.6); }
 .pestanas { display: flex; gap: 6px; flex-wrap: wrap; }
 .pestanas button[aria-selected='true'] { background: rgba(212, 166, 42, 0.18); border-color: var(--gold); }
 [hidden] { display: none !important; }
+
+.pagos-resumen { margin-bottom: 14px; grid-template-columns: minmax(0, 1fr); }
+.pagos-resumen[hidden] { display: none; }
+.pagos-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.pagos-tile { display: grid; gap: 2px; align-content: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.pagos-tile strong { font-family: var(--font-display); font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.pagos-tile__t { color: var(--muted); font-size: 13px; font-weight: 700; }
+.pagos-tile__s { color: var(--muted); font-size: 12.5px; }
+.pagos-det summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; }
+.pagos-det[open] > * + * { margin-top: 10px; }

@@ -4,6 +4,7 @@
 import Admin from '../../layouts/Admin.astro';
 ---
 <Admin titulo="Hoy" seccion="hoy">
+  <section class="caja pagos-resumen" id="pagos" hidden></section>
   <div class="rejilla" id="hoy"><p class="vacio">Cargando…</p></div>
 </Admin>
 
@@ -66,4 +67,57 @@ import Admin from '../../layouts/Admin.astro';
     );
   }
   cargar().catch(() => {});
+
+  // ---------- Pagos entrados (solo propietario: a otros roles la API les responde 403 y la caja no sale) ----------
+  type Periodo = { n: number; cent: number; tarjeta_cent: number; bizum_cent: number; otros_cent: number; reembolsado_cent: number };
+  type Fila = Periodo & { desde: string; hasta: string };
+  type Resumen = { periodos: Record<'hoy' | 'ayer' | 'semana' | 'semana_pasada' | 'mes' | 'mes_pasado' | 'total', Periodo>; dias: Fila[]; semanas: Fila[]; meses: Fila[] };
+  const fechaDe = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-ES', o);
+  const ETIQUETA = {
+    dias: (f: Fila) => fechaDe(f.desde, { weekday: 'short', day: 'numeric', month: 'short' }),
+    semanas: (f: Fila) => `${fechaDe(f.desde, { day: 'numeric', month: 'short' })} – ${fechaDe(f.hasta, { day: 'numeric', month: 'short' })}`,
+    meses: (f: Fila) => fechaDe(f.desde, { month: 'long', year: 'numeric' }),
+  };
+  const nPagos = (n: number) => `${n} ${n === 1 ? 'pago' : 'pagos'}`;
+  const tile = (titulo: string, p: Periodo, comparar?: [string, Periodo]) => h('div', { class: 'pagos-tile' },
+    h('span', { class: 'pagos-tile__t' }, titulo),
+    h('strong', {}, euros(p.cent)),
+    h('span', { class: 'pagos-tile__s' }, nPagos(p.n)),
+    ...(comparar ? [h('span', { class: 'pagos-tile__s' }, `${comparar[0]}: ${euros(comparar[1].cent)}`)] : []));
+
+  function tablaPagos(r: Resumen, vista: 'dias' | 'semanas' | 'meses') {
+    const filas = r[vista];
+    const otros = filas.some((f) => f.otros_cent), reemb = filas.some((f) => f.reembolsado_cent);
+    const num = (t: string) => h('td', { class: 'num' }, t);
+    const eur = (c: number) => (c ? euros(c) : '–');
+    return h('div', { class: 'tabla-env' }, h('table', { class: 'tabla' },
+      h('thead', {}, h('tr', {}, ...['Periodo', 'Pagos', 'Tarjeta', 'Bizum', ...(otros ? ['Otros'] : []), ...(reemb ? ['Reembolsado'] : []), 'Total'].map((t, i) => h('th', { style: `cursor:default;text-align:${i ? 'right' : 'left'}` }, t)))),
+      h('tbody', {}, ...filas.map((f) => h('tr', {},
+        h('td', {}, ETIQUETA[vista](f)), num(f.n ? String(f.n) : '–'), num(eur(f.tarjeta_cent)), num(eur(f.bizum_cent)),
+        ...(otros ? [num(eur(f.otros_cent))] : []), ...(reemb ? [num(eur(f.reembolsado_cent))] : []),
+        h('td', { class: 'num' }, h('b', {}, eur(f.cent))))))));
+  }
+
+  async function cargarPagos() {
+    const r = await api<Resumen>('pagos/resumen');
+    const caja = document.getElementById('pagos')!;
+    const p = r.periodos;
+    const hueco = h('div', {});
+    const NOMBRES = { dias: 'Por día', semanas: 'Por semana', meses: 'Por mes' } as const;
+    const botones = h('div', { class: 'acciones' });
+    const elegir = (vista: keyof typeof NOMBRES) => {
+      botones.replaceChildren(...(Object.keys(NOMBRES) as (keyof typeof NOMBRES)[]).map((v) =>
+        boton(NOMBRES[v], () => elegir(v), `b b--peq${v === vista ? ' b--oro' : ''}`)));
+      hueco.replaceChildren(tablaPagos(r, vista));
+    };
+    elegir('dias');
+    caja.replaceChildren(
+      h('h2', {}, 'Pagos entrados'),
+      h('div', { class: 'pagos-tiles' }, tile('Hoy', p.hoy), tile('Ayer', p.ayer), tile('Esta semana', p.semana, ['Semana pasada', p.semana_pasada]),
+        tile('Este mes', p.mes, ['Mes pasado', p.mes_pasado]), tile('Total', p.total)),
+      h('details', { class: 'pagos-det' }, h('summary', {}, 'Ver el detalle por día, semana y mes'), botones, hueco,
+        h('p', { class: 'vacio' }, 'Cuenta cada pago el día en que entró; los Bizum de la web, el día en que los confirmas. Los reembolsos se restan el día en que se emiten.')));
+    caja.hidden = false;
+  }
+  cargarPagos().catch(() => {});
 </script>

@@ -34,6 +34,13 @@ after(async () => {
   await pool.end();
 });
 
+test('resumen de pagos: responde con los periodos y los totales cuadran con la serie por meses', async () => {
+  const r = await admin.panel('pagos/resumen');
+  assert.equal(r.dias.length, 14);
+  assert.equal(r.semanas.length, 8);
+  assert.equal(r.meses.reduce((s, m) => s + m.cent, 0), r.periodos.total.cent);
+});
+
 test('F3: un lead con un teléfono que ya existe abre la ficha en vez de duplicar', async () => {
   const telefono = tel();
   const nuevo = await admin.panel('leads', { telefono, nombre: 'Lead', apellidos: 'Prueba', canal: 'whatsapp', nota: 'Pregunta por la R2', proxima_accion: 'Llamar', proxima_accion_en: new Date(Date.now() - 3600e3).toISOString() });
