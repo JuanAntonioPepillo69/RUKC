@@ -115,7 +115,7 @@ import Admin from '../../layouts/Admin.astro';
       h('h2', {}, 'Pagos entrados'),
       h('div', { class: 'pagos-tiles' }, tile('Hoy', p.hoy), tile('Ayer', p.ayer), tile('Esta semana', p.semana, ['Semana pasada', p.semana_pasada]),
         tile('Este mes', p.mes, ['Mes pasado', p.mes_pasado]), tile('Total', p.total)),
-      h('details', { class: 'pagos-det' }, h('summary', {}, 'Ver el detalle por día, semana y mes'), botones, hueco,
+      h('details', { class: 'pagos-det' }, h('summary', {}, 'Ver detalle por día, semana y mes'), botones, hueco,
         h('p', { class: 'vacio' }, 'Cuenta cada pago el día en que entró; los Bizum de la web, el día en que los confirmas. Los reembolsos se restan el día en que se emiten.')));
     caja.hidden = false;
   }
