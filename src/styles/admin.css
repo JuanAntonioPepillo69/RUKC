@@ -80,5 +80,5 @@ dialog.dlg::backdrop { background: rgba(0, 0, 0, 0.6); }
 .pagos-tile strong { font-family: var(--font-display); font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .pagos-tile__t { color: var(--muted); font-size: 13px; font-weight: 700; }
 .pagos-tile__s { color: var(--muted); font-size: 12.5px; }
-.pagos-det summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; }
+.pagos-det summary { cursor: pointer; user-select: none; color: var(--muted); font-size: 14px; font-weight: 600; }
 .pagos-det[open] > * + * { margin-top: 10px; }

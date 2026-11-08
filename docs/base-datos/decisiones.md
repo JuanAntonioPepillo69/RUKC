@@ -123,3 +123,5 @@ Detalles que el diseño no fija y que el esquema resuelve así. Se pueden cambia
 ## Pendiente de confirmar
 
 - Tipo de `evento.entidad_id`: `text` en la migración 0000 (el diseño no lo fija).
+
+- **Caché de `/_astro/` (8-11-2026):** 10 minutos en vez de un año con `immutable`. Vercel aplica esa cabecera también a los 404, y un 404 durante una publicación dejó el panel sin estilos en el navegador hasta forzar la recarga. Pasados los 10 minutos el navegador revalida el archivo.
