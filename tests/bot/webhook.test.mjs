@@ -241,6 +241,20 @@ test('si Claude no responde a tiempo o pide más de 4 herramientas: texto fijo y
   }
 });
 
+test('con la espera de agrupación activa: un mensaje suelto se contesta y dos seguidos reciben una sola respuesta', async () => {
+  const conEspera = { ...deps, esperaAgruparMs: 800 };
+  const suelto = nuevoTelefono();
+  await manejar(peticion(entrante(suelto, 'Hola')), conEspera);
+  assert.equal(enviadosA(suelto).length, 1, 'un mensaje suelto se ha quedado sin respuesta');
+
+  const seguidos = nuevoTelefono();
+  await Promise.all([
+    manejar(peticion(entrante(seguidos, 'Hola')), conEspera),
+    new Promise((ok) => setTimeout(ok, 150)).then(() => manejar(peticion(entrante(seguidos, 'Cuánto cuesta?')), conEspera)),
+  ]);
+  assert.equal(enviadosA(seguidos).length, 1);
+});
+
 test('whatsapp.message.updated actualiza el estado del mensaje enviado', async () => {
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Hola'));
