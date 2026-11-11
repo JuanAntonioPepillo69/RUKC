@@ -205,6 +205,27 @@ test('criterio 9: BAJA confirma y queda en wa_contacts y wa_consents', async () 
   assert.equal(enviadosA(tel).length, 3);
 });
 
+test('BAJA se respeta también en modo humano y con el bot apagado', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(eco(tel, 'Te cuento yo'));
+  assert.equal((await contacto(tel)).modo, 'humano');
+  await enviarAviso(entrante(tel, 'Baja'));
+  assert.equal((await contacto(tel)).baja, 'total');
+  assert.match(enviadosA(tel).at(-1).text.body, /baja/i);
+
+  const tel2 = nuevoTelefono();
+  await enviarAviso(entrante(tel2, 'Hola'));
+  await q(`UPDATE bot_settings SET valor = 'false' WHERE clave = 'bot_activo'`);
+  try {
+    await enviarAviso(entrante(tel2, 'BAJA'));
+    assert.equal((await contacto(tel2)).baja, 'total');
+    assert.equal(enviadosA(tel2).length, 1, 'con el bot apagado no se contesta');
+  } finally {
+    await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  }
+});
+
 test('bot_activo = false: no contesta a nadie', async () => {
   const tel = nuevoTelefono();
   await q(`UPDATE bot_settings SET valor = 'false' WHERE clave = 'bot_activo'`);
