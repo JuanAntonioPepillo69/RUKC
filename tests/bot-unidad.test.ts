@@ -73,6 +73,15 @@ test('BAJA exacta y contenido de mensajes no de texto', () => {
   assert.match(contenidoEntrante({ type: 'image', image: { caption: 'justificante' } }).cuerpo, /imagen: justificante/);
 });
 
+test('PIN del canal admin: hash y comprobación', async () => {
+  const { hashPin, pinValido } = await import('../lib/bot/pin.js');
+  const h = hashPin('123456');
+  assert.ok(pinValido('123456', h));
+  assert.ok(!pinValido('123457', h));
+  assert.ok(!pinValido('123456', ''));
+  assert.notEqual(hashPin('123456'), h);
+});
+
 test('plantillas: número de variables y botón', () => {
   const p = construirPlantilla('rukc_feedback_ronda', ['Álvaro', 'R3'], { sufijoBoton: 'token' });
   assert.equal(p.components[1].parameters[0].text, 'token');
