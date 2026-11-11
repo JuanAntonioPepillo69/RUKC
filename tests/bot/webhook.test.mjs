@@ -51,7 +51,8 @@ const llm = {
     llamadasLlm += 1;
     const ultimo = params.messages.at(-1);
     if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver John, ya se lo he pasado y te contesta él.');
-    const t = ultimo.content.toLowerCase();
+    // Los mensajes seguidos del contacto llegan juntos: cuenta el último.
+    const t = ultimo.content.toLowerCase().split('\n').at(-1);
     if (t.includes('devolv')) return respuesta([usoHerramienta('escalar_a_john', { motivo: 'pide reembolso', resumen: 'Quiere la devolución de la reserva.', urgencia: 'normal' })], 'tool_use');
     if (t.includes('muchas herramientas')) {
       return respuesta([1, 2, 3, 4, 5].map((i) => usoHerramienta('consultar_rondas', { solo_abiertas: true }, `tu_${i}`)), 'tool_use');
@@ -61,7 +62,10 @@ const llm = {
     return texto('Qué tal crack! Cada ronda son 99 €, con 30 € de reserva.');
   },
 };
-const deps = { llm, esperar: true, esperaAgruparMs: 0, resumir: async () => 'Resumen simulado.', limiteMs: 500 };
+// Clasificador de tema simulado (Haiku): todo lo que hable de paella es fuera de tema.
+const clasificados = [];
+const clasificar = async ({ texto }) => { clasificados.push(texto); return !/paella/i.test(texto); };
+const deps = { llm, esperar: true, esperaAgruparMs: 0, resumir: async () => 'Resumen simulado.', clasificar, limiteMs: 500 };
 
 // --- Avisos de YCloud ---------------------------------------------------------------------------------------------
 let ev = 0;
@@ -228,7 +232,7 @@ test('BAJA se respeta también en modo humano y con el bot apagado', async () =>
   }
 });
 
-test('charla fuera de tema: la marca no se envía y a la tercera se corta y avisa a John', async () => {
+test('charla fuera de tema: a la tercera, texto fijo una vez, silencio y vuelve cuando habla de RUKC', async () => {
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Hola'));
   await enviarAviso(entrante(tel, 'Receta de paella'));
@@ -236,18 +240,31 @@ test('charla fuera de tema: la marca no se envía y a la tercera se corta y avis
   const enviados = enviadosA(tel);
   assert.equal(enviados.length, 3);
   for (const e of enviados) assert.doesNotMatch(e.text.body, /\[FT\]/);
-  assert.equal((await contacto(tel)).modo, 'bot', 'con dos fuera de tema todavía no corta');
   const avisosAntes = enviadosA(ADMIN).length;
   await enviarAviso(entrante(tel, 'Y la paella valenciana?'));
   assert.equal(enviadosA(tel).at(-1).text.body, TEXTO_CORTE);
-  const c = await contacto(tel);
-  assert.equal(c.modo, 'humano');
+  assert.equal((await contacto(tel)).modo, 'bot', 'el corte no pasa la conversación a John');
   assert.equal(enviadosA(ADMIN).length, avisosAntes + 1);
-  assert.match(enviadosA(ADMIN).at(-1).text.body, /temas que no son de RUKC/);
-  assert.match(enviadosA(ADMIN).at(-1).text.body, new RegExp(`REANUDA \\${tel}`));
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /Aviso del bot/);
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /hasta que escriba algo de RUKC/);
+
+  // Fuera de tema otra vez: lo decide el clasificador, sin llamar al bot normal y sin contestar.
   const antes = llamadasLlm;
-  await enviarAviso(entrante(tel, 'Hola?'));
-  assert.equal(llamadasLlm, antes, 'después del corte no se llama a Claude');
+  const clasificadosAntes = clasificados.length;
+  await enviarAviso(entrante(tel, 'Más paella'));
+  await enviarAviso(entrante(tel, 'paella paella'));
+  assert.equal(enviadosA(tel).length, 4, 'el texto del corte se manda una sola vez');
+  assert.equal(llamadasLlm, antes, 'durante el corte no se llama al bot normal');
+  assert.deepEqual(clasificados.slice(clasificadosAntes), ['Más paella', 'paella paella']);
+
+  // Algo de RUKC: vuelve a contestar.
+  await enviarAviso(entrante(tel, 'Cuánto cuesta una ronda?'));
+  assert.equal(enviadosA(tel).length, 5);
+  assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
+  // Y ya no está en corte: el siguiente mensaje no pasa por el clasificador.
+  const c2 = clasificados.length;
+  await enviarAviso(entrante(tel, 'Y la reserva?'));
+  assert.equal(clasificados.length, c2);
 });
 
 test('bot_activo = false: no contesta a nadie', async () => {

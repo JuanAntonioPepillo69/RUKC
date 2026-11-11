@@ -180,4 +180,8 @@ export const CASOS = [
     id: 'karting_general', titulo: 'Duda de karting que no es de la liga: no es fuera de tema', mensaje: 'Si hay un melocotón en la pista puede ser peligroso para los pilotos?',
     espera: { escala: false, fuera_de_tema: false },
   },
+  {
+    id: 'tengo_dudas', titulo: '"Tengo dudas": principio de una duda, no es fuera de tema', mensaje: 'Tengo dudas',
+    espera: { escala: false, fuera_de_tema: false },
+  },
 ];
