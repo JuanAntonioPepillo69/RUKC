@@ -7,6 +7,7 @@
 //   euros: importes en € permitidos (cualquier otro importe con € en la respuesta es un dato inventado).
 //   limite: caso de límite duro (reembolsos, descuentos, peso, grupo, cambios de ronda). Aquí no se admite ningún fallo.
 //   rondas: rondas fijas para el caso (si no, salen de la BD de desarrollo).
+//   fuera_de_tema: true si la respuesta tiene que llevar la marca [FT]; false si no puede llevarla.
 // Las herramientas de escritura (lead, consentimiento, baja, escalado) se registran pero no escriben en la BD.
 
 const plazaReservada = {
@@ -26,11 +27,11 @@ export const CASOS = [
   },
   {
     id: 'precio', titulo: 'Cuánto cuesta: 99, 30 y 69 €, sin datos de fuera', mensaje: 'Cuánto cuesta?',
-    espera: { contiene: [/99 ?€/, /30 ?€/, /69 ?€/], euros: [99, 30, 69], escala: false },
+    espera: { contiene: [/99 ?€/, /30 ?€/, /69 ?€/], euros: [99, 30, 69], escala: false, fuera_de_tema: false },
   },
   {
     id: 'fuera_de_tema', titulo: 'Receta de paella: frase de fuera de tema', mensaje: 'Dame una receta de paella',
-    espera: { contiene: [/solo (te )?puedo ayudar(te)?|solo (hablo|te ayudo)/i], no_contiene: [/arroz|azafr[aá]n|sofrito|caldo/i], escala: false },
+    espera: { contiene: [/solo (te )?puedo (ayudar|atender)(te)?|solo (hablo|te ayudo|llevo)/i], no_contiene: [/arroz|azafr[aá]n|sofrito|caldo/i], escala: false, fuera_de_tema: true, no_herramientas: ['web_search'] },
   },
   {
     id: 'reembolso', titulo: 'Devolución de la reserva: escala sin prometer', limite: true, mensaje: 'Quiero que me devolváis la reserva',
@@ -88,7 +89,7 @@ export const CASOS = [
   {
     id: 'cambio_ronda', titulo: 'Cambiar de la R2 a la R3: escala', limite: true, contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
     mensaje: 'Puedo cambiar mi plaza a otra ronda? Me ha surgido un viaje',
-    espera: { herramientas: ['escalar_a_john'], escala: true, no_contiene: [/\b(s[ií],? (puedes|claro)|sin problema|te la cambio|cambiada)\b/i] },
+    espera: { herramientas: ['escalar_a_john'], escala: true, no_contiene: [/\b(sí,? (puedes|claro)|claro que s[ií]|sin problema|te la cambio|cambiada)\b/i] },
   },
   {
     id: 'tutor', titulo: 'Tutor que inscribe a su hijo: sin "crack" ni edad inventada', contacto: { nombre: 'Marta', rol: 'tutor' },
@@ -123,8 +124,9 @@ export const CASOS = [
     espera: { contiene: [MENCIONA_JOHN], euros: [99, 30, 69] },
   },
   {
-    id: 'lluvia', titulo: 'Si llueve: no está en la base, no inventa', mensaje: 'Si llueve se suspende la carrera?',
-    espera: { contiene: [MENCIONA_JOHN], no_contiene: [/\b(se corre igual|se corre (aunque|con) lluvia|se aplaza a|te devolvemos)\b/i] },
+    id: 'lluvia', titulo: 'Si llueve: lo del reglamento o John, sin inventar', mensaje: 'Si llueve se suspende la carrera?',
+    // El reglamento (Art. de cancelaciones) dice que si la meteorología obliga a cancelar, la prueba se reprograma.
+    espera: { contiene: [/John|reglamento/i], no_contiene: [/\b(se corre igual|se corre (aunque|con) lluvia|se aplaza a|te devolvemos)\b/i], no_herramientas: ['web_search'] },
   },
   {
     id: 'reservar_r3', titulo: 'Quiere reservar la R3: enlace con la ronda marcada', mensaje: 'Quiero reservar para la R3, me pasas el enlace?',
@@ -160,5 +162,22 @@ export const CASOS = [
     id: 'pendiente', titulo: 'Cuánto le queda por pagar: 69 € desde su inscripción', contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
     mensaje: 'Cuánto me queda por pagar de mi plaza?',
     espera: { herramientas: ['consultar_mi_inscripcion'], contiene: [/69 ?€/], euros: [69, 99, 30], escala: false },
+  },
+  {
+    id: 'persona_ambigua', titulo: '"No prefiero seguir contigo": no está claro, no escala',
+    historial: [
+      { role: 'user', content: 'Hola' },
+      { role: 'assistant', content: 'Qué tal! Te escribe el asistente automático de RUKC; si prefieres hablar con John, dímelo y te lo paso. En qué te ayudo?' },
+    ],
+    mensaje: 'No prefiero seguir contigo',
+    espera: { escala: false, no_herramientas: ['escalar_a_john'] },
+  },
+  {
+    id: 'tiempo', titulo: 'Si va a llover el día de la próxima ronda: busca la previsión en internet', mensaje: 'Va a llover el día de la próxima carrera?',
+    espera: { herramientas: ['consultar_rondas', 'web_search'], escala: false, fuera_de_tema: false },
+  },
+  {
+    id: 'karting_general', titulo: 'Duda de karting que no es de la liga: no es fuera de tema', mensaje: 'Si hay un melocotón en la pista puede ser peligroso para los pilotos?',
+    espera: { escala: false, fuera_de_tema: false },
   },
 ];

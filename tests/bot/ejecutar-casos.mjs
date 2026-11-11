@@ -5,6 +5,7 @@
 // Uso:  npm run bot:casos                       (los 30)
 //       npm run bot:casos -- --solo=precio,peso_franja
 //       npm run bot:casos -- --json=salida.json  (guarda el detalle)
+//       npm run bot:casos -- --pensar            (con razonamiento adaptativo, para comparar)
 // Necesita DATABASE_URL (.env) y ANTHROPIC_API_KEY (.env.bot, fuera de git). Coste aproximado: 0,5 a 1 $ por pasada.
 import fs from 'node:fs';
 import * as datosReales from '../../lib/bot/datos.js';
@@ -23,6 +24,8 @@ const solo = arg('solo')?.split(',');
 const salidaJson = arg('json');
 const modelo = process.env.BOT_MODEL_CONVERSATION || MODELO_CONVERSACION;
 const PARALELO = 3;
+// --pensar: con razonamiento adaptativo (por defecto el bot va sin razonar entre llamadas, para gastar menos).
+const pensar = process.argv.includes('--pensar');
 
 const docs = await datosReales.documentosKb({ fresco: true });
 const kbTexto = textoParaPrompt(docs);
@@ -61,6 +64,8 @@ function comprobar(caso, r) {
     const raros = importes.filter((x) => !e.euros.includes(x));
     if (raros.length) fallos.push(`importes que no están en la base: ${raros.join(', ')} €`);
   }
+  if (e.fuera_de_tema === true && !r.fueraDeTema) fallos.push('no lleva la marca de fuera de tema');
+  if (e.fuera_de_tema === false && r.fueraDeTema) fallos.push('lleva la marca de fuera de tema');
   if (r.fallo) fallos.push(`turno fallido (${r.fallo})`);
   const emojis = (r.texto.match(EMOJI) ?? []).length;
   const emojisModelo = (r.textoModelo?.match(EMOJI) ?? []).length;
@@ -74,7 +79,7 @@ async function ejecutarCaso(caso) {
   const ctx = { contacto, conversacionId: null, mensajeId: null, datos: datosDelCaso(caso, escrituras) };
   const historial = [...(caso.historial ?? []), { role: 'user', content: caso.mensaje }];
   const r = await ejecutarTurno({
-    llm: llmAnthropic, modelo, historial, ctx, avisoIaPendiente: Boolean(caso.aviso),
+    llm: llmAnthropic, modelo, historial, ctx, avisoIaPendiente: Boolean(caso.aviso), ...(pensar ? { thinking: null } : {}),
     system: systemPublico({ kbTexto, contacto: { nombre: contacto.display_name, rol: contacto.rol }, avisoIaPendiente: Boolean(caso.aviso) }),
   });
   return { caso, r, ...comprobar(caso, r), escrituras };
@@ -112,6 +117,9 @@ const ok = pasan >= minimo && !fallosLimite.length && !emojis;
 
 console.log(`\n${pasan}/${casos.length} pasan (mínimo ${minimo}). Fallos en límites duros: ${fallosLimite.length}. Emojis en las salidas: ${emojis} (el modelo escribió ${emojisModelo} antes de limpiar).`);
 console.log(`Tiempo por turno: mediana ${(tiempos[Math.floor(tiempos.length / 2)] / 1000).toFixed(1)} s, máximo ${(tiempos.at(-1) / 1000).toFixed(1)} s.`);
+const busquedas = resultados.reduce((s, x) => s + x.r.llamadas.filter((l) => l.servidor).length, 0);
+console.log(`Búsquedas en internet: ${busquedas} (se pagan aparte de los tokens).`);
+console.log(`Salida media por turno: ${Math.round(uso.salida / resultados.length)} tokens.`);
 console.log(`Tokens: ${uso.entrada} de entrada, ${uso.cache_lectura} leídos de caché, ${uso.cache_escritura} escritos en caché, ${uso.salida} de salida. Coste aproximado: ${coste.toFixed(3)} $.`);
 console.log(ok ? 'CRITERIO 10: CUMPLE' : 'CRITERIO 10: NO CUMPLE');
 if (salidaJson) {

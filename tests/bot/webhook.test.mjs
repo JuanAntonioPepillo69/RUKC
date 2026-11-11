@@ -18,6 +18,7 @@ Object.assign(process.env, {
 });
 const { manejar } = await import('../../api/wa/webhook.js');
 const { AVISO_IA, TEXTO_FALLO } = await import('../../lib/bot/turn.js');
+const { TEXTO_CORTE } = await import('../../lib/whatsapp/entrante.js');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const q = async (t, p) => (await pool.query(t, p)).rows;
@@ -56,6 +57,7 @@ const llm = {
       return respuesta([1, 2, 3, 4, 5].map((i) => usoHerramienta('consultar_rondas', { solo_abiertas: true }, `tu_${i}`)), 'tool_use');
     }
     if (t.includes('lento')) return new Promise(() => {});
+    if (t.includes('paella')) return texto('[FT] De eso no te puedo ayudar, yo solo llevo lo de RUKC.');
     return texto('Qué tal crack! Cada ronda son 99 €, con 30 € de reserva.');
   },
 };
@@ -224,6 +226,28 @@ test('BAJA se respeta también en modo humano y con el bot apagado', async () =>
   } finally {
     await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
   }
+});
+
+test('charla fuera de tema: la marca no se envía y a la tercera se corta y avisa a John', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(tel, 'Receta de paella'));
+  await enviarAviso(entrante(tel, 'Otra paella'));
+  const enviados = enviadosA(tel);
+  assert.equal(enviados.length, 3);
+  for (const e of enviados) assert.doesNotMatch(e.text.body, /\[FT\]/);
+  assert.equal((await contacto(tel)).modo, 'bot', 'con dos fuera de tema todavía no corta');
+  const avisosAntes = enviadosA(ADMIN).length;
+  await enviarAviso(entrante(tel, 'Y la paella valenciana?'));
+  assert.equal(enviadosA(tel).at(-1).text.body, TEXTO_CORTE);
+  const c = await contacto(tel);
+  assert.equal(c.modo, 'humano');
+  assert.equal(enviadosA(ADMIN).length, avisosAntes + 1);
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /temas que no son de RUKC/);
+  assert.match(enviadosA(ADMIN).at(-1).text.body, new RegExp(`REANUDA \\${tel}`));
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(tel, 'Hola?'));
+  assert.equal(llamadasLlm, antes, 'después del corte no se llama a Claude');
 });
 
 test('bot_activo = false: no contesta a nadie', async () => {
