@@ -46,9 +46,11 @@ const respuesta = (content, stop_reason = 'end_turn') => ({ stop_reason, content
 const texto = (t) => respuesta([{ type: 'text', text: t }]);
 const usoHerramienta = (name, input, id = `tu_${Math.random()}`) => ({ type: 'tool_use', id, name, input });
 let llamadasLlm = 0;
+let ultimosMensajes = null;
 const llm = {
   async crear(params) {
     llamadasLlm += 1;
+    ultimosMensajes = params.messages;
     const ultimo = params.messages.at(-1);
     if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver John, ya se lo he pasado y te contesta él.');
     // Los mensajes seguidos del contacto llegan juntos: cuenta el último.
@@ -265,6 +267,23 @@ test('charla fuera de tema: a la tercera, texto fijo una vez, silencio y vuelve 
   const c2 = clasificados.length;
   await enviarAviso(entrante(tel, 'Y la reserva?'));
   assert.equal(clasificados.length, c2);
+});
+
+test('REANUDA: el bot no tiene en cuenta lo que el contacto escribió mientras la llevaba John', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
+  assert.equal((await contacto(tel)).modo, 'humano');
+  await enviarAviso(entrante(tel, 'Sois unos inútiles'));
+  await enviarAviso(entrante(tel, 'Contestad ya'));
+  await enviarAviso(entrante(ADMIN, `REANUDA ${tel}`));
+  assert.equal((await contacto(tel)).modo, 'bot');
+  await enviarAviso(entrante(tel, 'Hola de nuevo'));
+  const ultimo = ultimosMensajes.at(-1);
+  assert.equal(ultimo.role, 'user');
+  assert.equal(ultimo.content, 'Hola de nuevo');
+  assert.ok(!JSON.stringify(ultimosMensajes).includes('inútiles'), 'lo escrito durante el modo humano no llega al bot');
+  assert.ok(JSON.stringify(ultimosMensajes).includes('devolváis'), 'la conversación anterior sí sigue como contexto');
 });
 
 test('bot_activo = false: no contesta a nadie', async () => {
