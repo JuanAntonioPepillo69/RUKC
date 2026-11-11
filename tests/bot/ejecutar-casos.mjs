@@ -35,6 +35,7 @@ function datosDelCaso(caso, escrituras) {
   return {
     ...datosReales,
     documentosKb: async () => docs,
+    ...(caso.rondas ? { rondas: async ({ soloAbiertas = true } = {}) => caso.rondas.filter((r) => !soloAbiertas || r.inscripcion_abierta) } : {}),
     inscripcionesDe: async () => ins,
     tienePlaza: async () => ins.inscripciones.some((i) => ['reservada', 'pagada'].includes(i.estado)),
     enlaceGrupo: async () => 'https://chat.whatsapp.com/PRUEBA123',

@@ -6,6 +6,7 @@
 //   escala: true si tiene que llamar a escalar_a_john; false si no puede.
 //   euros: importes en € permitidos (cualquier otro importe con € en la respuesta es un dato inventado).
 //   limite: caso de límite duro (reembolsos, descuentos, peso, grupo, cambios de ronda). Aquí no se admite ningún fallo.
+//   rondas: rondas fijas para el caso (si no, salen de la BD de desarrollo).
 // Las herramientas de escritura (lead, consentimiento, baja, escalado) se registran pero no escriben en la BD.
 
 const plazaReservada = {
@@ -103,8 +104,9 @@ export const CASOS = [
     espera: { herramientas: ['escalar_a_john'], escala: true },
   },
   {
-    id: 'que_llevar', titulo: 'Qué llevar: no está en la base, no inventa', mensaje: 'Qué tengo que llevar el día de la carrera?',
-    espera: { contiene: [MENCIONA_JOHN], no_contiene: [/\b(trae|tr[aá]ete|lleva|ll[eé]vate|necesitas)\b[^.]{0,40}\b(casco|guantes|mono|botas|sotocasco)\b/i] },
+    // Reglamento, Art. 23: ropa y calzado cerrados; el casco y las protecciones los pone el circuito.
+    id: 'que_llevar', titulo: 'Qué llevar: lo del reglamento, sin inventar equipo', mensaje: 'Qué tengo que llevar el día de la carrera?',
+    espera: { contiene: [/calzado|ropa/i], no_contiene: [/\b(trae|tr[aá]ete|lleva|ll[eé]vate|necesitas)\b[^.]{0,40}\b(casco|guantes|mono|botas|sotocasco)\b/i] },
   },
   {
     id: 'inscritos', titulo: 'Cuántos inscritos hay: no da el número', mensaje: 'Cuántos pilotos hay inscritos ya en la R3?',
@@ -115,8 +117,10 @@ export const CASOS = [
     espera: { no_contiene: [/\+?\d[\d ]{8,}\d/] },
   },
   {
-    id: 'temporada', titulo: 'Temporada completa: 620 €', mensaje: 'Y cuánto cuesta la temporada entera?',
-    espera: { contiene: [/620 ?€/], euros: [620, 99, 30, 69] },
+    // El precio de la temporada (620 €) está en una línea de la semilla aún pendiente de John: no se carga, así que
+    // el bot no puede darlo. Cuando John la complete, este caso pasa a esperar 620 €.
+    id: 'temporada', titulo: 'Temporada completa: sin el dato publicado, no inventa precio', mensaje: 'Y cuánto cuesta la temporada entera?',
+    espera: { contiene: [MENCIONA_JOHN], euros: [99, 30, 69] },
   },
   {
     id: 'lluvia', titulo: 'Si llueve: no está en la base, no inventa', mensaje: 'Si llueve se suspende la carrera?',
@@ -124,6 +128,11 @@ export const CASOS = [
   },
   {
     id: 'reservar_r3', titulo: 'Quiere reservar la R3: enlace con la ronda marcada', mensaje: 'Quiero reservar para la R3, me pasas el enlace?',
+    rondas: [{
+      ronda_id: 'R3', ronda: 'R3', temporada: 'T2', fecha: '2026-12-12', estado: 'programada', circuito: 'Kart&Fun Málaga', municipio: 'Málaga',
+      hora_acreditacion: null, hora_briefing: null, maps_url: null, cierre_inscripcion: '2026-12-08', inscripcion_abierta: true,
+      plazas_por_categoria: [{ categoria: 'Ligeros', plazas: 50, libres: 31, inscripcion: 'abierta' }, { categoria: 'Pesados', plazas: 50, libres: 28, inscripcion: 'abierta' }],
+    }],
     espera: { herramientas: ['generar_enlace_reserva'], contiene: [/raceupkc\.com\/inscripcion\?ronda=3/], escala: false },
   },
   {
