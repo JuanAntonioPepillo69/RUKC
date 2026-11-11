@@ -184,6 +184,9 @@
   "functions": {
     "api/cron.js": {
       "maxDuration": 60
+    },
+    "api/wa/webhook.js": {
+      "maxDuration": 60
     }
   }
 }

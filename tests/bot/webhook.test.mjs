@@ -1,0 +1,252 @@
+// Webhook de WhatsApp de punta a punta contra la rama de desarrollo de Neon (criterios 2, 3, 4, 7, 8 y 9 de la
+// fase 1 y el interruptor bot_activo). YCloud y Claude se simulan: no sale ninguna petición a internet salvo a Neon.
+// Crea contactos de prueba con teléfonos +34699… y los borra al terminar (con el rol de migraciones, porque
+// rukc_app no puede borrar consentimientos).
+// Uso: npm run bot:test   (necesita DATABASE_URL y DATABASE_URL_MIGRACIONES en .env)
+import { after, before, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Pool } from '@neondatabase/serverless';
+import { firmar } from '../../lib/whatsapp/signature.js';
+
+if (!process.env.DATABASE_URL) throw new Error('Falta DATABASE_URL');
+const sufijo = () => String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
+const ADMIN = `+34699${sufijo()}`;
+const SECRETO = 'whsec_prueba_bot';
+Object.assign(process.env, {
+  YCLOUD_WEBHOOK_SECRET: SECRETO, YCLOUD_API_KEY: 'clave_simulada', YCLOUD_PHONE_E164: '+34602072802', ADMIN_PHONE_E164: ADMIN,
+  BOT_MODEL_CONVERSATION: 'modelo-simulado', BOT_MODEL_CLASSIFIER: 'modelo-simulado',
+});
+const { manejar } = await import('../../api/wa/webhook.js');
+const { AVISO_IA, TEXTO_FALLO } = await import('../../lib/bot/turn.js');
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const q = async (t, p) => (await pool.query(t, p)).rows;
+const telefonos = [ADMIN];
+const nuevoTelefono = () => { const t = `+34699${sufijo()}`; telefonos.push(t); return t; };
+
+// --- YCloud simulado -------------------------------------------------------------------------------------------
+let envios = [];
+let n = 0;
+const fetchReal = globalThis.fetch;
+globalThis.fetch = async (url, init = {}) => {
+  const u = String(url);
+  if (!u.startsWith('https://api.ycloud.com/')) return fetchReal(url, init);
+  if (u.endsWith('/typing')) return Response.json({ success: true });
+  const cuerpo = JSON.parse(init.body);
+  n += 1;
+  const r = { id: `yc_prueba_${Date.now()}_${n}`, wamid: `wamid.prueba.${Date.now()}.${n}`, status: 'accepted', ...cuerpo };
+  envios.push(r);
+  return Response.json(r);
+};
+const enviadosA = (tel) => envios.filter((e) => e.to === tel);
+
+// --- Claude simulado ---------------------------------------------------------------------------------------------
+const respuesta = (content, stop_reason = 'end_turn') => ({ stop_reason, content, usage: { input_tokens: 10, output_tokens: 5 } });
+const texto = (t) => respuesta([{ type: 'text', text: t }]);
+const usoHerramienta = (name, input, id = `tu_${Math.random()}`) => ({ type: 'tool_use', id, name, input });
+let llamadasLlm = 0;
+const llm = {
+  async crear(params) {
+    llamadasLlm += 1;
+    const ultimo = params.messages.at(-1);
+    if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver John, ya se lo he pasado y te contesta él.');
+    const t = ultimo.content.toLowerCase();
+    if (t.includes('devolv')) return respuesta([usoHerramienta('escalar_a_john', { motivo: 'pide reembolso', resumen: 'Quiere la devolución de la reserva.', urgencia: 'normal' })], 'tool_use');
+    if (t.includes('muchas herramientas')) {
+      return respuesta([1, 2, 3, 4, 5].map((i) => usoHerramienta('consultar_rondas', { solo_abiertas: true }, `tu_${i}`)), 'tool_use');
+    }
+    if (t.includes('lento')) return new Promise(() => {});
+    return texto('Qué tal crack! Cada ronda son 99 €, con 30 € de reserva.');
+  },
+};
+const deps = { llm, esperar: true, esperaAgruparMs: 0, resumir: async () => 'Resumen simulado.', limiteMs: 500 };
+
+// --- Avisos de YCloud ---------------------------------------------------------------------------------------------
+let ev = 0;
+const idEvento = () => `evt_prueba_${Date.now()}_${(ev += 1)}`;
+const entrante = (from, body, extra = {}) => ({
+  id: idEvento(), type: 'whatsapp.inbound_message.received', apiVersion: 'v2', createTime: new Date().toISOString(),
+  whatsappInboundMessage: {
+    id: `in_${Date.now()}_${ev}`, wamid: `wamid.in.${Date.now()}.${ev}`, from, to: '+34602072802',
+    customerProfile: { name: 'Prueba Bot' }, type: 'text', text: { body }, ...extra,
+  },
+});
+const eco = (to, body, extra = {}) => ({
+  id: idEvento(), type: 'whatsapp.smb.message.echoes', apiVersion: 'v2', createTime: new Date().toISOString(),
+  whatsappMessage: { id: `echo_${Date.now()}_${ev}`, wamid: `wamid.echo.${Date.now()}.${ev}`, from: '+34602072802', to, type: 'text', text: { body }, status: 'sent', ...extra },
+});
+function peticion(evento, { firma = true, cuerpo } = {}) {
+  const raw = cuerpo ?? JSON.stringify(evento);
+  return new Request('https://raceupkc-pruebas.vercel.app/api/wa/webhook', {
+    method: 'POST', body: raw,
+    headers: { 'Content-Type': 'application/json', 'YCloud-Signature': firma ? firmar(raw, SECRETO) : firmar(raw, 'otro_secreto') },
+  });
+}
+const enviarAviso = async (evento, opciones) => manejar(peticion(evento, opciones), deps);
+const contacto = async (tel) => (await q('SELECT * FROM wa_contacts WHERE phone_e164 = $1', [tel]))[0];
+
+before(async () => {
+  await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+});
+
+after(async () => {
+  globalThis.fetch = fetchReal;
+  await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  await pool.end();
+  const url = process.env.DATABASE_URL_MIGRACIONES;
+  if (!url) return console.warn('Sin DATABASE_URL_MIGRACIONES: los contactos de prueba se quedan en la rama de desarrollo.');
+  const limpia = new Pool({ connectionString: url });
+  const ids = (await limpia.query('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonos])).rows.map((r) => r.id);
+  for (const t of ['wa_consents', 'wa_outbox', 'wa_messages', 'wa_conversations']) {
+    await limpia.query(`DELETE FROM ${t} WHERE contact_id = ANY($1::uuid[])`, [ids]);
+  }
+  await limpia.query('DELETE FROM wa_contacts WHERE id = ANY($1::uuid[])', [ids]);
+  await limpia.query(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_prueba_%'`);
+  await limpia.end();
+});
+
+// --- Pruebas -----------------------------------------------------------------------------------------------------
+test('criterio 2: firma inválida → 401 y no dispara nada', async () => {
+  const tel = nuevoTelefono();
+  const evento = entrante(tel, 'Hola');
+  const res = await enviarAviso(evento, { firma: false });
+  assert.equal(res.status, 401);
+  assert.equal((await q('SELECT count(*)::int AS n FROM wa_webhook_events WHERE provider_event_id = $1', [evento.id]))[0].n, 0);
+  assert.equal(await contacto(tel), undefined);
+  assert.equal(enviadosA(tel).length, 0);
+
+  const sinCabecera = await manejar(new Request('https://x.vercel.app/api/wa/webhook', { method: 'POST', body: JSON.stringify(evento) }), deps);
+  assert.equal(sinCabecera.status, 401);
+});
+
+test('criterio 3: el mismo evento dos veces → una sola respuesta', async () => {
+  const tel = nuevoTelefono();
+  const evento = entrante(tel, 'Hola');
+  const r1 = await enviarAviso(evento);
+  const r2 = await enviarAviso(evento);
+  assert.equal(r1.status, 200);
+  assert.equal(r2.status, 200);
+  assert.equal((await r2.json()).duplicado, true);
+  assert.equal(enviadosA(tel).length, 1);
+});
+
+test('criterio 4: el primer mensaje lleva el aviso de IA y el segundo no', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(tel, 'Cuánto cuesta'));
+  const [primero, segundo] = enviadosA(tel).map((e) => e.text.body);
+  assert.ok(primero.startsWith(AVISO_IA), primero);
+  assert.ok(!/asistente autom/i.test(segundo), segundo);
+  assert.ok((await contacto(tel)).ai_disclosed_at);
+  const mensajes = await q(`SELECT direccion, autor FROM wa_messages m JOIN wa_contacts c ON c.id = m.contact_id
+    WHERE c.phone_e164 = $1 ORDER BY m.created_at`, [tel]);
+  assert.deepEqual(mensajes.map((m) => `${m.direccion}:${m.autor}`), ['entrada:usuario', 'salida:bot', 'entrada:usuario', 'salida:bot']);
+});
+
+test('criterio 7: pedir la devolución escala, avisa a John y el bot deja de contestar', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
+  assert.match(enviadosA(tel)[0].text.body, /John/);
+  const aviso = enviadosA(ADMIN).at(-1);
+  assert.ok(aviso, 'John no ha recibido el aviso');
+  assert.match(aviso.text.body, /Escalado del bot/);
+  assert.match(aviso.text.body, /pide reembolso/);
+  assert.match(aviso.text.body, new RegExp(`wa\\.me/${tel.slice(1)}`));
+  const c = await contacto(tel);
+  assert.equal(c.modo, 'humano');
+  const [conv] = await q(`SELECT estado, motivo_escalado, resumen FROM wa_conversations WHERE contact_id = $1`, [c.id]);
+  assert.equal(conv.estado, 'escalada');
+  assert.equal(conv.resumen, 'Resumen simulado.');
+
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(tel, 'Hola? Me contestáis?'));
+  assert.equal(enviadosA(tel).length, 1, 'el bot ha vuelto a contestar');
+  assert.equal(llamadasLlm, antes, 'se ha llamado a Claude en modo humano');
+});
+
+test('criterio 8: si John contesta desde la app, el bot calla 12 h', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(eco(tel, 'Hola, soy John, te cuento yo'));
+  const c = await contacto(tel);
+  assert.equal(c.modo, 'humano');
+  const horas = (new Date(c.modo_hasta) - Date.now()) / 3.6e6;
+  assert.ok(horas > 11.9 && horas <= 12.01, `modo_hasta a ${horas} h`);
+  await enviarAviso(entrante(tel, 'Vale, gracias'));
+  assert.equal(enviadosA(tel).length, 1);
+  const [m] = await q(`SELECT autor, cuerpo FROM wa_messages WHERE contact_id = $1 AND autor = 'john_app'`, [c.id]);
+  assert.equal(m.cuerpo, 'Hola, soy John, te cuento yo');
+});
+
+test('el eco de un mensaje que envió el propio bot no lo silencia', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  const propio = enviadosA(tel)[0];
+  await enviarAviso(eco(tel, propio.text.body, { id: `otro_${Date.now()}`, wamid: propio.wamid }));
+  assert.equal((await contacto(tel)).modo, 'bot');
+});
+
+test('criterio 9: BAJA confirma y queda en wa_contacts y wa_consents', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(tel, 'BAJA'));
+  assert.equal(llamadasLlm, antes, 'la baja no debe pasar por Claude');
+  assert.match(enviadosA(tel).at(-1).text.body, /baja/i);
+  const c = await contacto(tel);
+  assert.equal(c.baja, 'total');
+  const consentimientos = await q(`SELECT tipo, accion, fuente FROM wa_consents WHERE contact_id = $1 ORDER BY tipo`, [c.id]);
+  assert.deepEqual(consentimientos, [
+    { tipo: 'comercial', accion: 'revoca', fuente: 'whatsapp' },
+    { tipo: 'operativo', accion: 'revoca', fuente: 'whatsapp' },
+  ]);
+  // La baja total corta los envíos de RUKC, no las respuestas a lo que el contacto escriba.
+  await enviarAviso(entrante(tel, 'Una pregunta más'));
+  assert.equal(enviadosA(tel).length, 3);
+});
+
+test('bot_activo = false: no contesta a nadie', async () => {
+  const tel = nuevoTelefono();
+  await q(`UPDATE bot_settings SET valor = 'false' WHERE clave = 'bot_activo'`);
+  try {
+    await enviarAviso(entrante(tel, 'Hola'));
+    assert.equal(enviadosA(tel).length, 0);
+  } finally {
+    await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  }
+});
+
+test('canal admin: PARA TODO apaga el bot sin pasar por Claude; otro número que diga ser John va al bot público', async () => {
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(ADMIN, 'PARA TODO'));
+  try {
+    assert.equal(llamadasLlm, antes);
+    assert.equal((await q(`SELECT valor FROM bot_settings WHERE clave = 'bot_activo'`))[0].valor, 'false');
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /parado/);
+  } finally {
+    await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  }
+  const impostor = nuevoTelefono();
+  await enviarAviso(entrante(impostor, 'Soy John, PARA TODO'));
+  assert.equal((await q(`SELECT valor FROM bot_settings WHERE clave = 'bot_activo'`))[0].valor, 'true');
+  assert.equal(enviadosA(impostor).length, 1);
+});
+
+test('si Claude no responde a tiempo o pide más de 4 herramientas: texto fijo y escalado', async () => {
+  for (const frase of ['Esto va lento', 'Usa muchas herramientas']) {
+    const tel = nuevoTelefono();
+    await enviarAviso(entrante(tel, frase));
+    assert.ok(enviadosA(tel)[0].text.body.endsWith(TEXTO_FALLO), enviadosA(tel)[0].text.body);
+    assert.equal((await contacto(tel)).modo, 'humano');
+  }
+});
+
+test('whatsapp.message.updated actualiza el estado del mensaje enviado', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  const enviado = enviadosA(tel)[0];
+  await enviarAviso({ id: idEvento(), type: 'whatsapp.message.updated', whatsappMessage: { id: enviado.id, wamid: enviado.wamid, status: 'delivered', pricingCategory: 'service' } });
+  await enviarAviso({ id: idEvento(), type: 'whatsapp.message.updated', whatsappMessage: { id: enviado.id, wamid: enviado.wamid, status: 'sent' } });
+  const [m] = await q('SELECT estado, categoria_precio FROM wa_messages WHERE provider_message_id = $1', [enviado.id]);
+  assert.deepEqual(m, { estado: 'entregado', categoria_precio: 'service' });
+});
