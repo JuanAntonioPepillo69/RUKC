@@ -120,6 +120,7 @@ after(async () => {
   await q('DELETE FROM pedido WHERE id = ANY($1::uuid[])', [pedidos]);
   await q('DELETE FROM atribucion WHERE solicitud_id = ANY($1::uuid[]) OR persona_id = ANY($2::uuid[])', [creadas, personas]);
   await q('DELETE FROM solicitud_inscripcion WHERE id = ANY($1::uuid[])', [creadas]);
+  await q('DELETE FROM tutela WHERE menor_persona_id = ANY($1::uuid[]) OR tutor_persona_id = ANY($1::uuid[])', [personas]);
   for (const t of ['onboarding', 'consentimiento', 'interaccion', 'oportunidad']) {
     await q(`DELETE FROM ${t} WHERE persona_id = ANY($1::uuid[])`, [personas]);
   }
@@ -128,6 +129,12 @@ after(async () => {
   await q(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_flujo_%'`);
   await q(`UPDATE admin_actions SET estado = 'cancelada' WHERE estado = 'propuesta'`);
   const contactos = (await q('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonosWa])).map((x) => x.id);
+  // wa_consents es de solo añadir para rukc_app: se limpia con el rol de migraciones.
+  if (process.env.DATABASE_URL_MIGRACIONES) {
+    const limpia = new Pool({ connectionString: process.env.DATABASE_URL_MIGRACIONES });
+    await limpia.query('DELETE FROM wa_consents WHERE contact_id = ANY($1::uuid[])', [contactos]);
+    await limpia.end();
+  }
   for (const t of ['wa_outbox', 'wa_messages', 'wa_conversations']) await q(`DELETE FROM ${t} WHERE contact_id = ANY($1::uuid[])`, [contactos]);
   await q('DELETE FROM wa_contacts WHERE id = ANY($1::uuid[])', [contactos]);
   await q(`DELETE FROM stripe_evento WHERE stripe_event_id LIKE 'evt_sim_%'`);
@@ -412,4 +419,63 @@ test('Bizum: recordatorio a las 24 h, una sola vez y en horario', async () => {
     ['Marta', `R${ronda.numero}`, `https://raceupkc.com/inscripcion?ronda=${ronda.numero}`]);
   await recordatoriosBizum({ ahora: mediodia });
   assert.equal(llamadas.ycloud.filter((m) => m.to === telefono).length, 1, 'no se repite');
+});
+
+test('formulario v2: piloto menor con su tutor → tutela, confirmación al tutor y al menor, y consentimientos con su versión', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  const menorTel = tel();
+  const tutorTel = tel();
+  // Sin los datos del tutor no deja pagar.
+  await completar(cuerpo.token, { pagador_nombre: 'Rosa Pagadora', piloto_es_pagador: false, piloto_nombre: 'Hugo Menor', piloto_telefono: menorTel, piloto_menor: true });
+  const sinTutor = await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true, textos: 'formulario-web-v2-2026-11' } }));
+  assert.equal(sinTutor.status, 400);
+  assert.match((await sinTutor.json()).error, /padre, madre o tutor legal/);
+
+  await completar(cuerpo.token, { pagador_nombre: 'Rosa Pagadora', piloto_es_pagador: false, piloto_nombre: 'Hugo Menor', piloto_telefono: menorTel,
+    piloto_menor: true, tutor_nombre: 'Luis Tutor', tutor_telefono: tutorTel, tutor_relacion: 'padre', acepta_whatsapp_novedades: false });
+  const res = await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true, textos: 'formulario-web-v2-2026-11' } }));
+  assert.equal(res.status, 200, await res.clone().text());
+
+  // Consentimientos de quien rellena: el aviso de WhatsApp (operativo) sí; sin la casilla, ningún comercial.
+  const consentimientos = await q(`SELECT k.tipo, k.accion, k.fuente, k.otorgado_por, k.texto_version FROM wa_consents k
+    JOIN wa_contacts c ON c.id = k.contact_id WHERE c.phone_e164 = $1 ORDER BY k.tipo`, [telefono]);
+  assert.deepEqual(consentimientos, [{ tipo: 'operativo', accion: 'otorga', fuente: 'formulario_web', otorgado_por: 'tutor', texto_version: 'formulario-web-v2-2026-11' }]);
+
+  // Pago con tarjeta → inscripción de menor, tutela con el tutor y confirmación al tutor (variante) y al menor.
+  const [sol] = await q('SELECT id, stripe_checkout_session_id FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  llamadas.ycloud.length = 0;
+  const ev = eventoFirmado('checkout.session.completed', { id: sol.stripe_checkout_session_id, payment_status: 'paid', amount_total: 3000,
+    payment_intent: `pi_sim_${Date.now()}_menor`, metadata: { solicitud_id: sol.id } });
+  assert.equal((await webhook(ev.request())).status, 200);
+  const [i] = await q(`SELECT i.es_menor, i.tutor_nombre, tu.relacion, pt.telefono AS tutor_tel FROM inscripcion i
+    JOIN solicitud_inscripcion s ON s.pedido_id = i.pedido_id JOIN tutela tu ON tu.menor_persona_id = i.piloto_persona_id
+    JOIN persona pt ON pt.id = tu.tutor_persona_id WHERE s.id = $1`, [sol.id]);
+  assert.deepEqual(i, { es_menor: true, tutor_nombre: 'Luis Tutor', relacion: 'padre', tutor_tel: tutorTel });
+  const alTutor = llamadas.ycloud.find((m) => m.to === tutorTel);
+  assert.equal(alTutor?.template?.name, 'rukc_reserva_confirmada_tutor');
+  assert.deepEqual(alTutor.template.components[0].parameters.slice(0, 2).map((p) => p.text), ['Luis', 'Hugo']);
+  assert.equal(llamadas.ycloud.find((m) => m.to === menorTel)?.template?.name, 'rukc_reserva_confirmada');
+  assert.ok(!llamadas.ycloud.some((m) => m.to === telefono), 'a quien paga (no es el tutor) no le llega');
+});
+
+test('formulario v2: con la casilla de novedades marcada se guarda también el consentimiento comercial', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  await completar(cuerpo.token, { acepta_whatsapp_novedades: true });
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true, textos: 'formulario-web-v2-2026-11' } }));
+  // Volver a pulsar pagar no duplica.
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true, textos: 'formulario-web-v2-2026-11' } }));
+  const tipos = await q(`SELECT k.tipo, k.otorgado_por FROM wa_consents k JOIN wa_contacts c ON c.id = k.contact_id
+    WHERE c.phone_e164 = $1 ORDER BY k.tipo`, [telefono]);
+  assert.deepEqual(tipos, [{ tipo: 'comercial', otorgado_por: 'titular' }, { tipo: 'operativo', otorgado_por: 'titular' }]);
+});
+
+test('formulario anterior (sin FORM_V2): no se guarda nada en wa_consents', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  await completar(cuerpo.token, { acepta_comunicaciones: true });
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
+  const filas = await q(`SELECT 1 FROM wa_consents k JOIN wa_contacts c ON c.id = k.contact_id WHERE c.phone_e164 = $1`, [telefono]);
+  assert.equal(filas.length, 0);
 });

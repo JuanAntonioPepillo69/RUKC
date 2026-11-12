@@ -8,8 +8,12 @@ import Footer from '../components/Footer.astro';
 import { SITE, whatsappUrl } from '../config/site';
 import { BIZUM, RESERVA } from '../config/reserva.js';
 import { AVISO_BORRADORES_PROVISIONAL } from '../../lib/catalogo.js';
+import { AVISO_MENOR, AVISO_WHATSAPP, CASILLA_NOVEDADES, TEXTOS_FORMULARIO_V2 } from '../../lib/whatsapp/textos-formulario.js';
 
 const conBizum = Boolean(BIZUM.numero);
+// Formulario v2 (fase 2 del bot): piloto menor con su tutor, aviso de WhatsApp y casilla de novedades. Se activa con la
+// variable FORM_V2=true en Vercel y un nuevo despliegue; sin ella queda el formulario anterior.
+const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
 ---
 <Base
   title="Reserva tu plaza | Temporada 2 | RUKC"
@@ -37,7 +41,7 @@ const conBizum = Boolean(BIZUM.numero);
           <a href="/privacidad" target="_blank" rel="noopener">Más información en la política de privacidad</a>
         </p>
 
-        <form class="card" id="reserva" novalidate data-wa={SITE.whatsapp.number}>
+        <form class="card" id="reserva" novalidate data-wa={SITE.whatsapp.number} data-v2={formV2 ? TEXTOS_FORMULARIO_V2 : undefined}>
           <p class="card__notice" id="cancelado" hidden>Has vuelto sin pagar. No se ha hecho ningún cobro: puedes intentarlo de nuevo.</p>
           <div class="card__sum">
             <span>Reserva de plaza<span id="sum-ronda"></span></span>
@@ -86,6 +90,37 @@ const conBizum = Boolean(BIZUM.numero);
                 <input name="piloto_telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="+34 600 00 00 00" maxlength="30" />
               </label>
             </div>
+            {formV2 && (
+              <Fragment>
+                <label class="check">
+                  <input name="menor" type="checkbox" />
+                  <span>El piloto es menor de edad</span>
+                </label>
+                <div class="otra" id="tutor" hidden>
+                  <p class="aviso">{AVISO_MENOR}</p>
+                  <label class="check" id="tutor-yo-caja">
+                    <input name="tutor_yo" type="checkbox" />
+                    <span>Soy su padre, madre o tutor legal (quien paga)</span>
+                  </label>
+                  <div class="otra__sub" id="tutor-datos">
+                    <label class="field"><span>Nombre y apellidos del padre, madre o tutor legal</span>
+                      <input name="tutor_nombre" type="text" autocomplete="off" maxlength="80" />
+                    </label>
+                    <label class="field"><span>WhatsApp del padre, madre o tutor legal</span>
+                      <input name="tutor_telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="+34 600 00 00 00" maxlength="30" />
+                    </label>
+                  </div>
+                  <label class="field"><span>Relación con el piloto</span>
+                    <select name="tutor_relacion">
+                      <option value="" disabled selected>Elige una opción</option>
+                      <option value="padre">Padre</option>
+                      <option value="madre">Madre</option>
+                      <option value="tutor_legal">Tutor legal</option>
+                    </select>
+                  </label>
+                </div>
+              </Fragment>
+            )}
           </fieldset>
 
           <fieldset class="paso" data-paso="3">
@@ -107,10 +142,20 @@ const conBizum = Boolean(BIZUM.numero);
               <input name="acepta" type="checkbox" required />
               <span>He leído y acepto las <a href="/condiciones-reserva" target="_blank" rel="noopener">condiciones de la reserva</a> y la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span>
             </label>
-            <label class="check">
-              <input name="comunicaciones" type="checkbox" />
-              <span>Quiero recibir novedades de RUKC por WhatsApp o email (opcional).</span>
-            </label>
+            {formV2 ? (
+              <Fragment>
+                <p class="aviso aviso--wa">{AVISO_WHATSAPP}</p>
+                <label class="check">
+                  <input name="novedades" type="checkbox" />
+                  <span>{CASILLA_NOVEDADES} (Opcional.)</span>
+                </label>
+              </Fragment>
+            ) : (
+              <label class="check">
+                <input name="comunicaciones" type="checkbox" />
+                <span>Quiero recibir novedades de RUKC por WhatsApp o email (opcional).</span>
+              </label>
+            )}
             <label class="trampa" aria-hidden="true">Web <input name="sitio_web" type="text" tabindex="-1" autocomplete="off" /></label>
           </fieldset>
 
@@ -163,6 +208,11 @@ const conBizum = Boolean(BIZUM.numero);
   const selRonda = campo<HTMLSelectElement>('ronda');
   const selCat = campo<HTMLSelectElement>('categoria');
   const otra = campo('otra');
+  // Formulario v2: versión de los textos de WhatsApp (vacía con el formulario anterior).
+  const textosV2 = form.dataset.v2 || '';
+  const v2 = Boolean(textosV2);
+  const menor = () => v2 && campo('menor').checked;
+  const tutorYo = () => menor() && otra.checked && campo('tutor_yo').checked;
 
   const S_TOKEN = 'rukc_solicitud';
   const S_CAMPOS = 'rukc_reserva';
@@ -211,8 +261,28 @@ const conBizum = Boolean(BIZUM.numero);
       piloto_telefono: otra.checked && telValido(ptel) ? ptel : '',
       metodo_elegido: metodo(),
       paso_actual: pasoMax,
-      acepta_comunicaciones: campo('comunicaciones').checked,
+      ...(v2 ? camposV2(v, tel) : { acepta_comunicaciones: campo('comunicaciones').checked }),
     };
+  }
+
+  /** Formulario v2: menor, tutor y casilla de novedades. Si el tutor es quien paga, sus datos son los del pagador. */
+  function camposV2(v: (n: string) => string, tel: string) {
+    const ttel = tutorYo() ? tel : v('tutor_telefono');
+    return {
+      piloto_menor: menor(),
+      tutor_nombre: menor() ? (tutorYo() ? v('nombre') : v('tutor_nombre')) : '',
+      tutor_telefono: menor() && telValido(ttel) ? ttel : '',
+      tutor_relacion: menor() ? (campo<HTMLSelectElement>('tutor_relacion').value || null) : null,
+      acepta_whatsapp_novedades: campo('novedades').checked,
+      acepta_comunicaciones: false,
+    };
+  }
+  /** Muestra u oculta los bloques del tutor. */
+  function pintarTutor() {
+    if (!v2) return;
+    el('tutor').hidden = !menor();
+    el('tutor-yo-caja').hidden = !otra.checked;
+    el('tutor-datos').hidden = tutorYo();
   }
 
   const pedir = (metodoHttp: string, url: string, cuerpo?: unknown, token?: string) => fetch(url, {
@@ -246,6 +316,11 @@ const conBizum = Boolean(BIZUM.numero);
     const v: Record<string, string | boolean> = {};
     for (const n of ['nombre', 'email', 'telefono', 'piloto_nombre', 'piloto_telefono', 'categoria']) v[n] = campo(n).value;
     v.otra = otra.checked;
+    if (v2) {
+      for (const n of ['tutor_nombre', 'tutor_telefono', 'tutor_relacion']) v[n] = campo(n).value;
+      v.menor = campo('menor').checked;
+      v.tutor_yo = campo('tutor_yo').checked;
+    }
     v.ronda = selRonda.value;
     ss.poner(S_CAMPOS, v);
   }
@@ -312,8 +387,14 @@ const conBizum = Boolean(BIZUM.numero);
   if (guardados) {
     for (const n of ['nombre', 'email', 'telefono', 'piloto_nombre', 'piloto_telefono', 'categoria']) if (guardados[n]) campo(n).value = guardados[n];
     otra.checked = Boolean(guardados.otra);
+    if (v2) {
+      for (const n of ['tutor_nombre', 'tutor_telefono', 'tutor_relacion']) if (guardados[n]) campo(n).value = guardados[n];
+      campo('menor').checked = Boolean(guardados.menor);
+      campo('tutor_yo').checked = Boolean(guardados.tutor_yo);
+    }
   }
   el('otra').hidden = !otra.checked;
+  pintarTutor();
   if (new URLSearchParams(location.search).has('cancelado')) el('cancelado').hidden = false;
   pintarMetodo();
   cargarCatalogo();
@@ -324,6 +405,7 @@ const conBizum = Boolean(BIZUM.numero);
     if (n === 'metodo') pintarMetodo();
     if (n === 'ronda' || n === 'categoria') pintarRonda();
     if (n === 'otra') el('otra').hidden = !otra.checked;
+    if (n === 'otra' || n === 'menor' || n === 'tutor_yo') pintarTutor();
     recordar();
     programar();
   });
@@ -341,6 +423,8 @@ const conBizum = Boolean(BIZUM.numero);
     if (!emailValido(v('email'))) return 'Revisa tu correo.';
     if (!telValido(v('telefono'))) return 'Revisa tu número de WhatsApp.';
     if (otra.checked && (v('piloto_nombre').length < 2 || !telValido(v('piloto_telefono')))) return 'Escribe el nombre y el WhatsApp del piloto.';
+    if (menor() && !tutorYo() && (v('tutor_nombre').length < 2 || !telValido(v('tutor_telefono')))) return 'Escribe el nombre y el WhatsApp del padre, madre o tutor legal.';
+    if (menor() && !campo<HTMLSelectElement>('tutor_relacion').value) return 'Elige la relación del tutor con el piloto.';
     if (!campo('acepta').checked) return 'Tienes que aceptar las condiciones de la reserva.';
     return '';
   }
@@ -377,7 +461,7 @@ const conBizum = Boolean(BIZUM.numero);
       window.clearTimeout(temporizador);
       await encolar();
       if (!borrador) throw new Error('No se ha podido guardar tu solicitud. Revisa tu conexión e inténtalo de nuevo.');
-      const res = await pedir('POST', '/api/checkout', { metodo: metodo(), acepta: true, sitio_web: campo('sitio_web').value }, borrador.token);
+      const res = await pedir('POST', '/api/checkout', { metodo: metodo(), acepta: true, sitio_web: campo('sitio_web').value, ...(v2 ? { textos: textosV2 } : {}) }, borrador.token);
       const r = await res.json().catch(() => ({}));
       if (res.ok && r.url) { location.href = r.url; return; }
       if (res.ok && r.bizum) { mostrarBizum(r.bizum); return; }
@@ -419,6 +503,9 @@ const conBizum = Boolean(BIZUM.numero);
   .paso { display: grid; gap: 18px; margin: 0; padding: 0; border: 0; min-width: 0; }
   .otra { display: grid; gap: 18px; padding-left: 14px; border-left: 2px solid rgba(212, 166, 42, 0.35); }
   .otra[hidden] { display: none; }
+  .otra__sub { display: grid; gap: 18px; }
+  .otra__sub[hidden], .check[hidden] { display: none; }
+  .aviso--wa { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); color: #dcd8cf; }
   .field { display: grid; gap: 7px; font-size: 14px; font-weight: 600; }
   .field input, .field select {
     min-height: 50px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18);
