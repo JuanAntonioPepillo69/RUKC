@@ -90,7 +90,7 @@ export function htmlATexto(html) {
     .trim();
 }
 
-async function copiarWeb() {
+export async function copiarWeb() {
   const salida = [];
   for (const p of PAGINAS) {
     const url = `${WEB}${p.ruta}`;

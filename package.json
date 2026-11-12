@@ -20,7 +20,7 @@
     "db:restaurar": "node --env-file-if-exists=.env db/restaurar-copia.mjs",
     "db:comprobar": "node --env-file-if-exists=.env.produccion db/comprobar-produccion.mjs",
     "db:importar-stripe": "node --env-file-if-exists=.env.produccion db/importar-stripe.mjs",
-    "bot:kb": "node --env-file-if-exists=.env db/kb-sembrar.mjs",
+    "bot:kb": "node --env-file-if-exists=.env db/kb-sincronizar.mjs",
     "bot:interruptor": "node --env-file-if-exists=.env db/bot-interruptor.mjs",
     "bot:casos": "node --env-file-if-exists=.env --env-file-if-exists=.env.bot tests/bot/ejecutar-casos.mjs",
     "bot:test": "node --env-file-if-exists=.env --test --test-concurrency=1 tests/bot/webhook.test.mjs",

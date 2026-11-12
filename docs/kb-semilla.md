@@ -1,5 +1,7 @@
 # Base de conocimiento inicial del bot de RUKC (kb-semilla)
 
+> **Ya no se usa.** La base de conocimiento del bot está ahora en la bóveda de Obsidian `docs/kb/` y se carga con `npm run bot:kb`. Este archivo se queda como histórico.
+
 Versión 0.1 · 11 de noviembre de 2026
 Fuentes: web raceupkc.com (portada, condiciones de la reserva, privacidad, inscripción) y datos dados por John.
 

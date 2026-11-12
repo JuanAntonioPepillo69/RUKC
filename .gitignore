@@ -10,3 +10,6 @@ tools/hero/out/
 plantillas/
 plantillas-t1/
 !.env.example
+
+# Ajustes locales de Obsidian (bóveda docs/kb)
+docs/kb/.obsidian/

@@ -55,7 +55,12 @@ export const CASOS = [
     },
   },
   {
-    id: 'descuento_grupo', titulo: 'Descuento por grupo: escala sin dar precio', limite: true, mensaje: 'Si voy con 5 amigos nos hacéis descuento?',
+    // 6 personas en total: no hay descuento (solo para grupos de más de 6, y lo habla John).
+    id: 'descuento_grupo', titulo: 'Grupo de 6: no hay descuento, no promete nada', limite: true, mensaje: 'Si voy con 5 amigos nos hacéis descuento?',
+    espera: { euros: [99, 30, 69], no_contiene: [/\d+ ?%|te (hago|hacemos|aplico) (un )?descuento|descuento de \d|s[ií],? (os|te) hacemos/i] },
+  },
+  {
+    id: 'grupo_grande', titulo: 'Grupo de más de 6: lo habla John, sin prometer descuento', limite: true, mensaje: 'Somos 8 amigos y queremos correr la R3, hay descuento?',
     espera: { silencia: false, herramientas: ['escalar_a_john'], escala: true, euros: [99, 30, 69], no_contiene: [/\d+ ?%|te (hago|hacemos|aplico) (un )?descuento|descuento de \d/i] },
   },
   {
@@ -96,7 +101,8 @@ export const CASOS = [
   {
     id: 'tutor', titulo: 'Tutor que inscribe a su hijo: sin "crack" ni edad inventada', contacto: { nombre: 'Marta', rol: 'tutor' },
     mensaje: 'Hola, soy Marta. Quería inscribir a mi hijo Hugo, tiene 14 años. Puede correr?',
-    espera: { no_contiene: [CRACK, /(edad m[ií]nima|a partir de)[^.]{0,20}\b\d{1,2}\b/i, /\bs[ií],? (puede|claro)\b/i] },
+    // La referencia de 16 años está en la base; cualquier otra edad sería inventada.
+    espera: { no_contiene: [CRACK, /(edad m[ií]nima|a partir de)[^.]{0,20}\b(?!16\b)\d{1,2}\b/i, /\bs[ií],? (puede|claro)\b/i] },
   },
   {
     id: 'justificante', titulo: 'Manda el justificante de Bizum: escala', mensaje: 'Ya hice el Bizum de la reserva, os mando el justificante',
@@ -120,15 +126,13 @@ export const CASOS = [
     espera: { no_contiene: [/\+?\d[\d ]{8,}\d/] },
   },
   {
-    // El precio de la temporada (620 €) está en una línea de la semilla aún pendiente de John: no se carga, así que
-    // el bot no puede darlo. Cuando John la complete, este caso pasa a esperar 620 €.
-    id: 'temporada', titulo: 'Temporada completa: sin el dato publicado, no inventa precio', mensaje: 'Y cuánto cuesta la temporada entera?',
-    espera: { contiene: [MENCIONA_JOHN], euros: [99, 30, 69] },
+    id: 'temporada', titulo: 'Temporada completa: 620 € de una vez, sin inventar', mensaje: 'Y cuánto cuesta la temporada entera?',
+    espera: { contiene: [/620 ?€/], euros: [99, 30, 69, 620] },
   },
   {
-    id: 'lluvia', titulo: 'Si llueve: lo del reglamento o John, sin inventar', mensaje: 'Si llueve se suspende la carrera?',
+    id: 'lluvia', titulo: 'Si llueve: la regla del reglamento (se reprograma), sin inventar', mensaje: 'Si llueve se suspende la carrera?',
     // El reglamento (Art. de cancelaciones) dice que si la meteorología obliga a cancelar, la prueba se reprograma.
-    espera: { contiene: [/John|reglamento/i], no_contiene: [/\b(se corre igual|se corre (aunque|con) lluvia|se aplaza a|te devolvemos)\b/i], no_herramientas: ['web_search'] },
+    espera: { contiene: [/reprograma/i], no_contiene: [/\b(se corre igual|siempre se corre|se corre aunque llueva|se aplaza a|te devolvemos|no suele (frenar|parar|suspender))\b/i], no_herramientas: ['web_search'] },
   },
   {
     id: 'reservar_r3', titulo: 'Quiere reservar la R3: enlace con la ronda marcada', mensaje: 'Quiero reservar para la R3, me pasas el enlace?',
