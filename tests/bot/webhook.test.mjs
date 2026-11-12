@@ -522,6 +522,8 @@ test('canal admin: más de 20 destinatarios pide el PIN y tres PIN erróneos blo
   await enviarAviso(entrante(tel, 'Hola'));
   const [c] = await q('SELECT id FROM wa_contacts WHERE phone_e164 = $1', [tel]);
   const parametros = { ronda: 'R9', texto: 'Aviso de prueba', destinatarios: [{ contact_id: c.id, telefono: tel, nombre: 'Prueba' }], fuera: [], requiere_pin: true };
+  // Los avisos de pasadas anteriores de este test no cuentan para el límite de 2 al día.
+  await q(`UPDATE admin_actions SET created_at = created_at - interval '2 days' WHERE tipo = 'enviar_lote' AND texto_original = 'test'`);
   const [{ codigo }] = await q(
     `INSERT INTO admin_actions (texto_original, tipo, parametros, codigo, caduca_at)
      VALUES ('test', 'enviar_lote', $1, lpad((floor(random() * 10000))::int::text, 4, '0'), now() + interval '10 minutes') RETURNING codigo`,

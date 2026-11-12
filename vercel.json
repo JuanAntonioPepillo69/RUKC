@@ -173,6 +173,10 @@
     {
       "source": "/feedback/:token",
       "destination": "/feedback"
+    },
+    {
+      "source": "/grupo/:token",
+      "destination": "/api/grupo?token=:token"
     }
   ],
   "crons": [

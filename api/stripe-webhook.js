@@ -3,6 +3,7 @@
 //   solicitud se convierte en persona(s), oportunidad ganada, pedido, inscripción, pago confirmado con su aplicación,
 //   onboarding pendiente y solicitud pagada (F1 paso 6). Después, fuera de la transacción, Purchase a Meta con
 //   event_id = id del pago.
+//   Por último, la confirmación de plaza por WhatsApp (B1, plantillas de YCloud); si falla, no afecta al pago.
 // - checkout.session.expired: la solicitud pasa a pago_abandonado (si esa sesión era la vigente).
 // - checkout.session.async_payment_failed: pago fallido y solicitud a pago_abandonado.
 // Eventos en Stripe > Developers > Webhooks: los cuatro de arriba. Variable: STRIPE_WEBHOOK_SECRET.
@@ -10,6 +11,7 @@ import { enviarEvento, userData } from './_meta.js';
 import { conTransaccion } from '../lib/db.js';
 import { convertirSolicitud, registrarPagoFallido } from '../lib/flujos.js';
 import { firmaValida, stripe } from '../lib/stripe.js';
+import { enviarConfirmacionesPedido } from '../lib/whatsapp/confirmacion.js';
 
 const PAGADO = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
 const MANEJADOS = [...PAGADO, 'checkout.session.expired', 'checkout.session.async_payment_failed'];
@@ -128,5 +130,7 @@ export async function POST(request) {
       console.error('Purchase Meta', e.message);
     }
   }
+  // Confirmación de plaza por WhatsApp (B1). Nunca lanza; cada inscripción y teléfono se envía una sola vez.
+  if (compra && !compra.yaPagada && compra.pedidoId) await enviarConfirmacionesPedido(compra.pedidoId);
   return Response.json({ received: true });
 }
