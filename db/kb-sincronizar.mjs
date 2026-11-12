@@ -11,6 +11,7 @@
 // Uso:  npm run bot:kb             (DATABASE_URL de .env)
 //       npm run bot:kb -- --seco   (solo enseña qué cargaría)
 //       npm run bot:kb -- --sin-web (solo la bóveda)
+//       npm run bot:kb -- --forzar  (pisa también las notas cambiadas desde el canal admin de WhatsApp)
 //       node --env-file=.env.produccion db/kb-sincronizar.mjs   (producción, con el OK de John)
 import { neon } from '@neondatabase/serverless';
 import fs from 'node:fs';
@@ -100,9 +101,19 @@ if (esPrincipal) {
   for (const l of pendientes) console.log(`  · ${l.slice(0, 150)}`);
   const web = sinWeb ? [] : await copiarWeb();
   if (web.length) console.log(`Web: ${web.map((d) => `${d.slug} (${d.contenido_md.length} caracteres)`).join(', ')}.`);
+  // Notas cambiadas o creadas desde el canal admin de WhatsApp y distintas de la bóveda: no se pisan ni se desactivan
+  // salvo con --forzar. Se enseña su texto para copiarlo a la bóveda.
+  const forzar = process.argv.includes('--forzar');
+  const deWhatsapp = await q.query(`SELECT slug, contenido_md FROM kb_documents WHERE actualizado_por = 'admin-whatsapp' AND activo`);
+  const conflictos = deWhatsapp.filter((w) => !docs.some((d) => d.slug === w.slug && d.contenido_md === w.contenido_md));
+  if (conflictos.length && !forzar) {
+    console.log('\nEstas notas se cambiaron desde WhatsApp y no coinciden con la bóveda. No se tocan (copia el texto a la bóveda o usa --forzar):');
+    for (const c of conflictos) console.log(`\n--- ${c.slug} (en el bot ahora)\n${c.contenido_md}`);
+    const omitir = new Set(conflictos.map((c) => c.slug));
+    for (let i = docs.length - 1; i >= 0; i -= 1) if (omitir.has(docs[i].slug)) docs.splice(i, 1);
+  }
   const todos = [...docs, ...web];
-
-  const slugsJohn = docs.map((d) => d.slug);
+  const slugsJohn = [...docs.map((d) => d.slug), ...(forzar ? [] : conflictos.map((c) => c.slug))];
   const sobran = await q.query(`SELECT slug FROM kb_documents WHERE fuente = 'john' AND activo AND NOT (slug = ANY($1))`, [slugsJohn]);
   if (sobran.length) console.log(`Ya no están en la bóveda (se desactivan): ${sobran.map((s) => s.slug).join(', ')}.`);
   if (seco) {

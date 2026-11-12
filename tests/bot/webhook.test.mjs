@@ -16,6 +16,8 @@ Object.assign(process.env, {
   YCLOUD_WEBHOOK_SECRET: SECRETO, YCLOUD_API_KEY: 'clave_simulada', YCLOUD_PHONE_E164: '+34602072802', ADMIN_PHONE_E164: ADMIN,
   BOT_MODEL_CONVERSATION: 'modelo-simulado', BOT_MODEL_CLASSIFIER: 'modelo-simulado', CRON_SECRET: 'cron_prueba_bot',
 });
+const { hashPin } = await import('../../lib/bot/pin.js');
+process.env.ADMIN_PIN_HASH = hashPin('123456');
 const { manejar } = await import('../../api/wa/webhook.js');
 const resumenDiario = await import('../../api/wa/resumen-diario.js');
 const pendientes = await import('../../api/wa/pendientes.js');
@@ -54,6 +56,13 @@ const llm = {
     llamadasLlm += 1;
     ultimosMensajes = params.messages;
     const ultimo = params.messages.at(-1);
+    const esAdmin = params.tools?.some((h) => h.name === 'preparar_respuesta');
+    if (esAdmin) {
+      if (Array.isArray(ultimo.content)) return texto('Te lo he dejado preparado.');
+      const pedido = ultimo.content.split('\n').at(-1).match(/manda a (\+\d+) que (.+)/i);
+      if (pedido) return respuesta([usoHerramienta('preparar_respuesta', { telefono: pedido[1], texto: pedido[2] })], 'tool_use');
+      return texto('Hoy todo tranquilo.');
+    }
     if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver el equipo, ya se lo he pasado y te contestan ellos.');
     // Los mensajes seguidos del contacto llegan juntos: cuenta el último.
     const t = ultimo.content.toLowerCase().split('\n').at(-1);
@@ -117,6 +126,7 @@ after(async () => {
   }
   await limpia.query('DELETE FROM wa_contacts WHERE id = ANY($1::uuid[])', [ids]);
   await limpia.query(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_prueba_%'`);
+  await limpia.query(`UPDATE admin_actions SET estado = 'cancelada' WHERE estado = 'propuesta'`);
   await limpia.end();
 });
 
@@ -461,4 +471,100 @@ test('los textos fijos que ve el contacto no nombran a John', async () => {
   for (const t of [turno.AVISO_IA, turno.TEXTO_FALLO, ent.TEXTO_URGENCIA, ent.TEXTO_CORTE, ent.CONFIRMACION_BAJA]) {
     assert.doesNotMatch(t, /John/, t);
   }
+});
+
+// --- Canal admin (fase 2) ------------------------------------------------------------------------------------------
+const codigoDe = (texto) => texto.match(/CONFIRMO (\d{4})/)?.[1];
+
+test('canal admin: John pide un mensaje, recibe el resumen con código y solo se envía con CONFIRMO', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(ADMIN, `Manda a ${tel} que el briefing de la R2 es a las 10:00`));
+  const propuesta = enviadosA(ADMIN).at(-1).text.body;
+  assert.match(propuesta, /Te lo he dejado preparado/);
+  assert.match(propuesta, /«el briefing de la R2 es a las 10:00»/);
+  const codigo = codigoDe(propuesta);
+  assert.ok(codigo, propuesta);
+  assert.equal(enviadosA(tel).length, 1, 'sin CONFIRMO no se envía nada');
+
+  await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo}`));
+  assert.equal(enviadosA(tel).at(-1).text.body, 'el briefing de la R2 es a las 10:00');
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /Enviado/);
+  assert.equal((await contacto(tel)).modo, 'humano', 'el bot calla para no pisar a John');
+  const [accion] = await q(`SELECT estado FROM admin_actions WHERE codigo = $1 ORDER BY created_at DESC LIMIT 1`, [codigo]);
+  assert.equal(accion.estado, 'ejecutada');
+
+  // El código no sirve dos veces.
+  await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo}`));
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /No hay ninguna propuesta pendiente/);
+  assert.equal(enviadosA(tel).length, 2);
+});
+
+test('canal admin: un código caducado o cancelado no ejecuta nada', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(ADMIN, `Manda a ${tel} que mañana hay cambio de hora`));
+  const codigo = codigoDe(enviadosA(ADMIN).at(-1).text.body);
+  await q(`UPDATE admin_actions SET caduca_at = now() - interval '1 minute' WHERE codigo = $1 AND estado = 'propuesta'`, [codigo]);
+  await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo}`));
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /caducado/);
+
+  await enviarAviso(entrante(ADMIN, `Manda a ${tel} que otra cosa`));
+  const otro = codigoDe(enviadosA(ADMIN).at(-1).text.body);
+  await enviarAviso(entrante(ADMIN, `CANCELO ${otro}`));
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /Descartada/);
+  await enviarAviso(entrante(ADMIN, `CONFIRMO ${otro}`));
+  assert.equal(enviadosA(tel).length, 1, 'no se ha enviado nada');
+});
+
+test('canal admin: más de 20 destinatarios pide el PIN y tres PIN erróneos bloquean el canal 1 h', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  const [c] = await q('SELECT id FROM wa_contacts WHERE phone_e164 = $1', [tel]);
+  const parametros = { ronda: 'R9', texto: 'Aviso de prueba', destinatarios: [{ contact_id: c.id, telefono: tel, nombre: 'Prueba' }], fuera: [], requiere_pin: true };
+  const [{ codigo }] = await q(
+    `INSERT INTO admin_actions (texto_original, tipo, parametros, codigo, caduca_at)
+     VALUES ('test', 'enviar_lote', $1, lpad((floor(random() * 10000))::int::text, 4, '0'), now() + interval '10 minutes') RETURNING codigo`,
+    [JSON.stringify(parametros)]);
+  try {
+    await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo}`));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /PIN de 6 cifras/);
+    for (const n of [1, 2]) {
+      await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo} 000000`));
+      assert.match(enviadosA(ADMIN).at(-1).text.body, new RegExp(`PIN erróneo \\(${n} de 3\\)`));
+    }
+    await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo} 000000`));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /bloqueado/);
+    await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo} 123456`));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /bloqueado hasta/);
+    assert.equal(enviadosA(tel).length, 1, 'bloqueado: no se envía aunque el PIN sea bueno');
+
+    await q(`UPDATE bot_settings SET valor = NULL WHERE clave = 'admin_bloqueado_hasta'`);
+    await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo} 123456`));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /Aviso enviado a 1 de 1/);
+    assert.equal(enviadosA(tel).at(-1).text.body, 'Aviso de prueba');
+  } finally {
+    await q(`UPDATE bot_settings SET valor = NULL WHERE clave IN ('admin_bloqueado_hasta', 'admin_pin_fallos')`);
+  }
+});
+
+test('canal admin: REANUDA TODO vuelve a encender el bot solo con CONFIRMO', async () => {
+  await enviarAviso(entrante(ADMIN, 'PARA TODO'));
+  try {
+    await enviarAviso(entrante(ADMIN, 'REANUDA TODO'));
+    const codigo = codigoDe(enviadosA(ADMIN).at(-1).text.body);
+    assert.ok(codigo);
+    assert.equal((await q(`SELECT valor FROM bot_settings WHERE clave = 'bot_activo'`))[0].valor, 'false');
+    await enviarAviso(entrante(ADMIN, `CONFIRMO ${codigo}`));
+    assert.equal((await q(`SELECT valor FROM bot_settings WHERE clave = 'bot_activo'`))[0].valor, 'true');
+  } finally {
+    await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  }
+});
+
+test('canal admin: una pregunta normal la contesta Claude con las herramientas de admin', async () => {
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(ADMIN, 'Qué tal va todo?'));
+  assert.equal(llamadasLlm, antes + 1);
+  assert.equal(enviadosA(ADMIN).at(-1).text.body, 'Hoy todo tranquilo.');
 });
