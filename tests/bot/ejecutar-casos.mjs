@@ -13,6 +13,7 @@ import { textoParaPrompt } from '../../lib/bot/kb.js';
 import { llmAnthropic, MODELO_CONVERSACION } from '../../lib/bot/llm.js';
 import { systemPublico } from '../../lib/bot/prompts.js';
 import { EMOJI, ejecutarTurno } from '../../lib/bot/turn.js';
+import { silencia } from '../../lib/bot/escalado.js';
 import { CASOS } from './casos/casos.mjs';
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -66,6 +67,9 @@ function comprobar(caso, r) {
   }
   if (e.fuera_de_tema === true && !r.fueraDeTema) fallos.push('no lleva la marca de fuera de tema');
   if (e.fuera_de_tema === false && r.fueraDeTema) fallos.push('lleva la marca de fuera de tema');
+  if (e.silencia !== undefined && r.escalado && silencia(r.escalado) !== e.silencia) {
+    fallos.push(`escalado de tipo ${r.escalado.tipo}: ${e.silencia ? 'tenía que' : 'no tenía que'} callar al bot`);
+  }
   if (r.fallo) fallos.push(`turno fallido (${r.fallo})`);
   const emojis = (r.texto.match(EMOJI) ?? []).length;
   const emojisModelo = (r.textoModelo?.match(EMOJI) ?? []).length;
@@ -80,7 +84,7 @@ async function ejecutarCaso(caso) {
   const historial = [...(caso.historial ?? []), { role: 'user', content: caso.mensaje }];
   const r = await ejecutarTurno({
     llm: llmAnthropic, modelo, historial, ctx, avisoIaPendiente: Boolean(caso.aviso), ...(pensar ? { thinking: null } : {}),
-    system: systemPublico({ kbTexto, contacto: { nombre: contacto.display_name, rol: contacto.rol }, avisoIaPendiente: Boolean(caso.aviso) }),
+    system: systemPublico({ kbTexto, contacto: { nombre: contacto.display_name, rol: contacto.rol }, avisoIaPendiente: Boolean(caso.aviso), temasEscalados: caso.temas ?? [] }),
   });
   return { caso, r, ...comprobar(caso, r), escrituras };
 }

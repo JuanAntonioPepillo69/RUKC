@@ -55,7 +55,8 @@ const llm = {
     if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver John, ya se lo he pasado y te contesta él.');
     // Los mensajes seguidos del contacto llegan juntos: cuenta el último.
     const t = ultimo.content.toLowerCase().split('\n').at(-1);
-    if (t.includes('devolv')) return respuesta([usoHerramienta('escalar_a_john', { motivo: 'pide reembolso', resumen: 'Quiere la devolución de la reserva.', urgencia: 'normal' })], 'tool_use');
+    if (t.includes('devolv')) return respuesta([usoHerramienta('escalar_a_john', { tipo: 'devolucion_o_cambio', motivo: 'pide reembolso', resumen: 'Quiere la devolución de la reserva.', urgencia: 'normal' })], 'tool_use');
+    if (t.includes('una persona')) return respuesta([usoHerramienta('escalar_a_john', { tipo: 'hablar_con_persona', motivo: 'pide hablar con una persona', resumen: 'Quiere hablar con John.', urgencia: 'normal' })], 'tool_use');
     if (t.includes('muchas herramientas')) {
       return respuesta([1, 2, 3, 4, 5].map((i) => usoHerramienta('consultar_rondas', { solo_abiertas: true }, `tu_${i}`)), 'tool_use');
     }
@@ -151,7 +152,7 @@ test('criterio 4: el primer mensaje lleva el aviso de IA y el segundo no', async
   assert.deepEqual(mensajes.map((m) => `${m.direccion}:${m.autor}`), ['entrada:usuario', 'salida:bot', 'entrada:usuario', 'salida:bot']);
 });
 
-test('criterio 7: pedir la devolución escala, avisa a John y el bot deja de contestar', async () => {
+test('criterio 7 (cambiado por John): la devolución avisa a John una vez y el bot sigue con las demás dudas', async () => {
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
   assert.match(enviadosA(tel)[0].text.body, /John/);
@@ -159,30 +160,56 @@ test('criterio 7: pedir la devolución escala, avisa a John y el bot deja de con
   assert.ok(aviso, 'John no ha recibido el aviso');
   assert.match(aviso.text.body, /Escalado del bot/);
   assert.match(aviso.text.body, /pide reembolso/);
-  assert.match(aviso.text.body, new RegExp(`wa\\.me/${tel.slice(1)}`));
+  assert.match(aviso.text.body, /sigue contestando sus otras dudas/);
+  assert.match(aviso.text.body, new RegExp(`wa\.me/${tel.slice(1)}`));
   const c = await contacto(tel);
-  assert.equal(c.modo, 'humano');
-  const [conv] = await q(`SELECT estado, motivo_escalado, resumen FROM wa_conversations WHERE contact_id = $1`, [c.id]);
+  assert.equal(c.modo, 'bot', 'una devolución no deja al contacto sin respuesta');
+  const [conv] = await q(`SELECT estado, temas_escalados, resumen FROM wa_conversations WHERE contact_id = $1`, [c.id]);
   assert.equal(conv.estado, 'escalada');
+  assert.deepEqual(conv.temas_escalados, ['devolucion_o_cambio']);
   assert.equal(conv.resumen, 'Resumen simulado.');
 
+  // Otra duda: el bot contesta.
+  await enviarAviso(entrante(tel, 'Y cuánto cuesta la ronda?'));
+  assert.equal(enviadosA(tel).length, 2);
+  assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
+  // Insiste con la devolución: no se vuelve a avisar a John.
+  const avisos = enviadosA(ADMIN).length;
+  await enviarAviso(entrante(tel, 'Entonces me devolvéis el dinero o no?'));
+  assert.equal(enviadosA(tel).length, 3);
+  assert.equal(enviadosA(ADMIN).length, avisos, 'un tema ya escalado no vuelve a avisar a John');
+});
+
+test('pedir hablar con una persona sí pasa la conversación a John y el bot calla', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Quiero hablar con una persona'));
+  assert.equal((await contacto(tel)).modo, 'humano');
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /REANUDA/);
   const antes = llamadasLlm;
   await enviarAviso(entrante(tel, 'Hola? Me contestáis?'));
   assert.equal(enviadosA(tel).length, 1, 'el bot ha vuelto a contestar');
   assert.equal(llamadasLlm, antes, 'se ha llamado a Claude en modo humano');
 });
 
-test('criterio 8: si John contesta desde la app, el bot calla 12 h', async () => {
+test('criterio 8 (cambiado por John): si John contesta desde la app, el bot calla 3 h desde su último mensaje', async () => {
   const tel = nuevoTelefono();
-  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(entrante(tel, 'Quiero hablar con una persona'));
   await enviarAviso(eco(tel, 'Hola, soy John, te cuento yo'));
-  const c = await contacto(tel);
+  let c = await contacto(tel);
   assert.equal(c.modo, 'humano');
-  const horas = (new Date(c.modo_hasta) - Date.now()) / 3.6e6;
-  assert.ok(horas > 11.9 && horas <= 12.01, `modo_hasta a ${horas} h`);
+  const horas = (fecha) => (new Date(fecha) - Date.now()) / 3.6e6;
+  assert.ok(horas(c.modo_hasta) > 2.9 && horas(c.modo_hasta) <= 3.01, `modo_hasta a ${horas(c.modo_hasta)} h (el escalado de 24 h pasa a 3 h)`);
+  const [conv] = await q(`SELECT estado FROM wa_conversations WHERE contact_id = $1`, [c.id]);
+  assert.equal(conv.estado, 'abierta', 'con John en la conversación deja de estar pendiente');
   await enviarAviso(entrante(tel, 'Vale, gracias'));
   assert.equal(enviadosA(tel).length, 1);
-  const [m] = await q(`SELECT autor, cuerpo FROM wa_messages WHERE contact_id = $1 AND autor = 'john_app'`, [c.id]);
+  // Otro mensaje de John: las 3 h vuelven a contar desde ahí.
+  const antes = new Date(c.modo_hasta);
+  await new Promise((ok) => setTimeout(ok, 50));
+  await enviarAviso(eco(tel, 'Te lo miro y te digo'));
+  c = await contacto(tel);
+  assert.ok(new Date(c.modo_hasta) > antes);
+  const [m] = await q(`SELECT autor, cuerpo FROM wa_messages WHERE contact_id = $1 AND autor = 'john_app' ORDER BY created_at LIMIT 1`, [c.id]);
   assert.equal(m.cuerpo, 'Hola, soy John, te cuento yo');
 });
 
@@ -273,6 +300,7 @@ test('REANUDA: el bot no tiene en cuenta lo que el contacto escribió mientras l
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Hola'));
   await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
+  await enviarAviso(entrante(tel, 'Quiero hablar con una persona'));
   assert.equal((await contacto(tel)).modo, 'humano');
   await enviarAviso(entrante(tel, 'Sois unos inútiles'));
   await enviarAviso(entrante(tel, 'Contestad ya'));
@@ -313,12 +341,14 @@ test('canal admin: PARA TODO apaga el bot sin pasar por Claude; otro número que
   assert.equal(enviadosA(impostor).length, 1);
 });
 
-test('si Claude no responde a tiempo o pide más de 4 herramientas: texto fijo y escalado', async () => {
+test('si Claude no responde a tiempo o pide más de 4 herramientas: texto fijo y aviso a John', async () => {
   for (const frase of ['Esto va lento', 'Usa muchas herramientas']) {
     const tel = nuevoTelefono();
     await enviarAviso(entrante(tel, frase));
     assert.ok(enviadosA(tel)[0].text.body.endsWith(TEXTO_FALLO), enviadosA(tel)[0].text.body);
-    assert.equal((await contacto(tel)).modo, 'humano');
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /no ha podido responder/);
+    // Fallo técnico: John se entera, pero el bot lo vuelve a intentar con el siguiente mensaje.
+    assert.equal((await contacto(tel)).modo, 'bot');
   }
 });
 

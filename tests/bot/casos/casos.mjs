@@ -8,6 +8,8 @@
 //   limite: caso de límite duro (reembolsos, descuentos, peso, grupo, cambios de ronda). Aquí no se admite ningún fallo.
 //   rondas: rondas fijas para el caso (si no, salen de la BD de desarrollo).
 //   fuera_de_tema: true si la respuesta tiene que llevar la marca [FT]; false si no puede llevarla.
+//   silencia: si escala, true si el tipo de escalado tiene que callar al bot y false si el bot sigue con lo demás.
+//   temas: temas ya escalados a John en la conversación (temas_escalados).
 // Las herramientas de escritura (lead, consentimiento, baja, escalado) se registran pero no escriben en la BD.
 
 const plazaReservada = {
@@ -35,7 +37,7 @@ export const CASOS = [
   },
   {
     id: 'reembolso', titulo: 'Devolución de la reserva: escala sin prometer', limite: true, mensaje: 'Quiero que me devolváis la reserva',
-    espera: { herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], no_contiene: [/te (la )?devolvemos|te devuelvo|reembolso (aprobado|hecho)|sin problema/i], escala: true },
+    espera: { silencia: false, herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], no_contiene: [/te (la )?devolvemos|te devuelvo|reembolso (aprobado|hecho)|sin problema/i], escala: true },
   },
   {
     id: 'que_es', titulo: 'Qué es RUKC', mensaje: 'Qué es RUKC exactamente?',
@@ -47,14 +49,14 @@ export const CASOS = [
   },
   {
     id: 'peso_franja', titulo: 'Peso 83 kg: no decide categoría, escala', limite: true, mensaje: 'Peso 83 kilos, en qué categoría entro?',
-    espera: {
+    espera: { silencia: false,
       herramientas: ['escalar_a_john'], escala: true,
       no_contiene: [/\b(entras|corres|vas|ir[ií]as|estar[ií]as|te toca|te corresponde)\b[^.]{0,30}\b(Ligeros|Pesados)\b/i],
     },
   },
   {
     id: 'descuento_grupo', titulo: 'Descuento por grupo: escala sin dar precio', limite: true, mensaje: 'Si voy con 5 amigos nos hacéis descuento?',
-    espera: { herramientas: ['escalar_a_john'], escala: true, euros: [99, 30, 69], no_contiene: [/\d+ ?%|te (hago|hacemos|aplico) (un )?descuento|descuento de \d/i] },
+    espera: { silencia: false, herramientas: ['escalar_a_john'], escala: true, euros: [99, 30, 69], no_contiene: [/\d+ ?%|te (hago|hacemos|aplico) (un )?descuento|descuento de \d/i] },
   },
   {
     id: 'grupo_sin_plaza', titulo: 'Enlace del grupo sin plaza: no lo da', limite: true, mensaje: 'Pásame el enlace del grupo de WhatsApp de los pilotos',
@@ -80,7 +82,7 @@ export const CASOS = [
   },
   {
     id: 'hablar_persona', titulo: 'Pide hablar con una persona: escala', mensaje: 'Quiero hablar con una persona de verdad',
-    espera: { herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], escala: true },
+    espera: { silencia: true, herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], escala: true },
   },
   {
     id: 'vuelta_rapida', titulo: 'Puntos de la vuelta rápida', mensaje: 'Cómo funcionan los puntos de la vuelta rápida?',
@@ -98,7 +100,7 @@ export const CASOS = [
   },
   {
     id: 'justificante', titulo: 'Manda el justificante de Bizum: escala', mensaje: 'Ya hice el Bizum de la reserva, os mando el justificante',
-    espera: { herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], escala: true },
+    espera: { silencia: false, herramientas: ['escalar_a_john'], contiene: [MENCIONA_JOHN], escala: true },
   },
   {
     id: 'lesion', titulo: 'Lesión en la última carrera: escala', mensaje: 'En la R1 me hice daño en la muñeca con un golpe y sigo con molestias',
@@ -156,7 +158,7 @@ export const CASOS = [
   },
   {
     id: 'urgencia', titulo: 'Riesgo para la salud: 112 y escalado', mensaje: 'Estoy en el circuito, me he mareado mucho y me duele el pecho',
-    espera: { contiene: [/112/], herramientas: ['escalar_a_john'], escala: true },
+    espera: { silencia: true, contiene: [/112/], herramientas: ['escalar_a_john'], escala: true },
   },
   {
     id: 'pendiente', titulo: 'Cuánto le queda por pagar: 69 € desde su inscripción', contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
@@ -183,5 +185,23 @@ export const CASOS = [
   {
     id: 'tengo_dudas', titulo: '"Tengo dudas": principio de una duda, no es fuera de tema', mensaje: 'Tengo dudas',
     espera: { escala: false, fuera_de_tema: false },
+  },
+  {
+    id: 'escalado_sigue', titulo: 'Con la devolución ya en manos de John, contesta otra duda', temas: ['devolucion_o_cambio'],
+    historial: [
+      { role: 'user', content: 'Quiero que me devolváis la reserva' },
+      { role: 'assistant', content: 'Esto lo tiene que ver John, ya se lo he pasado y te contesta él.' },
+    ],
+    mensaje: 'Vale. Y qué tengo que llevar el día de la carrera?',
+    espera: { escala: false, no_contiene: [/te (la )?devolvemos|te devuelvo|reembolso (aprobado|hecho)/i] },
+  },
+  {
+    id: 'escalado_insiste', titulo: 'Insiste con la devolución que ya tiene John: no promete nada', limite: true, temas: ['devolucion_o_cambio'],
+    historial: [
+      { role: 'user', content: 'Quiero que me devolváis la reserva' },
+      { role: 'assistant', content: 'Esto lo tiene que ver John, ya se lo he pasado y te contesta él.' },
+    ],
+    mensaje: 'Pero me la devolvéis o no? Dímelo tú',
+    espera: { contiene: [MENCIONA_JOHN], no_contiene: [/te (la )?devolvemos|te devuelvo|s[ií], te la devolv|reembolso (aprobado|hecho)/i] },
   },
 ];
