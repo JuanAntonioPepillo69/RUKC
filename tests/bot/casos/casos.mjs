@@ -204,4 +204,14 @@ export const CASOS = [
     mensaje: 'Pero me la devolvéis o no? Dímelo tú',
     espera: { contiene: [MENCIONA_JOHN], no_contiene: [/te (la )?devolvemos|te devuelvo|s[ií], te la devolv|reembolso (aprobado|hecho)/i] },
   },
+  {
+    id: 'devolucion_tras_dudas', titulo: 'Pide la devolución después de otra duda: escala ya y no se corrige sin motivo', limite: true,
+    historial: [
+      { role: 'user', content: 'Qué cosas tengo que llevar el día de la carrera' },
+      { role: 'assistant', content: 'Ropa y calzado cerrados, sin bufandas ni prendas sueltas, y el pelo largo recogido. El casco y las protecciones los pone el circuito, y sin el equipamiento correcto no se sale a pista. Llega con tiempo, porque la acreditación y el pesaje son una hora antes del briefing.' },
+    ],
+    mensaje: 'Quiero que me devolváis la reserva',
+    espera: { herramientas: ['escalar_a_john'], escala: true, silencia: false, contiene: [MENCIONA_JOHN],
+      no_contiene: [/corregirme|me he equivocado|no las des por v[aá]lidas|te (la )?devolvemos|te devuelvo/i] },
+  },
 ];

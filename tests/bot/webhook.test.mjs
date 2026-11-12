@@ -18,7 +18,7 @@ Object.assign(process.env, {
 });
 const { manejar } = await import('../../api/wa/webhook.js');
 const { AVISO_IA, TEXTO_FALLO } = await import('../../lib/bot/turn.js');
-const { TEXTO_CORTE } = await import('../../lib/whatsapp/entrante.js');
+const { TEXTO_CORTE, TEXTO_URGENCIA } = await import('../../lib/whatsapp/entrante.js');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const q = async (t, p) => (await pool.query(t, p)).rows;
@@ -68,7 +68,9 @@ const llm = {
 // Clasificador de tema simulado (Haiku): todo lo que hable de paella es fuera de tema.
 const clasificados = [];
 const clasificar = async ({ texto }) => { clasificados.push(texto); return !/paella/i.test(texto); };
-const deps = { llm, esperar: true, esperaAgruparMs: 0, resumir: async () => 'Resumen simulado.', clasificar, limiteMs: 500 };
+// Detector de urgencias simulado (Haiku): sangre o desmayo.
+const urgencia = async ({ texto }) => /sangr|desmay/i.test(texto);
+const deps = { llm, esperar: true, esperaAgruparMs: 0, resumir: async () => 'Resumen simulado.', clasificar, urgencia, limiteMs: 500 };
 
 // --- Avisos de YCloud ---------------------------------------------------------------------------------------------
 let ev = 0;
@@ -312,6 +314,22 @@ test('REANUDA: el bot no tiene en cuenta lo que el contacto escribió mientras l
   assert.equal(ultimo.content, 'Hola de nuevo');
   assert.ok(!JSON.stringify(ultimosMensajes).includes('inútiles'), 'lo escrito durante el modo humano no llega al bot');
   assert.ok(JSON.stringify(ultimosMensajes).includes('devolváis'), 'la conversación anterior sí sigue como contexto');
+});
+
+test('una urgencia con la conversación en manos de John: texto del 112 y aviso URGENTE', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Quiero hablar con una persona'));
+  assert.equal((await contacto(tel)).modo, 'humano');
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(tel, 'Hola??'));
+  assert.equal(enviadosA(tel).length, 1, 'sin urgencia sigue callado');
+  const avisos = enviadosA(ADMIN).length;
+  await enviarAviso(entrante(tel, 'Me he caído en el circuito y me sangra la cabeza'));
+  assert.equal(enviadosA(tel).at(-1).text.body, TEXTO_URGENCIA);
+  assert.equal(enviadosA(ADMIN).length, avisos + 1);
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /^URGENTE/);
+  assert.equal(llamadasLlm, antes, 'no pasa por el bot normal');
+  assert.equal((await contacto(tel)).modo, 'humano');
 });
 
 test('bot_activo = false: no contesta a nadie', async () => {
