@@ -30,7 +30,7 @@ const pensar = process.argv.includes('--pensar');
 
 const docs = await datosReales.documentosKb({ fresco: true });
 const kbTexto = textoParaPrompt(docs);
-const SIN_PLAZA = { inscripciones: [], bizum_pendientes: [] };
+const SIN_PLAZA = { inscripciones: [], bizum_pendientes: [], sin_pagar: [] };
 
 /** Acceso a datos del caso: lecturas reales (KB, rondas) y escrituras simuladas. */
 function datosDelCaso(caso, escrituras) {
@@ -84,7 +84,7 @@ async function ejecutarCaso(caso) {
   const historial = [...(caso.historial ?? []), { role: 'user', content: caso.mensaje }];
   const r = await ejecutarTurno({
     llm: llmAnthropic, modelo, historial, ctx, avisoIaPendiente: Boolean(caso.aviso), ...(pensar ? { thinking: null } : {}),
-    system: systemPublico({ kbTexto, contacto: { nombre: contacto.display_name, rol: contacto.rol }, avisoIaPendiente: Boolean(caso.aviso), temasEscalados: caso.temas ?? [] }),
+    system: systemPublico({ kbTexto, contacto: { nombre: contacto.display_name, rol: contacto.rol }, avisoIaPendiente: Boolean(caso.aviso), temasEscalados: caso.temas ?? [], reservas: caso.inscripciones ?? SIN_PLAZA }),
   });
   return { caso, r, ...comprobar(caso, r), escrituras };
 }

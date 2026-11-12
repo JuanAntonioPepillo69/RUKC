@@ -179,6 +179,10 @@
     {
       "path": "/api/cron",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/wa/resumen-diario",
+      "schedule": "0 18,19 * * *"
     }
   ],
   "functions": {
@@ -187,6 +191,9 @@
     },
     "api/wa/webhook.js": {
       "maxDuration": 60
+    },
+    "api/wa/resumen-diario.js": {
+      "maxDuration": 30
     }
   }
 }

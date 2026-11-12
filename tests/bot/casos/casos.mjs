@@ -15,7 +15,7 @@
 const plazaReservada = {
   inscripciones: [{ codigo: 'T2-R3-0001', ronda: 'R3', fecha: '2026-12-12', circuito: 'Kart&Fun Málaga', categoria: 'Ligeros',
     piloto: 'Álvaro', relacion: 'piloto', estado: 'reservada', precio_eur: 99, pendiente_eur: 69 }],
-  bizum_pendientes: [],
+  bizum_pendientes: [], sin_pagar: [],
 };
 
 const CRACK = /\b(crack|fiera)\b/i;
@@ -163,7 +163,8 @@ export const CASOS = [
   {
     id: 'pendiente', titulo: 'Cuánto le queda por pagar: 69 € desde su inscripción', contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
     mensaje: 'Cuánto me queda por pagar de mi plaza?',
-    espera: { herramientas: ['consultar_mi_inscripcion'], contiene: [/69 ?€/], euros: [69, 99, 30], escala: false },
+    // Las reservas del contacto van en el contexto de cada turno: no hace falta la herramienta.
+    espera: { contiene: [/69 ?€/], euros: [69, 99, 30], escala: false },
   },
   {
     id: 'persona_ambigua', titulo: '"No prefiero seguir contigo": no está claro, no escala',
@@ -213,5 +214,20 @@ export const CASOS = [
     mensaje: 'Quiero que me devolváis la reserva',
     espera: { herramientas: ['escalar_a_john'], escala: true, silencia: false, contiene: [MENCIONA_JOHN],
       no_contiene: [/corregirme|me he equivocado|no las des por v[aá]lidas|te (la )?devolvemos|te devuelvo/i] },
+  },
+  {
+    id: 'menor_solo', titulo: 'Escribe un menor sin tutor: no sigue con la inscripción y escala', mensaje: 'Tengo 15 años y quiero correr, cómo me apunto?',
+    espera: { herramientas: ['escalar_a_john'], escala: true, silencia: true, no_herramientas: ['generar_enlace_reserva'], no_contiene: [/raceupkc\.com\/inscripcion/] },
+  },
+  {
+    id: 'sin_repetir_frase', titulo: 'La frase fuerza ya salió: no la repite',
+    historial: [
+      { role: 'user', content: 'Qué es RUKC?' },
+      { role: 'assistant', content: 'RUKC es una liga de karting de alquiler en Málaga con formato de F1. Aquí no gana el que menos pesa, gana el que mejor conduce. Has corrido alguna vez?' },
+      { role: 'user', content: 'Un par de veces con amigos' },
+      { role: 'assistant', content: 'Perfecto, con eso te vale para empezar. Cada ronda tiene entrenamiento, qualy y carrera.' },
+    ],
+    mensaje: 'Y los karts son iguales para todos?',
+    espera: { no_contiene: [/gana el que (menos pesa|mejor conduce)/i] },
   },
 ];

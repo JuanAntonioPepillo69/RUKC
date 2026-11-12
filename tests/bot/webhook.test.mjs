@@ -14,9 +14,10 @@ const ADMIN = `+34699${sufijo()}`;
 const SECRETO = 'whsec_prueba_bot';
 Object.assign(process.env, {
   YCLOUD_WEBHOOK_SECRET: SECRETO, YCLOUD_API_KEY: 'clave_simulada', YCLOUD_PHONE_E164: '+34602072802', ADMIN_PHONE_E164: ADMIN,
-  BOT_MODEL_CONVERSATION: 'modelo-simulado', BOT_MODEL_CLASSIFIER: 'modelo-simulado',
+  BOT_MODEL_CONVERSATION: 'modelo-simulado', BOT_MODEL_CLASSIFIER: 'modelo-simulado', CRON_SECRET: 'cron_prueba_bot',
 });
 const { manejar } = await import('../../api/wa/webhook.js');
+const resumenDiario = await import('../../api/wa/resumen-diario.js');
 const { AVISO_IA, TEXTO_FALLO } = await import('../../lib/bot/turn.js');
 const { TEXTO_CORTE, TEXTO_URGENCIA } = await import('../../lib/whatsapp/entrante.js');
 
@@ -98,6 +99,8 @@ const contacto = async (tel) => (await q('SELECT * FROM wa_contacts WHERE phone_
 
 before(async () => {
   await q(`UPDATE bot_settings SET valor = 'true' WHERE clave = 'bot_activo'`);
+  // John con su ventana de 24 h abierta (ha escrito al número RUKC), para que los avisos le lleguen como texto.
+  await enviarAviso(entrante(ADMIN, 'ESTADO'));
 });
 
 after(async () => {
@@ -332,6 +335,29 @@ test('una urgencia con la conversación en manos de John: texto del 112 y aviso 
   assert.equal((await contacto(tel)).modo, 'humano');
 });
 
+test('aviso a John con su ventana cerrada: plantilla rukc_aviso_admin y, cuando escribe, los avisos pendientes', async () => {
+  await q(`UPDATE wa_contacts SET last_inbound_at = now() - interval '25 hours' WHERE phone_e164 = $1`, [ADMIN]);
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
+  const plantilla = enviadosA(ADMIN).at(-1);
+  assert.equal(plantilla.type, 'template');
+  assert.equal(plantilla.template.name, 'rukc_aviso_admin');
+  const [n, hora] = plantilla.template.components[0].parameters.map((p) => p.text);
+  assert.equal(n, '1');
+  assert.match(hora, /^\d{2}:\d{2} del \p{L}+ \d+$/u);
+
+  // John contesta a la plantilla: le llega el aviso guardado y no la ayuda del canal admin.
+  const antes = enviadosA(ADMIN).length;
+  await enviarAviso(entrante(ADMIN, 'Ver'));
+  const nuevos = enviadosA(ADMIN).slice(antes);
+  assert.equal(nuevos.length, 1);
+  assert.match(nuevos[0].text.body, /Escalado del bot/);
+  assert.match(nuevos[0].text.body, /pide reembolso/);
+  // Ya entregado: otro mensaje suyo no lo repite.
+  await enviarAviso(entrante(ADMIN, 'ESTADO'));
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /^Bot activo/);
+});
+
 test('bot_activo = false: no contesta a nadie', async () => {
   const tel = nuevoTelefono();
   await q(`UPDATE bot_settings SET valor = 'false' WHERE clave = 'bot_activo'`);
@@ -392,4 +418,21 @@ test('whatsapp.message.updated actualiza el estado del mensaje enviado', async (
   await enviarAviso({ id: idEvento(), type: 'whatsapp.message.updated', whatsappMessage: { id: enviado.id, wamid: enviado.wamid, status: 'sent' } });
   const [m] = await q('SELECT estado, categoria_precio FROM wa_messages WHERE provider_message_id = $1', [enviado.id]);
   assert.deepEqual(m, { estado: 'entregado', categoria_precio: 'service' });
+});
+
+test('resumen diario: protegido con CRON_SECRET y con los pendientes de John', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
+  const url = 'https://raceupkc-pruebas.vercel.app/api/wa/resumen-diario?forzar=1';
+  assert.equal((await resumenDiario.manejar(new Request(url))).status, 401);
+  const antes = enviadosA(ADMIN).length;
+  const res = await resumenDiario.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }));
+  const cuerpo = await res.json();
+  assert.equal(cuerpo.enviado, true, JSON.stringify(cuerpo));
+  assert.equal(enviadosA(ADMIN).length, antes + 1);
+  const texto = enviadosA(ADMIN).at(-1).text.body;
+  assert.match(texto, /^Resumen del bot/);
+  assert.match(texto, /Pendientes de ti/);
+  // Con muchos pendientes (los de otros tests) la lista se corta en 8 y dice cuántos más hay.
+  assert.ok(texto.includes(tel) || /- y \d+ más\./.test(texto), texto);
 });
