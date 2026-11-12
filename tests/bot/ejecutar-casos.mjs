@@ -70,6 +70,7 @@ function comprobar(caso, r) {
   if (e.silencia !== undefined && r.escalado && silencia(r.escalado) !== e.silencia) {
     fallos.push(`escalado de tipo ${r.escalado.tipo}: ${e.silencia ? 'tenía que' : 'no tenía que'} callar al bot`);
   }
+  if (/\bJohn\b/.test(r.texto)) fallos.push('nombra a John');
   if (r.fallo) fallos.push(`turno fallido (${r.fallo})`);
   const emojis = (r.texto.match(EMOJI) ?? []).length;
   const emojisModelo = (r.textoModelo?.match(EMOJI) ?? []).length;

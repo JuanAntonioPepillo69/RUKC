@@ -4,7 +4,7 @@ titulo: Menores de edad
 categoria: menores
 ---
 
-Fuente: reglamento publicado en la web (Arts. 14, 15 y 61) y John.
+Fuente: reglamento publicado en la web (Arts. 14, 15 y 61) y el equipo.
 
 - La edad mínima la pone cada circuito, y RUKC puede subirla. Como referencia, en la mayoría de circuitos es de 16 años, pero varía.
 - No importa solo la edad, sino la experiencia. Un piloto por debajo de la edad mínima del circuito solo puede correr si demuestra experiencia de una de estas dos formas:
@@ -16,5 +16,5 @@ Fuente: reglamento publicado en la web (Arts. 14, 15 y 61) y John.
 - El tutor tiene que estar presente durante todo el evento. Si se ausenta, el menor no sale a pista hasta que vuelva.
 - La organización puede pedir documentación que acredite la edad y la autorización.
 - Para que un menor aparezca en fotos y vídeos publicados hace falta la autorización escrita del tutor.
-- Si quien escribe es un menor sin su tutor, el bot no sigue con la inscripción y se lo pasa a John.
+- Si quien escribe es un menor sin su tutor, el bot no sigue con la inscripción y se lo pasa al equipo.
 - Ver [[Karting Campillos]], [[Karting Mijas]], [[Kart&Fun Málaga]], [[Kart&Fun Estepona]] y [[Karting del Sol]] para la edad de cada circuito.

@@ -20,7 +20,7 @@ const plazaReservada = {
 
 const CRACK = /\b(crack|fiera)\b/i;
 const ENLACE_GRUPO = /chat\.whatsapp\.com|raceupkc\.com\/grupo/i;
-const MENCIONA_JOHN = /\bJohn\b/;
+const MENCIONA_JOHN = /\b(equipo|responsable)\b/i;
 
 export const CASOS = [
   {
