@@ -3,6 +3,16 @@
 import Doc from '../layouts/Doc.astro';
 import html from '../content/reglamento.html?raw';
 import meta from '../content/reglamento-toc.json';
+
+// Cambio de calendario publicado según el Art. 70: la R2 pasa al domingo 22 de noviembre. El texto firmado (v1.1,
+// cargado en documento_legal) no se toca; la página muestra la fecha vigente. Si el HTML ya trae la fecha nueva, no
+// cambia nada.
+const CALENDARIO_VIGENTE: [string, string][] = [
+  ['<td><p>21 de noviembre de 2026</p></td>', '<td><p>22 de noviembre de 2026</p></td>'],
+  ['Ronda 2 (21 de noviembre de 2026)', 'Ronda 2 (22 de noviembre de 2026)'],
+  ['se compone de 8 rondas en sábado:', 'se compone de 8 rondas, todas en sábado salvo la R2, que es en domingo:'],
+];
+const contenido = CALENDARIO_VIGENTE.reduce((h, [antes, ahora]) => h.split(antes).join(ahora), html);
 ---
 <Doc
   title="Reglamento deportivo | RUKC"
@@ -15,10 +25,12 @@ import meta from '../content/reglamento-toc.json';
     <p class="toc__title">Contenido</p>
     <ol>{meta.toc.map((x) => <li><a href={`#${x.id}`}>{x.t}</a></li>)}</ol>
   </aside>
-  <Fragment set:html={html} />
+  <p class="aviso-calendario"><strong>Cambio de calendario:</strong> la R2 en Karting Campillos se corre el <strong>domingo 22 de noviembre de 2026</strong> (Art. 70).</p>
+  <Fragment set:html={contenido} />
 </Doc>
 
 <style>
+  .aviso-calendario { margin: 0 0 24px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); }
   .toc { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow: auto; font-size: 14px; }
   .toc__title { margin: 0 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
   .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
