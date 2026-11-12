@@ -18,6 +18,7 @@ Object.assign(process.env, {
 });
 const { manejar } = await import('../../api/wa/webhook.js');
 const resumenDiario = await import('../../api/wa/resumen-diario.js');
+const pendientes = await import('../../api/wa/pendientes.js');
 const { AVISO_IA, TEXTO_FALLO } = await import('../../lib/bot/turn.js');
 const { TEXTO_CORTE, TEXTO_URGENCIA } = await import('../../lib/whatsapp/entrante.js');
 
@@ -301,22 +302,39 @@ test('charla fuera de tema: a la tercera, texto fijo una vez, silencio y vuelve 
   assert.equal(clasificados.length, c2);
 });
 
-test('REANUDA: el bot no tiene en cuenta lo que el contacto escribió mientras la llevaba John', async () => {
+test('REANUDA: el bot contesta en ese momento lo que quedó sin contestar', async () => {
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Hola'));
-  await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
-  await enviarAviso(entrante(tel, 'Quiero hablar con una persona'));
-  assert.equal((await contacto(tel)).modo, 'humano');
-  await enviarAviso(entrante(tel, 'Sois unos inútiles'));
-  await enviarAviso(entrante(tel, 'Contestad ya'));
+  await enviarAviso(eco(tel, 'Hola, soy John'));
+  await enviarAviso(entrante(tel, 'Cuánto cuesta una ronda?'));
+  assert.equal(enviadosA(tel).length, 1, 'con John en la conversación el bot calla');
   await enviarAviso(entrante(ADMIN, `REANUDA ${tel}`));
-  assert.equal((await contacto(tel)).modo, 'bot');
-  await enviarAviso(entrante(tel, 'Hola de nuevo'));
-  const ultimo = ultimosMensajes.at(-1);
-  assert.equal(ultimo.role, 'user');
-  assert.equal(ultimo.content, 'Hola de nuevo');
-  assert.ok(!JSON.stringify(ultimosMensajes).includes('inútiles'), 'lo escrito durante el modo humano no llega al bot');
-  assert.ok(JSON.stringify(ultimosMensajes).includes('devolváis'), 'la conversación anterior sí sigue como contexto');
+  assert.match(enviadosA(ADMIN).at(-1).text.body, /vuelve a contestar/);
+  assert.equal(enviadosA(tel).length, 2, 'el bot ha contestado lo pendiente sin esperar a otro mensaje');
+  assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
+  assert.equal(ultimosMensajes.at(-1).content, 'Cuánto cuesta una ronda?');
+  // Ya contestado: otro REANUDA no repite.
+  await enviarAviso(entrante(ADMIN, `REANUDA ${tel}`));
+  assert.equal(enviadosA(tel).length, 2);
+});
+
+test('fin de las horas de John: el cron contesta lo pendiente', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  await enviarAviso(eco(tel, 'Te cuento yo'));
+  await enviarAviso(entrante(tel, 'Y cuánto cuesta?'));
+  assert.equal(enviadosA(tel).length, 1);
+  // Las 3 h de John han terminado hace un momento.
+  await q(`UPDATE wa_contacts SET modo_hasta = now() - interval '1 minute' WHERE phone_e164 = $1`, [tel]);
+  const url = 'https://raceupkc-pruebas.vercel.app/api/wa/pendientes';
+  assert.equal((await pendientes.manejar(new Request(url))).status, 401);
+  const res = await (await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), deps)).json();
+  assert.ok(res.respondidos >= 1, JSON.stringify(res));
+  assert.equal(enviadosA(tel).length, 2);
+  assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
+  // Segunda pasada: nada más que contestar.
+  await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), deps);
+  assert.equal(enviadosA(tel).length, 2);
 });
 
 test('una urgencia con la conversación en manos de John: texto del 112 y aviso URGENTE', async () => {
