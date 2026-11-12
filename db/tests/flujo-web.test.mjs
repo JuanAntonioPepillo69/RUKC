@@ -11,19 +11,25 @@ if (!process.env.DATABASE_URL) throw new Error('Falta DATABASE_URL');
 process.env.STRIPE_SECRET_KEY = 'sk_test_simulada';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_simulado';
 process.env.META_CAPI_TOKEN = 'token_simulado';
+// WhatsApp (YCloud) simulado para la confirmación de plaza (B1).
+process.env.YCLOUD_API_KEY = 'clave_simulada';
+process.env.YCLOUD_PHONE_E164 = '+34602072802';
+process.env.BETTER_AUTH_SECRET ||= 'secreto_de_prueba_para_firmar';
 
 const { POST: crear, PATCH: actualizar } = await import('../../api/solicitud.js');
 const { POST: pagar } = await import('../../api/checkout/index.js');
 const { GET: estadoPago } = await import('../../api/checkout/estado.js');
 const { POST: webhook } = await import('../../api/stripe-webhook.js');
 const { GET: catalogo } = await import('../../api/catalogo.js');
+const { GET: grupo } = await import('../../api/grupo.js');
+const { enviarConfirmacionReserva, leerTokenGrupo, fechaLarga } = await import('../../lib/whatsapp/confirmacion.js');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const q = async (t, p) => (await pool.query(t, p)).rows;
 const BASE = 'https://raceupkc-pruebas.vercel.app';
 
 // --- Stripe y Meta simulados -------------------------------------------------------------------------------------
-const llamadas = { stripe: [], meta: [] };
+const llamadas = { stripe: [], meta: [], ycloud: [] };
 const fetchReal = globalThis.fetch;
 let sesiones = 0;
 globalThis.fetch = async (url, init = {}) => {
@@ -37,6 +43,11 @@ globalThis.fetch = async (url, init = {}) => {
     if (u.includes('/payment_intents/')) return Response.json({ id: 'pi', latest_charge: { payment_method_details: { type: 'card' } } });
     if (u.endsWith('/expire')) return Response.json({ status: 'expired' });
     return Response.json({ error: { message: 'no simulado' } }, { status: 400 });
+  }
+  if (u.startsWith('https://api.ycloud.com/')) {
+    const cuerpo = JSON.parse(init.body);
+    llamadas.ycloud.push(cuerpo);
+    return Response.json({ id: `yc_sim_${Date.now()}_${llamadas.ycloud.length}`, wamid: `wamid.sim.${Date.now()}.${llamadas.ycloud.length}`, status: 'accepted', ...cuerpo });
   }
   if (u.startsWith('https://graph.facebook.com/')) {
     llamadas.meta.push(JSON.parse(init.body));
@@ -95,6 +106,10 @@ after(async () => {
     await q(`DELETE FROM ${t} WHERE persona_id = ANY($1::uuid[])`, [personas]);
   }
   await q('DELETE FROM persona WHERE id = ANY($1::uuid[])', [personas]);
+  const telefonosWa = [...new Set(llamadas.ycloud.map((m) => m.to))];
+  const contactos = (await q('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonosWa])).map((x) => x.id);
+  for (const t of ['wa_outbox', 'wa_messages', 'wa_conversations']) await q(`DELETE FROM ${t} WHERE contact_id = ANY($1::uuid[])`, [contactos]);
+  await q('DELETE FROM wa_contacts WHERE id = ANY($1::uuid[])', [contactos]);
   await q(`DELETE FROM stripe_evento WHERE stripe_event_id LIKE 'evt_sim_%'`);
   await q(`DELETE FROM limite_peticion WHERE ventana_inicio < now() + interval '1 day'`);
   globalThis.fetch = fetchReal;
@@ -193,6 +208,7 @@ test('webhook: pago completado → solicitud pagada, inscripción reservada (30 
   const pi = `pi_sim_${Date.now()}`;
   const ev = eventoFirmado('checkout.session.completed', { id: s.stripe_checkout_session_id, payment_status: 'paid', amount_total: 3000,
     payment_intent: pi, metadata: { solicitud_id: s.id }, client_reference_id: s.id, created: Math.floor(Date.now() / 1000) });
+  llamadas.ycloud.length = 0;
   const r1 = await webhook(ev.request());
   assert.equal(r1.status, 200, await r1.clone().text());
 
@@ -215,6 +231,23 @@ test('webhook: pago completado → solicitud pagada, inscripción reservada (30 
   assert.equal((await r2.json()).duplicado, true);
   assert.deepEqual(await cuenta(), antes);
   assert.deepEqual(antes, { pagos: 1, inscripciones: 1 });
+
+  // B1: confirmación de plaza por WhatsApp al piloto, con su botón al grupo; el aviso repetido no la reenvía.
+  const confirmaciones = llamadas.ycloud.filter((m) => m.template?.name === 'rukc_reserva_confirmada');
+  assert.equal(confirmaciones.length, 1, JSON.stringify(llamadas.ycloud));
+  const [m] = confirmaciones;
+  const [rr] = await q('SELECT r.numero, r.fecha::text AS fecha, c.nombre AS circuito, i.id FROM ronda r JOIN circuito c ON c.id = r.circuito_id JOIN inscripcion i ON i.ronda_id = r.id JOIN solicitud_inscripcion s ON s.pedido_id = i.pedido_id WHERE s.id = $1', [s.id]);
+  assert.deepEqual(m.template.components[0].parameters.map((p) => p.text),
+    ['Prueba', `R${rr.numero}`, fechaLarga(rr.fecha), rr.circuito, '69', 'https://raceupkc.com/reglamento']);
+  const token = m.template.components[1].parameters[0].text;
+  assert.equal(leerTokenGrupo(token), rr.id);
+
+  // /grupo/<token>: sin acceso aprobado, a la ficha del piloto; un token cambiado no vale.
+  const g = await grupo(new Request(`${BASE}/api/grupo?token=${token}`));
+  assert.equal(g.status, 302);
+  assert.match(g.headers.get('location'), /^https:\/\/raceupkc\.com\/onboarding\/[\w-]{40,}$/);
+  const malo = await grupo(new Request(`${BASE}/api/grupo?token=${token.slice(0, -2)}xx`));
+  assert.equal(malo.status, 404);
 
   const estado = await (await estadoPago(peticion('GET', '/api/checkout/estado', { token: cuerpo.token }))).json();
   assert.equal(estado.estado, 'pagada');
@@ -285,4 +318,21 @@ test('paga otra persona: el webhook crea pagador y piloto por separado', async (
   const [v] = await q(`SELECT vi.piloto, vi.pagador, vi.paga_otra_persona, vi.estado FROM v_inscripciones vi
     JOIN inscripcion i ON i.id = vi.id JOIN solicitud_inscripcion s ON s.pedido_id = i.pedido_id WHERE s.id = $1`, [s.id]);
   assert.deepEqual(v, { piloto: 'Piloto Distinto', pagador: 'Prueba Integración', paga_otra_persona: true, estado: 'reservada' });
+
+  const [ins] = await q(`SELECT i.id, pil.telefono AS piloto_tel, pag.telefono AS pagador_tel FROM inscripcion i
+    JOIN solicitud_inscripcion s ON s.pedido_id = i.pedido_id JOIN persona pil ON pil.id = i.piloto_persona_id
+    JOIN pedido pe ON pe.id = i.pedido_id JOIN persona pag ON pag.id = pe.pagador_persona_id WHERE s.id = $1`, [s.id]);
+  const alPiloto = llamadas.ycloud.filter((m) => m.to === ins.piloto_tel && m.template?.name === 'rukc_reserva_confirmada');
+  assert.equal(alPiloto.length, 1);
+  assert.equal(alPiloto[0].template.components[0].parameters[0].text, 'Piloto');
+
+  // Si el piloto es menor: al tutor (quien paga) la variante de tutor; al menor no se le repite.
+  await q('UPDATE inscripcion SET es_menor = true WHERE id = $1', [ins.id]);
+  const antes = llamadas.ycloud.length;
+  const res = await enviarConfirmacionReserva(ins.id);
+  const nuevas = llamadas.ycloud.slice(antes);
+  assert.equal(nuevas.length, 1, JSON.stringify(res));
+  assert.equal(nuevas[0].to, ins.pagador_tel);
+  assert.equal(nuevas[0].template.name, 'rukc_reserva_confirmada_tutor');
+  assert.deepEqual(nuevas[0].template.components[0].parameters.slice(0, 2).map((p) => p.text), ['Prueba', 'Piloto']);
 });
