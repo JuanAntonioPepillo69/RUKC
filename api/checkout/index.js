@@ -15,6 +15,7 @@ import { dentroDelLimite, hashIp, ipCliente, json, leerJson, origenValido, orige
 import { stripe } from '../../lib/stripe.js';
 import { hashToken, tokenDeCabecera } from '../../lib/tokens.js';
 import { faltaParaPagar, mensajeError, pedirPago } from '../../lib/validacion/solicitud.js';
+import { registrarConsentimientosFormulario } from '../../lib/whatsapp/consentimientos.js';
 
 const CADUCIDAD_S = 30 * 60 + 60;   // Stripe exige al menos 30 min; un minuto de margen
 
@@ -134,6 +135,8 @@ export async function POST(request) {
   }
 
   const sol = s.sol;
+  // Formulario v2: aviso de WhatsApp y casilla de novedades, con su versión de texto (no frena el pago si falla).
+  if (cuerpo.data.textos) await registrarConsentimientosFormulario(sol);
   if (metodo === 'bizum') {
     await enviarLead(sol, request);
     return json({

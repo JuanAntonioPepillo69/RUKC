@@ -10,11 +10,12 @@ import { hashToken, nuevoToken, tokenDeCabecera } from '../lib/tokens.js';
 import { actualizarSolicitud, crearSolicitud, mensajeError } from '../lib/validacion/solicitud.js';
 
 const COLUMNAS = ['ronda_id', 'categoria_elegida', 'pagador_nombre', 'pagador_email', 'pagador_telefono', 'piloto_es_pagador',
-  'piloto_nombre', 'piloto_telefono', 'metodo_elegido', 'paso_actual', 'acepta_comunicaciones'];
+  'piloto_nombre', 'piloto_telefono', 'metodo_elegido', 'paso_actual', 'acepta_comunicaciones',
+  'piloto_menor', 'tutor_nombre', 'tutor_telefono', 'tutor_relacion', 'acepta_whatsapp_novedades'];
 const EDITABLE = ['borrador', 'enviada', 'pago_abandonado'];
 // Quién corre, quién paga, qué ronda y qué categoría: una vez dado el código de Bizum, cambiarlos es otra reserva.
 const DATOS_RESERVA = ['ronda_id', 'categoria_elegida', 'pagador_nombre', 'pagador_email', 'pagador_telefono', 'piloto_es_pagador',
-  'piloto_nombre', 'piloto_telefono'];
+  'piloto_nombre', 'piloto_telefono', 'piloto_menor', 'tutor_nombre', 'tutor_telefono', 'tutor_relacion'];
 
 /** La ronda tiene que ser de la temporada y estar por celebrar; si no, se ignora. */
 async function rondaValida(c, rondaId, temporadaId) {
@@ -61,6 +62,11 @@ export async function POST(request) {
           campos.piloto_telefono ?? null, campos.metodo_elegido ?? null, campos.paso_actual ?? null,
           campos.acepta_comunicaciones ?? null, consentimiento_medicion, persona?.id ?? null, hashToken(token),
           hashIp(ipCliente(request)), (request.headers.get('user-agent') || '').slice(0, 300) || null]);
+      const v2 = ['piloto_menor', 'tutor_nombre', 'tutor_telefono', 'tutor_relacion', 'acepta_whatsapp_novedades'].filter((k) => k in campos);
+      if (v2.length) {
+        await c.query(`UPDATE solicitud_inscripcion SET ${v2.map((k, i) => `${k} = ${i + 2}`).join(', ')} WHERE id = $1`,
+          [s.id, ...v2.map((k) => (k === 'piloto_menor' || k === 'acepta_whatsapp_novedades' ? Boolean(campos[k]) : campos[k]))]);
+      }
       const extra = { consentimiento: consentimiento_medicion, fbc, fbp };
       await guardarAtribucion(c, s.id, [limpiarOrigen(origen.primero, extra), limpiarOrigen(origen.ultimo, extra)]);
       return s;
