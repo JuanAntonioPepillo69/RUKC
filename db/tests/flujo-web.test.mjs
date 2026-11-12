@@ -48,6 +48,7 @@ const BASE = 'https://raceupkc-pruebas.vercel.app';
 
 // --- Stripe y Meta simulados -------------------------------------------------------------------------------------
 const llamadas = { stripe: [], meta: [], ycloud: [] };
+const telefonosPrueba = new Set();   // todos los teléfonos que usan estos tests, para limpiar al final
 const fetchReal = globalThis.fetch;
 let sesiones = 0;
 globalThis.fetch = async (url, init = {}) => {
@@ -65,6 +66,7 @@ globalThis.fetch = async (url, init = {}) => {
   if (u.startsWith('https://api.ycloud.com/')) {
     const cuerpo = JSON.parse(init.body);
     llamadas.ycloud.push(cuerpo);
+    telefonosPrueba.add(cuerpo.to);
     return Response.json({ id: `yc_sim_${Date.now()}_${llamadas.ycloud.length}`, wamid: `wamid.sim.${Date.now()}.${llamadas.ycloud.length}`, status: 'accepted', ...cuerpo });
   }
   if (u.startsWith('https://graph.facebook.com/')) {
@@ -90,7 +92,7 @@ function eventoFirmado(tipo, objeto) {
 }
 
 // --- Datos de la prueba ------------------------------------------------------------------------------------------
-const tel = () => `+3469${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`;
+const tel = () => { const t = `+3469${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`; telefonosPrueba.add(t); return t; };
 const creadas = [];          // ids de solicitudes para limpiar
 let ronda, cupoOriginal;
 
@@ -112,6 +114,9 @@ after(async () => {
       UNION SELECT piloto_persona_id FROM inscripcion WHERE pedido_id = ANY($2::uuid[])
       UNION SELECT pagador_persona_id FROM pago WHERE referencia_externa IN (SELECT codigo FROM solicitud_inscripcion WHERE id = ANY($1::uuid[]))
     ) p WHERE x IS NOT NULL`, [creadas, pedidos])).map((r) => r.x);
+  const tutores = (await q('SELECT tutor_persona_id AS x FROM tutela WHERE menor_persona_id = ANY($1::uuid[])', [personas])).map((r) => r.x);
+  personas.push(...tutores.filter((x) => !personas.includes(x)));
+  for (const p of await q('SELECT telefono FROM persona WHERE id = ANY($1::uuid[]) AND telefono IS NOT NULL', [personas])) telefonosPrueba.add(p.telefono);
   const pagos = (await q(`SELECT id FROM pago WHERE pagador_persona_id = ANY($1::uuid[])`, [personas])).map((r) => r.id);
   await q('DELETE FROM aplicacion_pago WHERE pago_id = ANY($1::uuid[])', [pagos]);
   await q('DELETE FROM pago WHERE id = ANY($1::uuid[])', [pagos]);
@@ -125,7 +130,7 @@ after(async () => {
     await q(`DELETE FROM ${t} WHERE persona_id = ANY($1::uuid[])`, [personas]);
   }
   await q('DELETE FROM persona WHERE id = ANY($1::uuid[])', [personas]);
-  const telefonosWa = [...new Set([...llamadas.ycloud.map((m) => m.to), ADMIN_WA])];
+  const telefonosWa = [...telefonosPrueba, ADMIN_WA];
   await q(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_flujo_%'`);
   await q(`UPDATE admin_actions SET estado = 'cancelada' WHERE estado = 'propuesta'`);
   const contactos = (await q('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonosWa])).map((x) => x.id);
