@@ -1,9 +1,11 @@
 // /api/wa/pendientes · cada 10 minutos (Vercel Cron; ver vercel.json). Cuando termina el tiempo en que la
 // conversación estaba en manos de John (3 h desde su último mensaje, o un escalado), el bot contesta lo que el
-// contacto escribió y nadie contestó, sin esperar a que vuelva a escribir. Protegido con CRON_SECRET.
+// contacto escribió y nadie contestó, sin esperar a que vuelva a escribir. También manda el recordatorio de Bizum
+// a las 24 h (B4, lib/bot/bizum.js). Protegido con CRON_SECRET.
 import crypto from 'node:crypto';
 import { json } from '../../lib/http.js';
 import { responderPendientesVencidos } from '../../lib/whatsapp/entrante.js';
+import { recordatoriosBizum } from '../../lib/bot/bizum.js';
 
 function autorizado(request) {
   const secreto = process.env.CRON_SECRET;
@@ -13,7 +15,9 @@ function autorizado(request) {
 
 export async function manejar(request, deps) {
   if (!autorizado(request)) return json({ error: 'No autorizado.' }, 401);
-  return json(await responderPendientesVencidos(deps));
+  const pendientes = await responderPendientesVencidos(deps);
+  const bizum = await recordatoriosBizum(deps);
+  return json({ ...pendientes, bizum });
 }
 
 export const GET = (request) => manejar(request);

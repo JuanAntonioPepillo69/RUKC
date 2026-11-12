@@ -15,6 +15,9 @@ process.env.META_CAPI_TOKEN = 'token_simulado';
 process.env.YCLOUD_API_KEY = 'clave_simulada';
 process.env.YCLOUD_PHONE_E164 = '+34602072802';
 process.env.BETTER_AUTH_SECRET ||= 'secreto_de_prueba_para_firmar';
+process.env.YCLOUD_WEBHOOK_SECRET = 'whsec_prueba_flujo';
+const ADMIN_WA = `+34699${String(Math.floor(Math.random() * 1e6)).padStart(6, '0')}`;
+process.env.ADMIN_PHONE_E164 = ADMIN_WA;
 
 const { POST: crear, PATCH: actualizar } = await import('../../api/solicitud.js');
 const { POST: pagar } = await import('../../api/checkout/index.js');
@@ -23,6 +26,21 @@ const { POST: webhook } = await import('../../api/stripe-webhook.js');
 const { GET: catalogo } = await import('../../api/catalogo.js');
 const { GET: grupo } = await import('../../api/grupo.js');
 const { enviarConfirmacionReserva, leerTokenGrupo, fechaLarga } = await import('../../lib/whatsapp/confirmacion.js');
+const { manejar: webhookWa } = await import('../../api/wa/webhook.js');
+const { recordatoriosBizum } = await import('../../lib/bot/bizum.js');
+const { firmar } = await import('../../lib/whatsapp/signature.js');
+
+// Mensajes de WhatsApp entrantes firmados como YCloud.
+let nWa = 0;
+async function whatsappEntrante(from, contenido) {
+  nWa += 1;
+  const ev = { id: `evt_flujo_${Date.now()}_${nWa}`, type: 'whatsapp.inbound_message.received', apiVersion: 'v2', createTime: new Date().toISOString(),
+    whatsappInboundMessage: { id: `in_flujo_${Date.now()}_${nWa}`, wamid: `wamid.flujo.${Date.now()}.${nWa}`, from, to: '+34602072802', ...contenido } };
+  const raw = JSON.stringify(ev);
+  const t = Math.floor(Date.now() / 1000);
+  return webhookWa(new Request(`${BASE}/api/wa/webhook`, { method: 'POST', body: raw,
+    headers: { 'YCloud-Signature': `t=${t},s=${firmar(raw, process.env.YCLOUD_WEBHOOK_SECRET, t)}` } }), { esperar: true, esperaAgruparMs: 0 });
+}
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const q = async (t, p) => (await pool.query(t, p)).rows;
@@ -106,7 +124,9 @@ after(async () => {
     await q(`DELETE FROM ${t} WHERE persona_id = ANY($1::uuid[])`, [personas]);
   }
   await q('DELETE FROM persona WHERE id = ANY($1::uuid[])', [personas]);
-  const telefonosWa = [...new Set(llamadas.ycloud.map((m) => m.to))];
+  const telefonosWa = [...new Set([...llamadas.ycloud.map((m) => m.to), ADMIN_WA])];
+  await q(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_flujo_%'`);
+  await q(`UPDATE admin_actions SET estado = 'cancelada' WHERE estado = 'propuesta'`);
   const contactos = (await q('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonosWa])).map((x) => x.id);
   for (const t of ['wa_outbox', 'wa_messages', 'wa_conversations']) await q(`DELETE FROM ${t} WHERE contact_id = ANY($1::uuid[])`, [contactos]);
   await q('DELETE FROM wa_contacts WHERE id = ANY($1::uuid[])', [contactos]);
@@ -335,4 +355,61 @@ test('paga otra persona: el webhook crea pagador y piloto por separado', async (
   assert.equal(nuevas[0].to, ins.pagador_tel);
   assert.equal(nuevas[0].template.name, 'rukc_reserva_confirmada_tutor');
   assert.deepEqual(nuevas[0].template.components[0].parameters.slice(0, 2).map((p) => p.text), ['Prueba', 'Piloto']);
+});
+
+test('Bizum por WhatsApp: el justificante avisa a John con código y CONFIRMO reserva la plaza y manda la confirmación', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  const pilotoTel = tel();
+  await completar(cuerpo.token, { piloto_es_pagador: false, piloto_nombre: 'Lucía Bizum', piloto_telefono: pilotoTel });
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
+
+  // John con su ventana de 24 h abierta.
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
+  llamadas.ycloud.length = 0;
+
+  // B2: el pagador manda la captura del Bizum.
+  await whatsappEntrante(telefono, { type: 'image', image: { id: 'media_1', mime_type: 'image/jpeg' } });
+  const acuse = llamadas.ycloud.find((m) => m.to === telefono);
+  assert.match(acuse?.text?.body ?? '', /El equipo comprueba el Bizum/);
+  const aviso = llamadas.ycloud.find((m) => m.to === ADMIN_WA)?.text?.body ?? '';
+  assert.match(aviso, /Justificante de Bizum/);
+  assert.match(aviso, new RegExp(cuerpo.codigo));
+  const codigo = aviso.match(/CONFIRMO (\d{4})/)?.[1];
+  assert.ok(codigo, aviso);
+
+  // Otra foto con la propuesta viva: ni acuse ni aviso repetidos.
+  const antes = llamadas.ycloud.length;
+  await whatsappEntrante(telefono, { type: 'image', image: { id: 'media_2', mime_type: 'image/jpeg' } });
+  assert.equal(llamadas.ycloud.length, antes);
+
+  // B3: John confirma → solicitud pagada, inscripción reservada y confirmación de plaza al piloto.
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /Bizum confirmado/);
+  const [v] = await q(`SELECT s.estado, i.estado AS inscripcion, pg.metodo FROM solicitud_inscripcion s
+    JOIN inscripcion i ON i.pedido_id = s.pedido_id JOIN pago pg ON pg.referencia_externa = s.codigo WHERE s.codigo = $1`, [cuerpo.codigo]);
+  assert.deepEqual(v, { estado: 'pagada', inscripcion: 'reservada', metodo: 'bizum_manual' });
+  const conf = llamadas.ycloud.find((m) => m.to === pilotoTel && m.template?.name === 'rukc_reserva_confirmada');
+  assert.ok(conf, 'confirmación al piloto');
+  assert.equal(conf.template.components[0].parameters[0].text, 'Lucía');
+});
+
+test('Bizum: recordatorio a las 24 h, una sola vez y en horario', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  await completar(cuerpo.token, { pagador_nombre: 'Marta Recordatorio' });
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
+  const mediodia = new Date(`${new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })}T11:00:00Z`); // 12:00 o 13:00 en Madrid
+  await q(`UPDATE solicitud_inscripcion SET enviada_en = $2::timestamptz - interval '25 hours' WHERE codigo = $1`, [cuerpo.codigo, mediodia.toISOString()]);
+  const noche = new Date(`${new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })}T22:30:00Z`);
+  assert.equal((await recordatoriosBizum({ ahora: noche })).nota, 'fuera de horario');
+
+  llamadas.ycloud.length = 0;
+  await recordatoriosBizum({ ahora: mediodia });
+  const recordatorio = llamadas.ycloud.filter((m) => m.to === telefono && m.template?.name === 'rukc_bizum_pendiente');
+  assert.equal(recordatorio.length, 1, JSON.stringify(llamadas.ycloud));
+  assert.deepEqual(recordatorio[0].template.components[0].parameters.map((p) => p.text),
+    ['Marta', `R${ronda.numero}`, `https://raceupkc.com/inscripcion?ronda=${ronda.numero}`]);
+  await recordatoriosBizum({ ahora: mediodia });
+  assert.equal(llamadas.ycloud.filter((m) => m.to === telefono).length, 1, 'no se repite');
 });
