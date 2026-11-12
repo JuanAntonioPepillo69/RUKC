@@ -54,7 +54,7 @@ const llm = {
     llamadasLlm += 1;
     ultimosMensajes = params.messages;
     const ultimo = params.messages.at(-1);
-    if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver John, ya se lo he pasado y te contesta él.');
+    if (Array.isArray(ultimo.content)) return texto('Esto lo tiene que ver el equipo, ya se lo he pasado y te contestan ellos.');
     // Los mensajes seguidos del contacto llegan juntos: cuenta el último.
     const t = ultimo.content.toLowerCase().split('\n').at(-1);
     if (t.includes('devolv')) return respuesta([usoHerramienta('escalar_a_john', { tipo: 'devolucion_o_cambio', motivo: 'pide reembolso', resumen: 'Quiere la devolución de la reserva.', urgencia: 'normal' })], 'tool_use');
@@ -161,7 +161,7 @@ test('criterio 4: el primer mensaje lleva el aviso de IA y el segundo no', async
 test('criterio 7 (cambiado por John): la devolución avisa a John una vez y el bot sigue con las demás dudas', async () => {
   const tel = nuevoTelefono();
   await enviarAviso(entrante(tel, 'Quiero que me devolváis la reserva'));
-  assert.match(enviadosA(tel)[0].text.body, /John/);
+  assert.match(enviadosA(tel)[0].text.body, /equipo/);
   const aviso = enviadosA(ADMIN).at(-1);
   assert.ok(aviso, 'John no ha recibido el aviso');
   assert.match(aviso.text.body, /Escalado del bot/);
@@ -453,4 +453,12 @@ test('resumen diario: protegido con CRON_SECRET y con los pendientes de John', a
   assert.match(texto, /Pendientes de ti/);
   // Con muchos pendientes (los de otros tests) la lista se corta en 8 y dice cuántos más hay.
   assert.ok(texto.includes(tel) || /- y \d+ más\./.test(texto), texto);
+});
+
+test('los textos fijos que ve el contacto no nombran a John', async () => {
+  const turno = await import('../../lib/bot/turn.js');
+  const ent = await import('../../lib/whatsapp/entrante.js');
+  for (const t of [turno.AVISO_IA, turno.TEXTO_FALLO, ent.TEXTO_URGENCIA, ent.TEXTO_CORTE, ent.CONFIRMACION_BAJA]) {
+    assert.doesNotMatch(t, /John/, t);
+  }
 });

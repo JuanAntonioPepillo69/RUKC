@@ -4,7 +4,7 @@ titulo: Acreditación, briefing y formato
 categoria: dia_de_carrera
 ---
 
-Fuente: reglamento publicado en la web (Arts. 15, 19, 19 bis, 26 a 28) y John. La hora de cada ronda sale de la tabla de rondas; si no está publicada, la confirma John.
+Fuente: reglamento publicado en la web (Arts. 15, 19, 19 bis, 26 a 28) y el equipo. La hora de cada ronda sale de la tabla de rondas; si no está publicada, la confirma el equipo.
 
 - La hora oficial de inicio de cada ronda es la del briefing.
 - Acreditación y pesaje: en persona, al menos 60 minutos antes del briefing. La acreditación se cierra 30 minutos antes del briefing.

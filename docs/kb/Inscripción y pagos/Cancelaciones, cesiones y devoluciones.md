@@ -4,7 +4,7 @@ titulo: Cancelaciones, cesiones y devoluciones
 categoria: politicas
 ---
 
-Fuente: reglamento publicado en la web (Arts. 16 y 16 bis) y condiciones de la reserva. El bot explica estas reglas, pero cualquier gestión concreta (crédito, cesión, devolución, cambio de ronda) la hace John.
+Fuente: reglamento publicado en la web (Arts. 16 y 16 bis) y condiciones de la reserva. El bot explica estas reglas, pero cualquier gestión concreta (crédito, cesión, devolución, cambio de ronda) la hace el equipo.
 
 - La inscripción es un servicio de ocio con fecha determinada: no hay derecho de desistimiento de 14 días (art. 103.l de la Ley General para la Defensa de los Consumidores y Usuarios).
 - La reserva no es reembolsable: si el piloto decide no participar o no puede acudir, no se devuelve el dinero, salvo los casos de abajo.
