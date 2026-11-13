@@ -1,5 +1,5 @@
 // /api/wa/programador · cada 5 minutos (Vercel Cron; ver vercel.json). Fase 3: el planificador propone a John los
-// recordatorios D1 y D2 y le manda el borrador D3 (lib/whatsapp/programador.js), y la cola manda los confirmados que
+// recordatorios D1 y D2 y el feedback E1 y le manda el borrador D3 (lib/whatsapp/programador.js), y la cola manda los confirmados que
 // ya tocan, de 9:30 a 21:30. Protegido con CRON_SECRET.
 import crypto from 'node:crypto';
 import { json } from '../../lib/http.js';
