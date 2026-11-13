@@ -6,7 +6,8 @@ categoria: precios
 
 - Cada ronda cuesta 99 €.
 - Para asegurar la plaza se paga una reserva de 30 €, que se descuenta del precio: después quedan 69 €.
-- Los 69 € restantes se pagan en el circuito el día de la carrera, en efectivo.
+- Los 69 € restantes se pagan en el circuito el día de la carrera, en efectivo siempre que se pueda: nos ayuda mucho.
+- Quien no pueda llevarlo en efectivo, que lo pague por Bizum al 659 69 85 05 antes de la carrera, como tarde el día anterior, y mande el justificante por WhatsApp.
 - La reserva se paga en la web con tarjeta (pantalla segura de Stripe) o con Bizum al 659 69 85 05 con el concepto que indica la web. Con Bizum hay que mandar el justificante por WhatsApp; la plaza queda reservada cuando el equipo comprueba que ha llegado.
 - Temporada completa restante (7 carreras, de la R2 a la R8): 620 €, pagados de una vez, por Bizum o con tarjeta. Con tarjeta, las comisiones de la plataforma de pago corren por cuenta de quien paga. Para contratarla, lo gestiona el equipo.
 - Para quien paga la temporada completa, cada ronda vale el total dividido entre el número de rondas (cuenta para cancelaciones y créditos).
