@@ -1,0 +1,71 @@
+/* Feedback anónimo y sorteo (/feedback/<ronda>, /feedback/<ronda>/sorteo). Móvil primero, con el estilo de la web. */
+.fa-cab { display: flex; align-items: center; gap: 12px; padding-top: 20px; padding-bottom: 8px; }
+.fa-cab .eyebrow { font-size: 11px; }
+.fa-cab__t { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+
+.fa { max-width: 640px; display: grid; gap: 16px; padding-top: 8px; padding-bottom: 64px; }
+.fa [hidden] { display: none !important; }
+.fa-h { font-size: clamp(26px, 6vw, 34px); font-weight: 900; }
+.fa-sub { margin: 0; font-size: 14px; color: var(--muted); }
+.fa-card { display: grid; gap: 18px; padding: clamp(20px, 4vw, 32px); border-radius: 20px; border: 1px solid var(--line); background: var(--ink-2); min-width: 0; }
+.fa-card p { margin: 0; }
+.fa-intro { font-size: 16px; line-height: 1.65; color: #dcd8cf; }
+.fa-btn { width: 100%; border: 0; cursor: pointer; text-align: center; }
+.fa-btn:disabled { opacity: 0.6; cursor: progress; }
+.fa-nav { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.fa-nav .btn--ghost { padding: 0 20px; cursor: pointer; font: inherit; font-family: var(--font-display); font-weight: 800; }
+.fa-err { color: #ff6b6b; font-size: 14px; margin: 0; }
+.fa-err:empty { display: none; }
+
+/* progreso */
+.fa-prog { display: grid; gap: 8px; }
+.fa-prog__barra { height: 6px; border-radius: 999px; background: rgba(246, 243, 236, 0.1); overflow: hidden; }
+.fa-prog__barra span { display: block; height: 100%; width: 0; background: var(--grad-gold); transition: width 0.3s ease; }
+.fa-prog__t { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); }
+.fa-prog__t b { color: var(--paper); font-family: var(--font-display); font-size: 13px; letter-spacing: 0.02em; }
+
+/* preguntas */
+.fa-preguntas { display: grid; gap: 28px; }
+.fa-p { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 9px; }
+.fa-p--seg { padding-left: 14px; border-left: 2px solid rgba(212, 166, 42, 0.45); margin-top: -12px; }
+.fa-p legend { padding: 0; margin-bottom: 10px; font-weight: 600; font-size: 16px; line-height: 1.4; }
+.fa-p legend small { font-weight: 400; color: var(--muted); }
+.fa-p__ayuda { font-size: 13px; color: var(--muted); margin: -4px 0 2px; }
+.fa-p__err { color: #ff6b6b; font-size: 13px; margin: 0; }
+.fa-p--falta legend { color: #ffb3b3; }
+
+.fa-op { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; line-height: 1.45; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.14); cursor: pointer; }
+.fa-op:has(input:checked) { border-color: var(--gold); background: rgba(212, 166, 42, 0.08); }
+.fa-op input { margin-top: 2px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+
+.fa-escala { display: grid; gap: 6px; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.fa-escala--11 { --n: 6; }
+.fa-escala--5 { --n: 5; }
+@media (min-width: 480px) { .fa-escala--11 { --n: 11; gap: 4px; } }
+.fa-escala label { position: relative; }
+.fa-escala input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.fa-escala span { display: grid; place-items: center; min-height: 46px; border-radius: 10px; border: 1px solid rgba(246, 243, 236, 0.2); font-weight: 700; font-size: 15px; }
+.fa-escala input:checked + span { border-color: var(--gold); background: var(--grad-gold); color: #0a0a0b; }
+.fa-escala input:focus-visible + span { box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.4); }
+.fa-extremos { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.fa-extremos span { max-width: 48%; }
+.fa-extremos span:last-child { text-align: right; }
+
+.fa-texto, .fa-campo input[type='text'], .fa-campo input[type='tel'], .fa-otro {
+  width: 100%; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.2);
+  background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-size: 16px;
+}
+.fa-texto { resize: vertical; min-height: 96px; }
+.fa-otro { margin-top: -2px; }
+.fa-texto:focus, .fa-otro:focus, .fa-campo input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+
+/* sorteo */
+.fa-campo { display: grid; gap: 6px; }
+.fa-campo label { font-weight: 600; font-size: 15px; }
+.fa-campo small { font-size: 12px; color: var(--muted); }
+.fa-check { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; line-height: 1.45; cursor: pointer; }
+.fa-check input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+.fa-check a { color: var(--gold-hi); }
+
+/* campo trampa para bots: fuera de la vista y del teclado */
+.fa-trampa { position: absolute !important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

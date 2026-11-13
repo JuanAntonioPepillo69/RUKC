@@ -9,6 +9,7 @@ import * as acciones from '../lib/panel/acciones.js';
 import * as ventas from '../lib/panel/ventas.js';
 import * as onboarding from '../lib/panel/onboarding.js';
 import * as feedback from '../lib/panel/feedback.js';
+import * as feedbackAnonimo from '../lib/panel/feedback-anonimo.js';
 import * as operacion from '../lib/panel/operacion.js';
 import * as sistema from '../lib/panel/sistema.js';
 
@@ -77,6 +78,10 @@ const RUTAS = [
   ['POST', 'feedback/rondas/:id/generar', feedback.generar],
   ['POST', 'feedback/envios/:id/enviar', feedback.enviar],
   ['POST', 'feedback/envios/:id/recordar', feedback.recordar],
+  // Feedback anónimo y sorteo (formularios /feedback/<ronda>); exportar, solo el propietario
+  ['GET', 'feedback-anonimo/rondas', feedbackAnonimo.rondas],
+  ['GET', 'feedback-anonimo/:ronda/exportar', feedbackAnonimo.exportar, ['propietario']],
+  ['GET', 'feedback-anonimo/:ronda/sorteo', feedbackAnonimo.exportarSorteo, ['propietario']],
   // Operación (F7, F8, reembolsos y créditos)
   ['GET', 'inscripciones/:id/destinos', operacion.destinos],
   ['POST', 'inscripciones/:id/trasladar', operacion.trasladar],

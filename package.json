@@ -13,7 +13,7 @@
     "reglamento": "node tools/reglamento/convert.mjs",
     "db:migrar": "node --env-file-if-exists=.env db/migrar.mjs",
     "db:sembrar": "node --env-file-if-exists=.env db/sembrar.mjs",
-    "db:test": "node --env-file-if-exists=.env --test --test-concurrency=1 db/tests/esquema.test.mjs db/tests/flujo-web.test.mjs db/tests/panel-login.test.mjs db/tests/panel.test.mjs db/tests/onboarding.test.mjs db/tests/feedback.test.mjs db/tests/operacion.test.mjs",
+    "db:test": "node --env-file-if-exists=.env --test --test-concurrency=1 db/tests/esquema.test.mjs db/tests/flujo-web.test.mjs db/tests/panel-login.test.mjs db/tests/panel.test.mjs db/tests/onboarding.test.mjs db/tests/feedback.test.mjs db/tests/feedback-anonimo.test.mjs db/tests/operacion.test.mjs",
     "db:crear-admin": "node --env-file-if-exists=.env db/crear-admin.mjs",
     "db:documentos-prueba": "node --env-file-if-exists=.env db/documentos-prueba.mjs",
     "db:documentos": "node --env-file-if-exists=.env db/documentos-reglamento.mjs",

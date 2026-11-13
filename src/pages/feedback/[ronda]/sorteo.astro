@@ -1,0 +1,54 @@
+---
+// Sorteo de cada ronda entre quienes responden el feedback: /feedback/<slug>/sorteo. Formulario aparte: lo que se
+// deja aquí va a raffle_entries, sin nada en común con las respuestas. Mismas fechas que el formulario.
+import FeedbackAnonimo from '../../../layouts/FeedbackAnonimo.astro';
+import { RONDAS } from '../../../config/feedback/rondas.js';
+import { TEXTOS, rellenar } from '../../../config/feedback/textos.es.js';
+
+export const getStaticPaths = () => RONDAS.map((r) => ({ params: { ronda: r.slug }, props: { r } }));
+const { r } = Astro.props;
+const S = TEXTOS.sorteo;
+const t = (s: string) => rellenar(s, { ronda: r.nombre });
+---
+<FeedbackAnonimo titulo={t(S.titulo)} ronda={r.nombre}>
+  <main class="fa wrap" id="fa" data-ronda={r.slug}>
+    <p class="fa-sub" id="carga">{TEXTOS.ui.cargando}</p>
+
+    <section class="fa-card" id="cerrado" hidden>
+      <h1 class="fa-h">{TEXTOS.ui.cerrado_t}</h1>
+      <p id="cerrado-texto"></p>
+    </section>
+
+    <form class="fa-card" id="form" novalidate hidden>
+      <h1 class="fa-h">{t(S.titulo)}</h1>
+      <p class="fa-intro">{t(S.intro)}</p>
+      <div class="fa-campo">
+        <label for="nombre">{S.nombre}</label>
+        <input type="text" id="nombre" name="nombre" autocomplete="name" maxlength="120" required />
+      </div>
+      <div class="fa-campo">
+        <label for="whatsapp">{S.whatsapp}</label>
+        <input type="tel" id="whatsapp" name="whatsapp" autocomplete="tel" inputmode="tel" maxlength="20" required />
+        <small>{S.whatsapp_ayuda}</small>
+      </div>
+      <label class="fa-check">
+        <input type="checkbox" id="privacidad" name="privacidad" required />
+        <span>{S.privacidad_antes}<a href="/privacidad" target="_blank" rel="noopener">{S.privacidad_enlace}</a></span>
+      </label>
+      <div class="fa-trampa" aria-hidden="true"><label>Web <input type="text" name="web" id="web" tabindex="-1" autocomplete="off" /></label></div>
+      <p class="fa-err" id="error" role="alert"></p>
+      <button class="btn btn--gold fa-btn" type="submit" id="enviar">{S.enviar}</button>
+    </form>
+
+    <section class="fa-card" id="hecho" hidden>
+      <p class="eyebrow">{t(S.titulo)}</p>
+      <h1 class="fa-h">{S.hecho_t}</h1>
+      <p>{S.hecho}</p>
+    </section>
+  </main>
+
+  <script>
+    import { iniciarSorteo } from '../../../scripts/feedback-anonimo';
+    iniciarSorteo();
+  </script>
+</FeedbackAnonimo>
