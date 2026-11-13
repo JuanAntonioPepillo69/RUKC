@@ -199,6 +199,10 @@
     {
       "path": "/api/wa/programador",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/inscritos/semanal",
+      "schedule": "0 17,18 * * 3"
     }
   ],
   "functions": {
@@ -216,6 +220,13 @@
     },
     "api/wa/programador.js": {
       "maxDuration": 300
+    },
+    "api/inscritos/imagen.js": {
+      "maxDuration": 60,
+      "includeFiles": "lib/inscritos/recursos/**"
+    },
+    "api/inscritos/semanal.js": {
+      "maxDuration": 60
     }
   }
 }
