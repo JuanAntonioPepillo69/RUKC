@@ -373,9 +373,11 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
     }
     el('sin-rondas').hidden = c.rondas.length > 0;
     btn.disabled = c.rondas.length === 0;
-    const pedida = new URLSearchParams(location.search).get('ronda');
+    // ?ronda=<número> (enlaces del bot) o ?r=<número o id> (botón de la plantilla rukc_seguimiento_reserva).
+    const qs = new URLSearchParams(location.search);
+    const pedida = qs.get('ronda') ?? qs.get('r');
     const guardados = ss.leer(S_CAMPOS);
-    const porNumero = [...selRonda.options].find((o) => o.dataset.numero === pedida);
+    const porNumero = [...selRonda.options].find((o) => o.dataset.numero === pedida || (pedida && o.value === pedida));
     if (porNumero) selRonda.value = porNumero.value;
     else if (guardados?.ronda && [...selRonda.options].some((o) => o.value === guardados.ronda)) selRonda.value = guardados.ronda;
     pintarRonda();

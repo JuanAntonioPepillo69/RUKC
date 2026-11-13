@@ -623,3 +623,161 @@ test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a l
   await planificar({ ahora: await enMadrid(2, '10:05'), filtrarDestinatarios: deEstosTests });
   assert.equal(aJohn().length, total);
 });
+
+// --- Fase 4: comercial (C1, C2), consentimiento, conocimiento y métricas ------------------------------------------
+const { seguimientosReserva } = await import('../../lib/whatsapp/comercial.js');
+const { metricasMes } = await import('../../lib/whatsapp/metricas.js');
+const { registrarUso } = await import('../../lib/bot/llm.js');
+const { documentosKb, martesAnterior } = await import('../../lib/bot/datos.js');
+const { enviar: enviarYcloud } = await import('../../lib/whatsapp/client.js');
+const { construirPlantilla } = await import('../../lib/whatsapp/templates.js');
+const migraciones = () => new Pool({ connectionString: process.env.DATABASE_URL_MIGRACIONES });
+
+/** Instante de Madrid relativo al cierre de inscripción de la ronda de los tests (el martes anterior). */
+async function relativoACierre(dias, hora) {
+  const [r] = await q('SELECT fecha::text AS f FROM ronda WHERE id = $1', [ronda.id]);
+  const cierre = martesAnterior(r.f);
+  const [x] = await q(`SELECT (($1::date + $2::int)::text || ' ' || $3)::timestamp AT TIME ZONE 'Europe/Madrid' AS t`, [cierre, dias, hora]);
+  return { t: new Date(x.t), cierre };
+}
+/** Contacto de WhatsApp de prueba con los consentimientos comerciales dados, en orden. */
+async function contactoComercial(acciones = [], extra = {}) {
+  const telefono = tel();
+  const [c] = await q(`INSERT INTO wa_contacts (phone_e164, display_name, rol, baja) VALUES ($1, 'Prueba Comercial', 'lead', $2) RETURNING id`,
+    [telefono, extra.baja ?? 'ninguna']);
+  for (const accion of acciones) await consentir(c.id, accion);
+  return { telefono, id: c.id };
+}
+async function consentir(contactId, accion) {
+  await q(`INSERT INTO wa_consents (contact_id, tipo, accion, fuente, texto_version, evidencia) VALUES ($1, 'comercial', $2, 'whatsapp', 'prueba', 'test')`, [contactId, accion]);
+  await q('SELECT pg_sleep(0.01)');
+}
+
+test('fase 4 · C1: reserva con tarjeta abandonada → seguimiento a las 2 h y otro a las 48 h, nunca un tercero; sin consentimiento, nada', async (t) => {
+  const { t: t0, cierre } = await relativoACierre(-3, '10:00');
+  if (cierre < new Date().toISOString().slice(0, 10)) return t.skip('la inscripción de la ronda de pruebas ya ha cerrado');
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const abandono = async (novedades) => {
+    const { cuerpo, telefono } = await nuevaSolicitud();
+    await completar(cuerpo.token, { acepta_whatsapp_novedades: novedades });
+    await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true, textos: 'formulario-web-v2-2026-11' } }));
+    await q('UPDATE solicitud_inscripcion SET enviada_en = $2 WHERE codigo = $1', [cuerpo.codigo, t0]);
+    return telefono;
+  };
+  const con = await abandono(true);
+  const sin = await abandono(false);
+  const contesta = await abandono(true);
+  llamadas.ycloud.length = 0;
+  const seguimientos = (tel) => llamadas.ycloud.filter((m) => m.to === tel && m.template?.name === 'rukc_seguimiento_reserva');
+
+  // 1 h después: todavía nada. 2 h 5 min: el primero, con el botón a su ronda.
+  await seguimientosReserva({ ahora: new Date(t0.getTime() + 3.6e6), enviar: enviarYcloud });
+  assert.equal(seguimientos(con).length, 0);
+  await seguimientosReserva({ ahora: new Date(t0.getTime() + 2.1 * 3.6e6), enviar: enviarYcloud });
+  assert.equal(seguimientos(con).length, 1);
+  assert.equal(seguimientos(con)[0].template.components.find((c) => c.type === 'button').parameters[0].text, String(ronda.numero));
+  assert.equal(seguimientos(contesta).length, 1);
+  assert.equal(seguimientos(sin).length, 0, 'sin la casilla de novedades no se le escribe');
+  // Repetir no duplica.
+  await seguimientosReserva({ ahora: new Date(t0.getTime() + 2.3 * 3.6e6), enviar: enviarYcloud });
+  assert.equal(seguimientos(con).length, 1);
+
+  // Uno contesta; a las 48 h solo el que no contestó recibe el segundo (y último).
+  await q(`UPDATE wa_contacts SET last_inbound_at = now() + interval '1 second' WHERE phone_e164 = $1`, [contesta]);
+  await q(`UPDATE wa_contacts SET last_inbound_at = NULL WHERE phone_e164 = $1`, [con]);
+  await seguimientosReserva({ ahora: new Date(t0.getTime() + 48.1 * 3.6e6), enviar: enviarYcloud });
+  assert.equal(seguimientos(con).length, 2);
+  assert.equal(seguimientos(contesta).length, 1, 'si contestó, no hay segundo');
+  await seguimientosReserva({ ahora: new Date(t0.getTime() + 60 * 3.6e6), enviar: enviarYcloud });
+  assert.equal(seguimientos(con).length, 2, 'nunca un tercero');
+});
+
+test('fase 4 · C2 con 10 contactos mezclados: solo sale a quien tiene consentimiento comercial vigente', async (t) => {
+  const { t: sabado, cierre } = await relativoACierre(-3, '10:05');
+  if (cierre < new Date().toISOString().slice(0, 10)) return t.skip('la inscripción de la ronda de pruebas ya ha cerrado');
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const a = await contactoComercial(['otorga']);
+  const b = await contactoComercial(['otorga']);
+  const cSin = await contactoComercial([]);
+  const dRevoca = await contactoComercial(['otorga', 'revoca']);
+  const eNo = await contactoComercial(['revoca']);
+  const fBajaCom = await contactoComercial(['otorga'], { baja: 'comercial' });
+  const gBajaTot = await contactoComercial(['otorga'], { baja: 'total' });
+  const hReciente = await contactoComercial(['otorga']);
+  await q(`INSERT INTO wa_messages (contact_id, direccion, autor, cuerpo) VALUES ($1, 'entrada', 'usuario', 'hola')`, [hReciente.id]);
+  const conPlaza = await pilotoConPlaza('LIG');
+  let [iFila] = await q('SELECT id FROM wa_contacts WHERE phone_e164 = $1', [conPlaza]);
+  if (!iFila) [iFila] = await q(`INSERT INTO wa_contacts (phone_e164) VALUES ($1) RETURNING id`, [conPlaza]);
+  const iPlaza = { telefono: conPlaza, id: iFila.id };
+  await consentir(iPlaza.id, 'otorga');
+  await q('DELETE FROM wa_messages WHERE contact_id = $1', [iPlaza.id]);   // que no lo excluya el "sin mensajes en 3 días"
+  const jRevocaDespues = await contactoComercial(['otorga']);
+  const todos = [a, b, cSin, dRevoca, eNo, fBajaCom, gBajaTot, hReciente, iPlaza, jRevocaDespues];
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
+  llamadas.ycloud.length = 0;
+
+  await planificar({ ahora: sabado, filtrarDestinatarios: deEstosTests });
+  const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '').find((x) => /Aviso de la próxima ronda/.test(x));
+  assert.ok(propuesta, 'llega la propuesta del C2');
+  assert.match(propuesta, /para 3 persona\(s\)/, propuesta);
+  assert.match(propuesta, /La inscripción cierra el/);
+  const enLote = (await q(`SELECT c.phone_e164 AS t FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id
+    WHERE o.automatizacion = 'C2' AND o.created_at >= $1`, [INICIO_TESTS])).map((x) => x.t).sort();
+  assert.deepEqual(enLote, [a.telefono, b.telefono, jRevocaDespues.telefono].sort());
+
+  // J retira el consentimiento antes del envío: se comprueba otra vez justo antes de mandar.
+  await consentir(jRevocaDespues.id, 'revoca');
+  const codigo = propuesta.match(/CONFIRMO (\d{4})/)[1];
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  await procesarCola({ ahora: new Date(sabado.getTime() + 2 * 3.6e6) });
+  const recibieron = todos.filter((x) => llamadas.ycloud.some((m) => m.to === x.telefono && m.template?.name === 'rukc_nueva_ronda')).map((x) => x.telefono);
+  assert.deepEqual(recibieron.sort(), [a.telefono, b.telefono].sort());
+  const [j] = await q(`SELECT o.estado, o.ultimo_error FROM wa_outbox o WHERE o.contact_id = $1 AND o.automatizacion = 'C2'`, [jRevocaDespues.id]);
+  assert.equal(j.estado, 'cancelado');
+  assert.equal(j.ultimo_error, 'sin consentimiento comercial vigente');
+
+  // Y el cliente de envío lo rechaza por su cuenta: sin consentimiento, ninguna plantilla de marketing sale.
+  const antes = llamadas.ycloud.length;
+  const [fila] = await q('SELECT * FROM wa_contacts WHERE id = $1', [cSin.id]);
+  const r = await enviarYcloud({ contacto: fila, autor: 'sistema',
+    plantilla: construirPlantilla('rukc_nueva_ronda', ['Prueba', 'R9', 'sábado', 'Circuito', 'martes']) });
+  assert.equal(r.ok, false);
+  assert.equal(llamadas.ycloud.length, antes, 'no llega a YCloud');
+});
+
+test('fase 4 · un cambio en la base de conocimiento se ve en la siguiente respuesta (sin esperar a la caché)', async () => {
+  const slug = `prueba_fase4_${Date.now()}`;
+  await q(`INSERT INTO kb_documents (slug, titulo, categoria, contenido_md, fuente, actualizado_por) VALUES ($1, 'Prueba', 'precios', 'La reserva cuesta 30 €.', 'john', 'test')`, [slug]);
+  try {
+    assert.match((await documentosKb()).find((x) => x.slug === slug)?.contenido_md ?? '', /30 €/);
+    await q(`UPDATE kb_documents SET contenido_md = 'La reserva cuesta 35 €.' WHERE slug = $1`, [slug]);
+    assert.match((await documentosKb()).find((x) => x.slug === slug)?.contenido_md ?? '', /35 €/);
+  } finally {
+    const m = migraciones();
+    await m.query('DELETE FROM kb_document_versions WHERE slug = $1', [slug]);
+    await m.query('DELETE FROM kb_documents WHERE slug = $1', [slug]);
+    await m.end();
+  }
+});
+
+test('fase 4 · métricas del mes: consumo de Claude guardado y coste calculado con las tarifas', async () => {
+  const m = migraciones();
+  try {
+    await m.query(`DELETE FROM wa_llm_usage WHERE created_at < '2002-01-01'`);
+    await registrarUso('clasificador', 'claude-haiku-5-5', { model: 'claude-haiku-5-5', usage: { input_tokens: 1000000, output_tokens: 0 } });
+    await m.query(`UPDATE wa_llm_usage SET created_at = '2001-01-15 12:00+01' WHERE created_at > now() - interval '1 minute' AND uso = 'clasificador' AND entrada = 1000000`);
+    await m.query(`INSERT INTO wa_llm_usage (uso, modelo, entrada, salida, cache_lectura, cache_escritura, busquedas, created_at)
+      VALUES ('conversacion', 'claude-sonnet-5-5', 1000000, 100000, 1000000, 0, 2, '2001-01-20 12:00+01')`);
+    const r = await metricasMes('2001-01');
+    // Sonnet: 2 + 1 + 0,10 + 2 búsquedas (0,02) = 3,12; Haiku: 0,10.
+    assert.equal(r.coste_claude_usd, 3.22);
+    assert.deepEqual(r.coste_claude_por_uso_usd, { conversacion: 3.12, clasificador: 0.1 });
+    assert.equal(r.coste_meta_usd, 0);
+    for (const k of ['conversaciones', 'conversaciones_escaladas', 'reservas_pagadas', 'reservas_atribuidas_whatsapp']) assert.equal(typeof r[k], 'number');
+    await assert.rejects(metricasMes('enero'));
+    assert.equal(typeof (await metricasMes()).coste_total_usd, 'number');
+  } finally {
+    await m.query(`DELETE FROM wa_llm_usage WHERE created_at < '2002-01-01'`);
+    await m.end();
+  }
+});
