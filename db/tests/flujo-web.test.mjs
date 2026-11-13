@@ -28,6 +28,8 @@ const { GET: grupo } = await import('../../api/grupo.js');
 const { enviarConfirmacionReserva, leerTokenGrupo, fechaLarga } = await import('../../lib/whatsapp/confirmacion.js');
 const { manejar: webhookWa } = await import('../../api/wa/webhook.js');
 const { recordatoriosBizum } = await import('../../lib/bot/bizum.js');
+const { planificar, procesarCola } = await import('../../lib/whatsapp/programador.js');
+const INICIO_TESTS = new Date();
 const { firmar } = await import('../../lib/whatsapp/signature.js');
 
 // Mensajes de WhatsApp entrantes firmados como YCloud.
@@ -133,6 +135,9 @@ after(async () => {
   const telefonosWa = [...telefonosPrueba, ADMIN_WA];
   await q(`DELETE FROM wa_webhook_events WHERE provider_event_id LIKE 'evt_flujo_%'`);
   await q(`UPDATE admin_actions SET estado = 'cancelada' WHERE estado = 'propuesta'`);
+  const lotes = (await q('SELECT id FROM wa_batches WHERE created_at >= $1', [INICIO_TESTS])).map((x) => x.id);
+  await q('DELETE FROM wa_outbox WHERE lote_id = ANY($1::uuid[])', [lotes]);
+  await q('DELETE FROM wa_batches WHERE id = ANY($1::uuid[])', [lotes]);
   const contactos = (await q('SELECT id FROM wa_contacts WHERE phone_e164 = ANY($1)', [telefonosWa])).map((x) => x.id);
   // wa_consents es de solo añadir para rukc_app: se limpia con el rol de migraciones.
   if (process.env.DATABASE_URL_MIGRACIONES) {
@@ -483,4 +488,91 @@ test('formulario anterior (sin FORM_V2): no se guarda nada en wa_consents', asyn
   await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
   const filas = await q(`SELECT 1 FROM wa_consents k JOIN wa_contacts c ON c.id = k.contact_id WHERE c.phone_e164 = $1`, [telefono]);
   assert.equal(filas.length, 0);
+});
+
+// --- Fase 3: recordatorios programados ---------------------------------------------------------------------------
+/** Un piloto con plaza pagada con tarjeta en la ronda de los tests. Devuelve su teléfono. */
+async function pilotoConPlaza(categoria = 'LIG') {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo, telefono } = await nuevaSolicitud();
+  await completar(cuerpo.token, { categoria_elegida: categoria });
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true } }));
+  const [sol] = await q('SELECT id, stripe_checkout_session_id FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  const ev = eventoFirmado('checkout.session.completed', { id: sol.stripe_checkout_session_id, payment_status: 'paid', amount_total: 3000,
+    payment_intent: `pi_sim_${Date.now()}_${Math.random()}`, metadata: { solicitud_id: sol.id } });
+  assert.equal((await webhook(ev.request())).status, 200);
+  return telefono;
+}
+/** Instante de Madrid: fecha de la ronda + días, a la hora dada. */
+async function enMadrid(dias, hora) {
+  const [x] = await q(`SELECT (($1::date + $2::int)::text || ' ' || $3)::timestamp AT TIME ZONE 'Europe/Madrid' AS t`, [ronda.fecha, dias, hora]);
+  return new Date(x.t);
+}
+const deEstosTests = (d) => telefonosPrueba.has(d.telefono);
+
+test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 no sale; con CONFIRMO, una sola vez', async () => {
+  [ronda.fecha] = (await q('SELECT fecha::text AS f FROM ronda WHERE id = $1', [ronda.id])).map((x) => x.f);
+  await q(`UPDATE ronda SET maps_url = coalesce(maps_url, 'https://maps.app.goo.gl/prueba') WHERE id = $1`, [ronda.id]);
+  await q(`UPDATE cupo_ronda SET hora_llegada = coalesce(hora_llegada, '14:30'), hora_briefing = coalesce(hora_briefing, '15:30') WHERE ronda_id = $1`, [ronda.id]);
+  const telefono = await pilotoConPlaza('LIG');
+  const baja = await pilotoConPlaza('LIG');
+  await q(`UPDATE wa_contacts SET baja = 'total' WHERE phone_e164 = $1`, [baja]);
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });   // John con la ventana abierta
+  llamadas.ycloud.length = 0;
+
+  // 12:30, una semana antes: propuesta a John, nada a los pilotos.
+  await planificar({ ahora: await enMadrid(-7, '12:30'), filtrarDestinatarios: deEstosTests });
+  const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1)?.text?.body ?? '';
+  assert.match(propuesta, /Recordatorio de una semana de la R\d+/);
+  assert.match(propuesta, /Ejemplo:/);
+  assert.match(propuesta, /Queda una semana para la R\d+ de RUKC/);
+  assert.match(propuesta, /para \d+ persona\(s\)/);
+  const enLote = await q(`SELECT c.phone_e164 AS t FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id
+    WHERE o.automatizacion = 'D1' AND o.created_at >= $1`, [INICIO_TESTS]);
+  assert.ok(enLote.some((x) => x.t === telefono));
+  assert.ok(!enLote.some((x) => x.t === baja), 'quien se dio de baja no entra en el lote');
+  const codigo = propuesta.match(/CONFIRMO (\d{4})/)?.[1];
+  assert.ok(codigo, propuesta);
+  // Planificar otra vez no repite la propuesta.
+  const antes = llamadas.ycloud.length;
+  await planificar({ ahora: await enMadrid(-7, '12:40'), filtrarDestinatarios: deEstosTests });
+  assert.equal(llamadas.ycloud.length, antes);
+
+  // 18:05 sin confirmar: no sale nada y John recibe el aviso.
+  await procesarCola({ ahora: await enMadrid(-7, '18:05') });
+  await planificar({ ahora: await enMadrid(-7, '18:05'), filtrarDestinatarios: deEstosTests });
+  assert.ok(!llamadas.ycloud.some((m) => m.to === telefono), 'sin CONFIRMO no sale');
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /no ha salido a las 18:00 porque falta tu CONFIRMO/);
+
+  // CONFIRMO: queda en la cola; el cron dos veces → un solo mensaje, con su hora de llegada.
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /Confirmado/);
+  await procesarCola({ ahora: await enMadrid(-7, '18:10') });
+  await procesarCola({ ahora: await enMadrid(-7, '18:15') });
+  const recibidos = llamadas.ycloud.filter((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_semana');
+  assert.equal(recibidos.length, 1);
+  assert.equal(recibidos[0].template.components[0].parameters[4].text, '14:30');
+  assert.ok(!llamadas.ycloud.some((m) => m.to === baja && m.template?.name === 'rukc_recordatorio_semana'));
+});
+
+test('fase 3 · D2 fuera de horario espera a las 9:30 y se anula si la ronda ya pasó; D3 borrador para el grupo', async () => {
+  const telefono = await pilotoConPlaza('PES');
+  llamadas.ycloud.length = 0;
+  // D3, dos días antes: borrador solo a John.
+  await planificar({ ahora: await enMadrid(-2, '12:05'), filtrarDestinatarios: deEstosTests });
+  assert.ok(llamadas.ycloud.some((m) => m.to === ADMIN_WA && /Borrador para el grupo de pilotos/.test(m.text?.body ?? '')));
+  // D2, la víspera.
+  await planificar({ ahora: await enMadrid(-1, '12:05'), filtrarDestinatarios: deEstosTests });
+  const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body;
+  assert.match(propuesta, /Recordatorio de la víspera/);
+  const codigo = propuesta.match(/CONFIRMO (\d{4})/)[1];
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  // A las 22:00 no se manda nada (fuera de horario).
+  assert.equal((await procesarCola({ ahora: await enMadrid(-1, '22:00') })).nota, 'fuera de horario');
+  assert.ok(!llamadas.ycloud.some((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_manana'));
+  // El día después de la ronda: se anula, no se manda.
+  await procesarCola({ ahora: await enMadrid(1, '10:00') });
+  assert.ok(!llamadas.ycloud.some((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_manana'));
+  const [o] = await q(`SELECT o.estado FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id WHERE c.phone_e164 = $1 AND o.automatizacion = 'D2'`, [telefono]);
+  assert.equal(o.estado, 'caducado');
 });
