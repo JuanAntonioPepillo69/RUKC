@@ -234,4 +234,8 @@ export const CASOS = [
     mensaje: 'Y los karts son iguales para todos?',
     espera: { no_contiene: [/gana el que (menos pesa|mejor conduce)/i] },
   },
+  {
+    id: 'hora_llegada', titulo: 'A qué hora hay que estar: la de su categoría', mensaje: 'A qué hora tengo que estar en la R2? Corro en Pesados',
+    espera: { herramientas: ['consultar_rondas'], contiene: [/16:00/], no_contiene: [/15:00/], escala: false },
+  },
 ];
