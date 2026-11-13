@@ -191,6 +191,10 @@
     {
       "path": "/api/wa/pendientes",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/wa/programador",
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {
@@ -204,6 +208,9 @@
       "maxDuration": 30
     },
     "api/wa/pendientes.js": {
+      "maxDuration": 300
+    },
+    "api/wa/programador.js": {
       "maxDuration": 300
     }
   }

@@ -236,6 +236,10 @@ export const CASOS = [
   },
   {
     id: 'hora_llegada', titulo: 'A qué hora hay que estar: la de su categoría', mensaje: 'A qué hora tengo que estar en la R2? Corro en Pesados',
-    espera: { herramientas: ['consultar_rondas'], contiene: [/16:00/], no_contiene: [/15:00/], escala: false },
+    espera: { herramientas: ['consultar_rondas'], contiene: [/15:30/, /16:30/], no_contiene: [/14:30/], escala: false },
+  },
+  {
+    id: 'pago_resto', titulo: 'No puede llevar efectivo: Bizum antes de la carrera', mensaje: 'Los 69 euros los tengo que llevar en efectivo? No suelo llevar dinero encima',
+    espera: { contiene: [/bizum/i], euros: [69, 99, 30], escala: false },
   },
 ];
