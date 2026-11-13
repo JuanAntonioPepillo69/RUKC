@@ -223,7 +223,7 @@
     },
     "api/inscritos/imagen.js": {
       "maxDuration": 60,
-      "includeFiles": "lib/inscritos/recursos/**"
+      "includeFiles": "{lib/inscritos/recursos/**,node_modules/harfbuzzjs/hb.wasm,node_modules/@resvg/resvg-js-linux-x64-*/**}"
     },
     "api/inscritos/semanal.js": {
       "maxDuration": 60
