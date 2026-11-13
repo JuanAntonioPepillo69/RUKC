@@ -122,6 +122,11 @@ after(async () => {
   const pagos = (await q(`SELECT id FROM pago WHERE pagador_persona_id = ANY($1::uuid[])`, [personas])).map((r) => r.id);
   await q('DELETE FROM aplicacion_pago WHERE pago_id = ANY($1::uuid[])', [pagos]);
   await q('DELETE FROM pago WHERE id = ANY($1::uuid[])', [pagos]);
+  await q('DELETE FROM envio_feedback WHERE inscripcion_id IN (SELECT id FROM inscripcion WHERE pedido_id = ANY($1::uuid[]))', [pedidos]);
+  if (plantillaFeedback) {
+    await q('UPDATE plantilla_feedback SET activa = false WHERE id = $1', [plantillaFeedback]);
+    await q('DELETE FROM plantilla_feedback WHERE id = $1', [plantillaFeedback]);
+  }
   await q('DELETE FROM inscripcion WHERE pedido_id = ANY($1::uuid[])', [pedidos]);
   await q('UPDATE solicitud_inscripcion SET pedido_id = NULL WHERE id = ANY($1::uuid[])', [creadas]);
   await q('DELETE FROM pedido WHERE id = ANY($1::uuid[])', [pedidos]);
@@ -575,4 +580,49 @@ test('fase 3 · D2 fuera de horario espera a las 9:30 y se anula si la ronda ya 
   assert.ok(!llamadas.ycloud.some((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_manana'));
   const [o] = await q(`SELECT o.estado FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id WHERE c.phone_e164 = $1 AND o.automatizacion = 'D2'`, [telefono]);
   assert.equal(o.estado, 'caducado');
+});
+
+let plantillaFeedback = null;
+test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a las 10:00 y a las 12:00 sale con su enlace', async () => {
+  const [activa] = await q('SELECT id FROM plantilla_feedback WHERE activa');
+  if (!activa) {
+    const [p] = await q(`INSERT INTO plantilla_feedback (version, preguntas, activa) VALUES ($1, $2, true) RETURNING id`,
+      [`prueba-e1-${Date.now()}`, JSON.stringify([{ id: 'nota', tipo: 'escala_0_10', texto: '¿Qué nota le pones?', obligatoria: true }])]);
+    plantillaFeedback = p.id;
+  }
+  const telefono = await pilotoConPlaza('LIG');
+  llamadas.ycloud.length = 0;
+  const aJohn = () => llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '');
+
+  // Día siguiente a las 10:05, nadie marcado como asistido: aviso a John, una sola vez.
+  await planificar({ ahora: await enMadrid(1, '10:05'), filtrarDestinatarios: deEstosTests });
+  assert.match(aJohn().at(-1), /mensaje de feedback de la R\d+ hace falta marcar en el panel quién asistió/);
+  const avisos = aJohn().length;
+  await planificar({ ahora: await enMadrid(1, '10:30'), filtrarDestinatarios: deEstosTests });
+  assert.equal(aJohn().length, avisos, 'el aviso no se repite');
+
+  // Marcada la asistencia: propuesta con código; a las 12:05 sale con el botón y su enlace.
+  const [i] = await q(`SELECT i.id FROM inscripcion i JOIN persona p ON p.id = i.piloto_persona_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [telefono, ronda.id]);
+  await q(`UPDATE inscripcion SET estado = 'asistio', motivo = 'Prueba de E1' WHERE id = $1`, [i.id]);
+  await planificar({ ahora: await enMadrid(1, '10:40'), filtrarDestinatarios: deEstosTests });
+  const propuesta = aJohn().at(-1);
+  assert.match(propuesta, /Mensaje de feedback de la R\d+ .* para 1 persona\(s\)\. Sale a las 12:00/);
+  assert.match(propuesta, /Gracias por correr la R\d+ de RUKC/);
+  const codigo = propuesta.match(/CONFIRMO (\d{4})/)[1];
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  await procesarCola({ ahora: await enMadrid(1, '11:00') });
+  assert.ok(!llamadas.ycloud.some((m) => m.to === telefono), 'antes de las 12:00 no sale');
+  await procesarCola({ ahora: await enMadrid(1, '12:05') });
+  await procesarCola({ ahora: await enMadrid(1, '12:10') });
+  const enviados = llamadas.ycloud.filter((m) => m.to === telefono && m.template?.name === 'rukc_feedback_ronda');
+  assert.equal(enviados.length, 1);
+  const token = enviados[0].template.components.find((c) => c.type === 'button').parameters[0].text;
+  const [e] = await q('SELECT estado, token_hash, canal FROM envio_feedback WHERE inscripcion_id = $1', [i.id]);
+  assert.equal(e.estado, 'enviado');
+  assert.equal(e.canal, 'whatsapp');
+  assert.equal(e.token_hash, crypto.createHash('sha256').update(token).digest('hex'), 'el botón lleva el enlace bueno');
+  // No se vuelve a proponer.
+  const total = aJohn().length;
+  await planificar({ ahora: await enMadrid(2, '10:05'), filtrarDestinatarios: deEstosTests });
+  assert.equal(aJohn().length, total);
 });
