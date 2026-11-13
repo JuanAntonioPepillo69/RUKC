@@ -171,7 +171,11 @@
       "destination": "/api/feedback?ruta=:ruta*"
     },
     {
-      "source": "/feedback/:token",
+      "source": "/api/feedback-anonimo/:ruta*",
+      "destination": "/api/feedback-anonimo?ruta=:ruta*"
+    },
+    {
+      "source": "/feedback/:token([A-Za-z0-9_-]{43})",
       "destination": "/feedback"
     },
     {

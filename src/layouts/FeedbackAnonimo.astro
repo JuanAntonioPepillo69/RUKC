@@ -1,0 +1,28 @@
+---
+// Marco de las páginas del feedback anónimo y del sorteo. No usa Base.astro: sin píxel, analítica ni scripts de
+// terceros, sin indexar (meta + cabecera X-Robots-Tag de vercel.json para /feedback/*) y sin referrer.
+import '../styles/global.css';
+import '../styles/feedback-anonimo.css';
+
+interface Props { titulo: string; ronda: string }
+const { titulo, ronda } = Astro.props;
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <title>{titulo} · RUKC</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+</head>
+<body>
+  <header class="fa-cab wrap">
+    <img src="/brand/escudo-96.webp" width="36" height="34" alt="" />
+    <div><p class="eyebrow">RUKC · {ronda}</p><p class="fa-cab__t">{titulo}</p></div>
+  </header>
+  <slot />
+</body>
+</html>

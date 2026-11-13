@@ -6,6 +6,7 @@ import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { Pool } from '@neondatabase/serverless';
+import { RONDAS, rondaPorId } from '../../src/config/feedback/rondas.js';
 
 if (!process.env.DATABASE_URL) throw new Error('Falta DATABASE_URL');
 process.env.STRIPE_SECRET_KEY = 'sk_test_simulada';
@@ -583,13 +584,10 @@ test('fase 3 · D2 fuera de horario espera a las 9:30 y se anula si la ronda ya 
 });
 
 let plantillaFeedback = null;
-test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a las 10:00 y a las 12:00 sale con su enlace', async () => {
-  const [activa] = await q('SELECT id FROM plantilla_feedback WHERE activa');
-  if (!activa) {
-    const [p] = await q(`INSERT INTO plantilla_feedback (version, preguntas, activa) VALUES ($1, $2, true) RETURNING id`,
-      [`prueba-e1-${Date.now()}`, JSON.stringify([{ id: 'nota', tipo: 'escala_0_10', texto: '¿Qué nota le pones?', obligatoria: true }])]);
-    plantillaFeedback = p.id;
-  }
+test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a las 10:00 y a las 12:00 sale con el enlace anónimo de la ronda', async () => {
+  // La ronda de prueba necesita formulario anónimo configurado (la R2 ya lo tiene; si es otra, uno temporal).
+  let formulario = rondaPorId(`T2-R${ronda.numero}`);
+  if (!formulario) { formulario = { slug: `prueba-r${ronda.numero}`, round_id: `T2-R${ronda.numero}` }; RONDAS.push(formulario); }
   const telefono = await pilotoConPlaza('LIG');
   llamadas.ycloud.length = 0;
   const aJohn = () => llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '');
@@ -616,11 +614,10 @@ test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a l
   await procesarCola({ ahora: await enMadrid(1, '12:10') });
   const enviados = llamadas.ycloud.filter((m) => m.to === telefono && m.template?.name === 'rukc_feedback_ronda');
   assert.equal(enviados.length, 1);
-  const token = enviados[0].template.components.find((c) => c.type === 'button').parameters[0].text;
-  const [e] = await q('SELECT estado, token_hash, canal FROM envio_feedback WHERE inscripcion_id = $1', [i.id]);
-  assert.equal(e.estado, 'enviado');
-  assert.equal(e.canal, 'whatsapp');
-  assert.equal(e.token_hash, crypto.createHash('sha256').update(token).digest('hex'), 'el botón lleva el enlace bueno');
+  const sufijo = enviados[0].template.components.find((c) => c.type === 'button').parameters[0].text;
+  assert.equal(sufijo, formulario.slug, 'el botón lleva a /feedback/<slug> de la ronda');
+  const [e] = await q('SELECT count(*)::int AS n FROM envio_feedback WHERE inscripcion_id = $1', [i.id]);
+  assert.equal(e.n, 0, 'no se crean envíos personales');
   // No se vuelve a proponer.
   const total = aJohn().length;
   await planificar({ ahora: await enMadrid(2, '10:05'), filtrarDestinatarios: deEstosTests });

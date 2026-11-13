@@ -5,6 +5,11 @@
 import Admin from '../../layouts/Admin.astro';
 ---
 <Admin titulo="Feedback" seccion="feedback">
+  <section class="caja" id="anonimo">
+    <h2>Feedback anónimo y sorteo</h2>
+    <p class="sub">Formularios /feedback/&lt;ronda&gt;. Las respuestas no se pueden unir a nadie: no hay filtro por piloto. Las preguntas y las fechas de cada ronda están en src/config/feedback/.</p>
+    <div id="anonimo-rondas"><p class="vacio">Cargando…</p></div>
+  </section>
   <section class="caja" id="rondas"><p class="vacio">Cargando…</p></section>
   <section class="caja" id="detalle" hidden></section>
   <section class="caja">
@@ -37,6 +42,24 @@ import Admin from '../../layouts/Admin.astro';
   const boton = (t: string, fn: () => void, clase = 'b b--peq') => h('button', { class: clase, type: 'button', onclick: fn }, t);
   const contadores = (c: any) => `${c.respondidos ?? 0} respondidos · ${c.abiertos ?? 0} abiertos sin responder · ${c.enviados ?? 0} enviados sin abrir · ${c.generados ?? 0} sin enviar · ${c.caducados ?? 0} caducados`;
   let rondaAbierta: any = null;
+
+  // Feedback anónimo: contadores y exportaciones (solo el propietario puede descargar).
+  (async () => {
+    const caja = document.getElementById('anonimo-rondas')!;
+    try {
+      const d = await api('feedback-anonimo/rondas');
+      const ESTADOS: Record<string, string> = { antes: 'Sin abrir', abierto: 'Abierto', cerrado: 'Cerrado' };
+      caja.replaceChildren(...d.rondas.map((r: any) => h('div', { class: 'fila' },
+        h('div', {}, h('strong', {}, `${r.nombre} · ${r.circuito}`), ' ',
+          h('span', { class: 'sub' }, `${ESTADOS[r.estado]} · ${fechaHora(r.abre)} a ${fechaHora(r.cierra)} · ${r.respuestas} respuestas · ${r.sorteo} en el sorteo · módulo ${r.modulo} · versión ${r.form_version}`)),
+        h('div', { class: 'acciones' },
+          h('a', { class: 'b b--peq', href: `/feedback/${r.slug}`, target: '_blank', rel: 'noopener' }, 'Ver formulario'),
+          boton('Respuestas (Excel)', () => abrir(`/api/admin/feedback-anonimo/${r.slug}/exportar`)),
+          boton('Sorteo (Excel)', () => abrir(`/api/admin/feedback-anonimo/${r.slug}/sorteo`)),
+          boton('Sorteo (CSV)', () => abrir(`/api/admin/feedback-anonimo/${r.slug}/sorteo?formato=csv`))))));
+      caja.append(h('p', { class: 'sub' }, `Los datos del sorteo se borran solos ${d.rondas[0]?.dias_borrar_sorteo ?? 30} días después del cierre.`));
+    } catch (e: any) { caja.replaceChildren(h('p', { class: 'vacio' }, e.message)); }
+  })();
 
   // ---------- Rondas ----------
 

@@ -1,0 +1,61 @@
+---
+// Feedback anónimo post-carrera: /feedback/<slug> para cada ronda de src/config/feedback/rondas.js. No sale en el
+// menú ni en el sitemap. Las preguntas y los textos salen de src/config/feedback/; la lógica, de
+// src/scripts/feedback-anonimo.ts y lib/feedback-anonimo/motor.js.
+import FeedbackAnonimo from '../../layouts/FeedbackAnonimo.astro';
+import { RONDAS } from '../../config/feedback/rondas.js';
+import { TEXTOS } from '../../config/feedback/textos.es.js';
+
+export const getStaticPaths = () => RONDAS.map((r) => ({ params: { ronda: r.slug }, props: { r } }));
+const { r } = Astro.props;
+const T = TEXTOS.ui;
+const sorteo = `/feedback/${r.slug}/sorteo`;
+---
+<FeedbackAnonimo titulo={T.titulo} ronda={r.nombre}>
+  <main class="fa wrap" id="fa" data-ronda={r.slug}>
+    <p class="fa-sub" id="carga">{T.cargando}</p>
+
+    <section class="fa-card" id="cerrado" hidden>
+      <h1 class="fa-h">{T.cerrado_t}</h1>
+      <p id="cerrado-texto"></p>
+    </section>
+
+    <section class="fa-card" id="ya" hidden>
+      <h1 class="fa-h">{T.ya_respondido_t}</h1>
+      <p>{T.ya_respondido}</p>
+      <a class="btn btn--gold fa-btn" href={sorteo}>{T.ir_sorteo}</a>
+    </section>
+
+    <section class="fa-card" id="intro" hidden>
+      <p class="eyebrow">{r.nombre} · {r.circuito}</p>
+      <p class="fa-intro">{T.intro}</p>
+      <button class="btn btn--gold fa-btn" type="button" id="empezar">{T.empezar}</button>
+    </section>
+
+    <form class="fa-card" id="form" novalidate hidden>
+      <div class="fa-prog" aria-live="polite">
+        <div class="fa-prog__t"><b id="bloque-t"></b><span id="paso"></span></div>
+        <div class="fa-prog__barra"><span id="barra"></span></div>
+      </div>
+      <div class="fa-preguntas" id="preguntas"></div>
+      <div class="fa-trampa" aria-hidden="true"><label>Web <input type="text" name="web" id="web" tabindex="-1" autocomplete="off" /></label></div>
+      <p class="fa-err" id="error" role="alert"></p>
+      <div class="fa-nav">
+        <button class="btn btn--ghost" type="button" id="atras">{T.anterior}</button>
+        <button class="btn btn--gold fa-btn" type="submit" id="siguiente">{T.siguiente}</button>
+      </div>
+    </form>
+
+    <section class="fa-card" id="gracias" hidden>
+      <p class="eyebrow">{r.nombre}</p>
+      <h1 class="fa-h">{T.gracias_t}</h1>
+      <p>{T.gracias}</p>
+      <a class="btn btn--gold fa-btn" href={sorteo}>{T.ir_sorteo}</a>
+    </section>
+  </main>
+
+  <script>
+    import { iniciarFormulario } from '../../scripts/feedback-anonimo';
+    iniciarFormulario();
+  </script>
+</FeedbackAnonimo>

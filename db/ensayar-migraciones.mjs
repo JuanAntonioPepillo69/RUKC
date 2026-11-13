@@ -20,8 +20,11 @@ if (!NEON_API_KEY || !NEON_PROJECT_ID || !DATABASE_URL_MIGRACIONES) {
 
 // Tablas nuevas que deben existir después de migrar, y las que rukc_app no puede modificar.
 const NUEVAS = ['wa_contacts', 'wa_consents', 'wa_conversations', 'wa_messages', 'wa_outbox', 'wa_batches',
-  'wa_webhook_events', 'kb_documents', 'kb_document_versions', 'admin_actions', 'bot_settings'];
+  'wa_webhook_events', 'kb_documents', 'kb_document_versions', 'admin_actions', 'bot_settings',
+  'feedback_responses', 'raffle_entries'];
 const SOLO_AÑADIR = ['wa_consents', 'kb_document_versions'];
+// Feedback anónimo y sorteo: añadir y borrar (al rebarajar y purgar), nunca editar.
+const SIN_EDITAR = ['feedback_responses', 'raffle_entries'];
 
 const neon = async (ruta, init = {}) => {
   const r = await fetch(`https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}${ruta}`, {
@@ -84,7 +87,7 @@ try {
     `SELECT t, has_table_privilege('rukc_app', t, 'INSERT') AS ins, has_table_privilege('rukc_app', t, 'UPDATE') AS upd,
             has_table_privilege('rukc_app', t, 'DELETE') AS del
      FROM unnest($1::text[]) AS t WHERE to_regclass(t) IS NOT NULL`, [NUEVAS]);
-  const malPermiso = permisos.filter((p) => !p.ins || (SOLO_AÑADIR.includes(p.t) ? (p.upd || p.del) : !p.upd));
+  const malPermiso = permisos.filter((p) => !p.ins || (SOLO_AÑADIR.includes(p.t) ? (p.upd || p.del) : SIN_EDITAR.includes(p.t) ? (p.upd || !p.del) : !p.upd));
   await pool.end();
 
   console.log(`Después: ${Object.keys(despues).length} tablas.`);
@@ -92,7 +95,7 @@ try {
     : 'OK · ninguna tabla existente ha cambiado de número de filas.');
   console.log(faltan.length ? `FALLO · faltan tablas: ${faltan.join(', ')}` : `OK · existen las ${NUEVAS.length} tablas nuevas.`);
   console.log(malPermiso.length ? `FALLO · permisos de rukc_app en: ${malPermiso.map((p) => p.t).join(', ')}`
-    : 'OK · permisos de rukc_app (lectura y escritura; solo añadir en wa_consents y kb_document_versions).');
+    : 'OK · permisos de rukc_app (lectura y escritura; solo añadir en wa_consents y kb_document_versions; sin editar en feedback_responses y raffle_entries).');
   if (cambiadas.length || faltan.length || malPermiso.length) codigo = 1;
 } catch (e) {
   console.error(e.message);
