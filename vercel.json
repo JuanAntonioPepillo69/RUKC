@@ -183,6 +183,10 @@
     {
       "source": "/grupo/:token",
       "destination": "/api/grupo?token=:token"
+    },
+    {
+      "source": "/ficha/:token",
+      "destination": "/api/grupo?token=:token"
     }
   ],
   "crons": [
