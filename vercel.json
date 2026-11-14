@@ -4,7 +4,9 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
@@ -227,6 +229,9 @@
     },
     "api/inscritos/semanal.js": {
       "maxDuration": 60
+    },
+    "api/chat.js": {
+      "maxDuration": 30
     }
   }
 }
