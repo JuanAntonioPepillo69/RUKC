@@ -53,6 +53,14 @@
     "sharp": "0.35.5",
     "three": "0.186.1"
   },
+  "overrides": {
+    "@vercel/cli-config": {
+      "zod": "$zod"
+    },
+    "satori": {
+      "fflate": "0.7.5"
+    }
+  },
   "allowScripts": {
     "esbuild@0.28.2": true
   },

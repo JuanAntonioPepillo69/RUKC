@@ -2,15 +2,21 @@
 // Cuerpo: { mensajes: [{ rol: 'user' | 'assistant', texto }] } (el historial lo guarda el navegador; RUKC no guarda la
 // conversación). Respuesta: { texto, whatsapp (enlace o null), ft }.
 // Protecciones: solo desde nuestra web (Origin), 12 mensajes cada 10 minutos y 60 al día por IP (se guarda un hash, no
-// la IP), y el interruptor general del bot (PARA TODO también apaga el chat web).
+// la IP), un tope global para todas las IPs juntas (CHAT_WEB_MAX_10MIN y CHAT_WEB_MAX_DIA; tope de gasto en Claude
+// aunque el abuso llegue desde muchas IPs) y el interruptor general del bot (PARA TODO también apaga el chat web).
 import { consulta } from '../lib/db.js';
-import { dentroDelLimite, json, leerJson, origenValido } from '../lib/http.js';
+import { dentroDelLimite, dentroDelLimiteGlobal, json, leerJson, origenValido } from '../lib/http.js';
 import * as datosBot from '../lib/bot/datos.js';
 import { llmAnthropic, modelos } from '../lib/bot/llm.js';
 import { TEXTO_APAGADO_WEB, enlaceWhatsapp, historialDe, turnoWeb } from '../lib/bot/web.js';
 
 const db = { query: async (texto, params) => ({ rows: await consulta(texto, params) }) };
 const PREDETERMINADAS = { llm: llmAnthropic, datos: datosBot };
+const tope = (nombre, porDefecto) => {
+  const n = Number(process.env[nombre]);
+  return Number.isInteger(n) && n > 0 ? n : porDefecto;
+};
+const TEXTO_OCUPADO = 'El chat está muy solicitado ahora mismo. Escríbenos por WhatsApp y te contestamos.';
 
 export async function manejar(request, deps = {}) {
   const d = { ...PREDETERMINADAS, ...deps };
@@ -21,6 +27,11 @@ export async function manejar(request, deps = {}) {
   try {
     if (!(await dentroDelLimite(db, request, 'chat', 12, 10)) || !(await dentroDelLimite(db, request, 'chat-dia', 60, 1440))) {
       return json({ error: 'Has escrito muchos mensajes seguidos. Espera unos minutos o escríbenos por WhatsApp.', whatsapp: enlaceWhatsapp('Tenía una duda en el chat de la web.') }, 429);
+    }
+    // Después del límite por IP, para que una sola IP insistente no gaste el cupo de todos.
+    if (!(await dentroDelLimiteGlobal(db, 'chat', tope('CHAT_WEB_MAX_10MIN', 60), 10))
+      || !(await dentroDelLimiteGlobal(db, 'chat-dia', tope('CHAT_WEB_MAX_DIA', 400), 1440))) {
+      return json({ error: TEXTO_OCUPADO, whatsapp: enlaceWhatsapp('Tenía una duda en el chat de la web.') }, 429);
     }
     if (!(await d.datos.botActivo())) return json({ texto: TEXTO_APAGADO_WEB, whatsapp: enlaceWhatsapp(''), ft: false });
     const modelo = d.modelo ?? (await modelos()).conversacion;

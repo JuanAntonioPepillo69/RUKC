@@ -349,6 +349,45 @@ test('Bizum: con el código ya dado, cambiar el piloto no sobrescribe la reserva
   assert.deepEqual(s, { piloto_es_pagador: true, piloto_nombre: null });
 });
 
+test('tarjeta: con el pago abierto en Stripe no se cambian ronda ni categoría (409); sin cambios sigue la misma', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const [otra] = await q(`SELECT r.id FROM ronda r JOIN temporada t ON t.id = r.temporada_id
+    WHERE t.codigo = 'T2' AND r.estado = 'programada' AND r.fecha >= current_date AND r.id <> $1 ORDER BY r.fecha LIMIT 1`, [ronda.id]);
+  const { cuerpo } = await nuevaSolicitud();
+  await completar(cuerpo.token);
+  assert.equal((await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true } }))).status, 200);
+
+  const igual = await actualizar(peticion('PATCH', '/api/solicitud', { token: cuerpo.token, cuerpo: { campos: { ronda_id: ronda.id, paso_actual: 3 } } }));
+  assert.equal(igual.status, 200);
+  for (const campos of [{ ronda_id: otra.id }, { categoria_elegida: 'PES' }]) {
+    const r = await actualizar(peticion('PATCH', '/api/solicitud', { token: cuerpo.token, cuerpo: { campos } }));
+    assert.equal(r.status, 409, JSON.stringify(campos));
+  }
+  const [s] = await q('SELECT ronda_id, categoria_elegida FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  assert.deepEqual(s, { ronda_id: ronda.id, categoria_elegida: 'LIG' });
+});
+
+test('webhook: una sesión sin metadata[solicitud_id] o por menos de la reserva no convierte la solicitud', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const { cuerpo } = await nuevaSolicitud();
+  await completar(cuerpo.token);
+  await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'tarjeta', acepta: true } }));
+  const [s] = await q('SELECT id, stripe_checkout_session_id FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  const base = { payment_status: 'paid', currency: 'eur', created: Math.floor(Date.now() / 1000) };
+  for (const sesion of [
+    { ...base, id: `cs_test_link_${Date.now()}`, amount_total: 3000, payment_intent: `pi_link_${Date.now()}`, client_reference_id: s.id },
+    { ...base, id: s.stripe_checkout_session_id, amount_total: 100, payment_intent: `pi_poco_${Date.now()}`, metadata: { solicitud_id: s.id }, client_reference_id: s.id },
+  ]) {
+    const ev = eventoFirmado('checkout.session.completed', sesion);
+    assert.equal((await webhook(ev.request())).status, 200);
+    const [e] = await q('SELECT procesado_en, error FROM stripe_evento WHERE stripe_event_id = $1', [ev.evento.id]);
+    assert.ok(e.procesado_en);
+    assert.match(e.error, /^REVISAR/);
+  }
+  const [x] = await q('SELECT estado, pedido_id FROM solicitud_inscripcion WHERE id = $1', [s.id]);
+  assert.deepEqual(x, { estado: 'enviada', pedido_id: null });
+});
+
 test('paga otra persona: el webhook crea pagador y piloto por separado', async () => {
   await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
   const { cuerpo } = await nuevaSolicitud();

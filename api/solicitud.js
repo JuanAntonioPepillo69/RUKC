@@ -17,13 +17,17 @@ const EDITABLE = ['borrador', 'enviada', 'pago_abandonado'];
 const DATOS_RESERVA = ['ronda_id', 'categoria_elegida', 'pagador_nombre', 'pagador_email', 'pagador_telefono', 'piloto_es_pagador',
   'piloto_nombre', 'piloto_telefono', 'piloto_menor', 'tutor_nombre', 'tutor_telefono', 'tutor_relacion'];
 
-/** La ronda tiene que ser de la temporada y estar por celebrar; si no, se ignora. */
+/** La ronda tiene que ser de la temporada, estar por celebrar y no tener la fecha ya pasada; si no, se ignora. */
 async function rondaValida(c, rondaId, temporadaId) {
   if (!rondaId) return null;
   const { rows } = await c.query(
-    `SELECT id FROM ronda WHERE id = $1 AND temporada_id = $2 AND estado IN ('programada', 'aplazada')`, [rondaId, temporadaId]);
+    `SELECT id FROM ronda WHERE id = $1 AND temporada_id = $2 AND estado IN ('programada', 'aplazada')
+       AND fecha >= (now() AT TIME ZONE 'Europe/Madrid')::date`, [rondaId, temporadaId]);
   return rows[0]?.id ?? null;
 }
+
+/** ¿Tiene la solicitud un pago con tarjeta abierto en Stripe (sesión de Checkout sin caducar)? */
+const pagoTarjetaAbierto = (s) => s.metodo_elegido === 'tarjeta' && s.checkout_expira_en && new Date(s.checkout_expira_en) > new Date();
 
 const sinCambios = (e) => /solicitud_contacto/.test(e.message);
 
@@ -99,9 +103,11 @@ export async function PATCH(request) {
 
       const datos = { ...campos };
       if ('ronda_id' in datos) datos.ronda_id = await rondaValida(c, datos.ronda_id, s.temporada_id);
-      // Con el código de Bizum ya entregado no se sobrescribe: el dinero puede estar en camino con ese código. El 409
-      // hace que el formulario abra una solicitud nueva con otro código.
-      if (s.estado !== 'borrador' && s.metodo_elegido === 'bizum'
+      // Con el código de Bizum ya entregado no se sobrescribe: el dinero puede estar en camino con ese código. Lo
+      // mismo con un pago con tarjeta abierto en Stripe: el cupo se comprobó para esa ronda y categoría, y cambiarlas
+      // ahora metería la plaza en una ronda o categoría cerrada al pagar. El 409 hace que el formulario abra una
+      // solicitud nueva con otro código (y su pago vuelve a comprobar el cupo).
+      if (s.estado !== 'borrador' && (s.metodo_elegido === 'bizum' || pagoTarjetaAbierto(s))
         && DATOS_RESERVA.some((k) => k in datos && (datos[k] ?? null) !== (s[k] ?? null))) {
         return { estado: s.estado, cerrada: true, codigo: s.codigo };
       }

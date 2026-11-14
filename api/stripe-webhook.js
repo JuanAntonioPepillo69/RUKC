@@ -55,6 +55,22 @@ async function procesar(evento) {
 
   if (PAGADO.includes(evento.type)) {
     if (sesion.payment_status !== 'paid') return { nota: `payment_status ${sesion.payment_status}` };
+    // Solo convierte las sesiones que creó /api/checkout: llevan metadata[solicitud_id] (un Payment Link o una sesión
+    // creada a mano solo traerían client_reference_id, que en un Payment Link puede poner quien lo abre en la URL),
+    // en euros y por al menos el importe de reserva. Si no, el cobro queda en stripe_evento para revisarlo a mano.
+    const revisar = (motivo) => {
+      console.error('stripe-webhook revisar a mano', sesion.id, motivo);
+      return { nota: `REVISAR: ${motivo}; no se ha convertido la solicitud ${solicitudId}` };
+    };
+    if (sesion.metadata?.solicitud_id !== solicitudId) return revisar('sesión sin metadata[solicitud_id]');
+    if (sesion.client_reference_id && sesion.client_reference_id !== solicitudId) return revisar('client_reference_id distinto de metadata');
+    if (sesion.currency && String(sesion.currency).toLowerCase() !== 'eur') return revisar(`moneda ${sesion.currency}`);
+    const [esperado] = await conTransaccion((c) => c.query(
+      `SELECT t.importe_reserva_cent AS cent FROM solicitud_inscripcion s JOIN temporada t ON t.id = s.temporada_id WHERE s.id = $1`,
+      [solicitudId]).then((r) => r.rows), { actor: 'stripe' });
+    if (esperado && !(Number(sesion.amount_total) >= Number(esperado.cent))) {
+      return revisar(`importe ${sesion.amount_total} menor que la reserva (${esperado.cent})`);
+    }
     const metodo = await metodoPago(sesion);
     const r = await conTransaccion((c) => convertirSolicitud(c, solicitudId, {
       metodo,

@@ -1,5 +1,6 @@
 // /api/wa/webhook · avisos de YCloud (WhatsApp).
-// 1. Firma YCloud-Signature sobre el cuerpo en bruto, antes de leerlo. Si no valida: 401 y queda en `evento`.
+// 1. Firma YCloud-Signature sobre el cuerpo en bruto, antes de leerlo. Si no valida: 401 y queda en el registro de Vercel
+//    (no en la base de datos: así no se puede llenar ni mantener despierta con peticiones sin firma).
 // 2. Idempotencia: cada aviso se guarda en wa_webhook_events por su id; si ya estaba, 200 sin hacer nada más.
 // 3. Responde 200 al momento y procesa después con waitUntil (el bot puede tardar hasta ~25 s).
 // Eventos que se usan: whatsapp.inbound_message.received, whatsapp.smb.message.echoes y whatsapp.message.updated.
@@ -34,9 +35,9 @@ export async function manejar(request, deps) {
 
   const cuerpo = await request.text();
   if (!firmaValida(cuerpo, request.headers.get('ycloud-signature'), secreto)) {
-    await consulta(
-      `INSERT INTO evento (actor, entidad, accion, despues, ip) VALUES ('ycloud', 'wa_webhook_events', 'firma_invalida', $1, $2)`,
-      [JSON.stringify({ bytes: cuerpo.length }), hashIp(ipCliente(request))]).catch(() => {});
+    // Solo en el registro de Vercel, sin tocar la base de datos: cualquiera puede mandar peticiones sin firma, y
+    // escribir una fila por cada una dejaba llenar `evento` y mantener despierta la base de datos sin límite.
+    console.warn('wa-webhook firma no válida', { bytes: cuerpo.length, ip: hashIp(ipCliente(request))?.slice(0, 12) });
     return json({ error: 'firma no válida' }, 401);
   }
 

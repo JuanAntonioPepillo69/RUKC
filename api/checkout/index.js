@@ -83,7 +83,7 @@ export async function POST(request) {
       if (!(await dentroDelLimite(c, request, 'checkout'))) return { limite: true };
       const { rows: [sol] } = await c.query(
         `SELECT s.*, t.importe_reserva_cent, r.numero AS ronda_numero, r.fecha::text AS ronda_fecha, r.estado AS ronda_estado,
-           ci.nombre AS circuito,
+           r.fecha >= (now() AT TIME ZONE 'Europe/Madrid')::date AS ronda_futura, ci.nombre AS circuito,
            (SELECT a.fbc FROM atribucion a WHERE a.solicitud_id = s.id AND a.fbc IS NOT NULL ORDER BY a.capturada_en DESC LIMIT 1) AS fbc,
            (SELECT a.fbp FROM atribucion a WHERE a.solicitud_id = s.id AND a.fbp IS NOT NULL ORDER BY a.capturada_en DESC LIMIT 1) AS fbp
          FROM solicitud_inscripcion s
@@ -96,7 +96,9 @@ export async function POST(request) {
       if (!['borrador', 'enviada', 'pago_abandonado'].includes(sol.estado)) return { cerradaSolicitud: true };
       const falta = faltaParaPagar(sol);
       if (falta) return { falta };
-      if (!['programada', 'aplazada'].includes(sol.ronda_estado)) return { falta: 'Esa ronda ya no admite inscripciones. Elige otra.' };
+      if (!['programada', 'aplazada'].includes(sol.ronda_estado) || !sol.ronda_futura) {
+        return { falta: 'Esa ronda ya no admite inscripciones. Elige otra.' };
+      }
 
       const { rows: cupos } = await c.query(
         `SELECT cat.codigo, cr.estado_inscripcion FROM cupo_ronda cr JOIN categoria cat ON cat.id = cr.categoria_id
@@ -105,12 +107,15 @@ export async function POST(request) {
       if (cupo !== 'abierta') return { cupo, sol };
 
       const versiones = (await leerCatalogo((t, p) => c.query(t, p).then((r) => r.rows)))?.documentos ?? VERSIONES_WEB;
+      // Con tarjeta, checkout_expira_en se fija ya (antes de pedir la sesión a Stripe): desde este momento la ronda, la
+      // categoría y las personas no se pueden cambiar en esta solicitud (PATCH /api/solicitud responde 409).
       await c.query(
         `UPDATE solicitud_inscripcion
          SET metodo_elegido = $2, acepta_documentos = $3,
-             estado = CASE WHEN estado = 'enviada' THEN estado ELSE 'enviada' END
+             estado = CASE WHEN estado = 'enviada' THEN estado ELSE 'enviada' END,
+             checkout_expira_en = CASE WHEN $2 = 'tarjeta' THEN now() + make_interval(secs => $4) ELSE checkout_expira_en END
          WHERE id = $1`,
-        [sol.id, metodo, { ...versiones, aceptado_en: new Date().toISOString(), ip_hash: hashIp(ipCliente(request)) }]);
+        [sol.id, metodo, { ...versiones, aceptado_en: new Date().toISOString(), ip_hash: hashIp(ipCliente(request)) }, CADUCIDAD_S]);
       return { sol: { ...sol, metodo_elegido: metodo } };
     }, { actor: 'publico', ip: ipCliente(request) });
   } catch (e) {
@@ -163,6 +168,10 @@ export async function POST(request) {
     return json({ url: sesion.url });
   } catch (e) {
     console.error('checkout Stripe', e.message);
+    // Sin sesión nueva: se deja la caducidad como estaba para no bloquear cambios por un pago que no llegó a abrirse.
+    await conTransaccion((c) => c.query(
+      `UPDATE solicitud_inscripcion SET checkout_expira_en = $2 WHERE id = $1 AND stripe_checkout_session_id IS NOT DISTINCT FROM $3`,
+      [sol.id, sol.checkout_expira_en ?? null, sol.stripe_checkout_session_id ?? null]), { actor: 'publico' }).catch(() => {});
     if (e.codigo === 'sin_configurar') {
       return json({ error: 'El pago con tarjeta todavía no está activo. Prueba con Bizum o escríbenos por WhatsApp.' }, 503);
     }
