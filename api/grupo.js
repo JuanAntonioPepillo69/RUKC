@@ -1,4 +1,4 @@
-// /grupo/<token> (vercel.json lo reescribe a /api/grupo?token=<token>) · botón "Unirme al grupo" de la confirmación
+// /grupo/<token> y /ficha/<token> (vercel.json los reescribe a /api/grupo?token=<token>) · botón "Unirme al grupo" de la confirmación
 // de plaza por WhatsApp (B1). El token firma la inscripción (lib/whatsapp/confirmacion.js).
 // - Inscripción reservada o pagada y acceso al grupo aprobado: redirige al enlace del grupo de la temporada
 //   (bot_settings.grupo_invite_code o temporada.enlace_grupo_whatsapp).

@@ -530,6 +530,8 @@ async function enMadrid(dias, hora) {
   return new Date(x.t);
 }
 const deEstosTests = (d) => telefonosPrueba.has(d.telefono);
+const SIN_FICHA = ['D1', 'D2', 'D3', 'E1', 'C2'];
+
 
 test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 no sale; con CONFIRMO, una sola vez', async () => {
   [ronda.fecha] = (await q('SELECT fecha::text AS f FROM ronda WHERE id = $1', [ronda.id])).map((x) => x.f);
@@ -542,7 +544,7 @@ test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 
   llamadas.ycloud.length = 0;
 
   // 12:30, una semana antes: propuesta a John, nada a los pilotos.
-  await planificar({ ahora: await enMadrid(-7, '12:30'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(-7, '12:30'), filtrarDestinatarios: deEstosTests });
   const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1)?.text?.body ?? '';
   assert.match(propuesta, /Recordatorio de una semana de la R\d+/);
   assert.match(propuesta, /Ejemplo:/);
@@ -556,12 +558,12 @@ test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 
   assert.ok(codigo, propuesta);
   // Planificar otra vez no repite la propuesta.
   const antes = llamadas.ycloud.length;
-  await planificar({ ahora: await enMadrid(-7, '12:40'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(-7, '12:40'), filtrarDestinatarios: deEstosTests });
   assert.equal(llamadas.ycloud.length, antes);
 
   // 18:05 sin confirmar: no sale nada y John recibe el aviso.
   await procesarCola({ ahora: await enMadrid(-7, '18:05') });
-  await planificar({ ahora: await enMadrid(-7, '18:05'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(-7, '18:05'), filtrarDestinatarios: deEstosTests });
   assert.ok(!llamadas.ycloud.some((m) => m.to === telefono), 'sin CONFIRMO no sale');
   assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /no ha salido a las 18:00 porque falta tu CONFIRMO/);
 
@@ -580,10 +582,10 @@ test('fase 3 · D2 fuera de horario espera a las 9:30 y se anula si la ronda ya 
   const telefono = await pilotoConPlaza('PES');
   llamadas.ycloud.length = 0;
   // D3, dos días antes: borrador solo a John.
-  await planificar({ ahora: await enMadrid(-2, '12:05'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(-2, '12:05'), filtrarDestinatarios: deEstosTests });
   assert.ok(llamadas.ycloud.some((m) => m.to === ADMIN_WA && /Borrador para el grupo de pilotos/.test(m.text?.body ?? '')));
   // D2, la víspera.
-  await planificar({ ahora: await enMadrid(-1, '12:05'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(-1, '12:05'), filtrarDestinatarios: deEstosTests });
   const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body;
   assert.match(propuesta, /Recordatorio de la víspera/);
   const codigo = propuesta.match(/CONFIRMO (\d{4})/)[1];
@@ -608,16 +610,16 @@ test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a l
   const aJohn = () => llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '');
 
   // Día siguiente a las 10:05, nadie marcado como asistido: aviso a John, una sola vez.
-  await planificar({ ahora: await enMadrid(1, '10:05'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(1, '10:05'), filtrarDestinatarios: deEstosTests });
   assert.match(aJohn().at(-1), /mensaje de feedback de la R\d+ hace falta marcar en el panel quién asistió/);
   const avisos = aJohn().length;
-  await planificar({ ahora: await enMadrid(1, '10:30'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(1, '10:30'), filtrarDestinatarios: deEstosTests });
   assert.equal(aJohn().length, avisos, 'el aviso no se repite');
 
   // Marcada la asistencia: propuesta con código; a las 12:05 sale con el botón y su enlace.
   const [i] = await q(`SELECT i.id FROM inscripcion i JOIN persona p ON p.id = i.piloto_persona_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [telefono, ronda.id]);
   await q(`UPDATE inscripcion SET estado = 'asistio', motivo = 'Prueba de E1' WHERE id = $1`, [i.id]);
-  await planificar({ ahora: await enMadrid(1, '10:40'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(1, '10:40'), filtrarDestinatarios: deEstosTests });
   const propuesta = aJohn().at(-1);
   assert.match(propuesta, /Mensaje de feedback de la R\d+ .* para 1 persona\(s\)\. Sale a las 12:00/);
   assert.match(propuesta, /Gracias por correr la R\d+ de RUKC/);
@@ -635,7 +637,7 @@ test('fase 3 · E1: sin asistencia marcada avisa una vez; marcada, propuesta a l
   assert.equal(e.n, 0, 'no se crean envíos personales');
   // No se vuelve a proponer.
   const total = aJohn().length;
-  await planificar({ ahora: await enMadrid(2, '10:05'), filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: await enMadrid(2, '10:05'), filtrarDestinatarios: deEstosTests });
   assert.equal(aJohn().length, total);
 });
 
@@ -731,9 +733,9 @@ test('fase 4 · C2 con 10 contactos mezclados: solo sale a quien tiene consentim
   await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
   llamadas.ycloud.length = 0;
 
-  await planificar({ ahora: sabado, filtrarDestinatarios: deEstosTests });
+  await planificar({ solo: SIN_FICHA, ahora: sabado, filtrarDestinatarios: deEstosTests });
   const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '').find((x) => /Aviso de la próxima ronda/.test(x));
-  assert.ok(propuesta, 'llega la propuesta del C2');
+  assert.ok(propuesta, 'llega la propuesta del C2: ' + JSON.stringify(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => (m.text?.body ?? m.template?.name ?? '').slice(0, 90))));
   assert.match(propuesta, /para 3 persona\(s\)/, propuesta);
   assert.match(propuesta, /La inscripción cierra el/);
   const enLote = (await q(`SELECT c.phone_e164 AS t FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id
@@ -744,9 +746,11 @@ test('fase 4 · C2 con 10 contactos mezclados: solo sale a quien tiene consentim
   await consentir(jRevocaDespues.id, 'revoca');
   const codigo = propuesta.match(/CONFIRMO (\d{4})/)[1];
   await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  // Si el test corre después de las 12:00 de ese sábado, al confirmar la hora de envío pasa a "ahora" (hora real).
+  await q(`UPDATE wa_outbox SET enviar_at = $2 WHERE automatizacion = 'C2' AND estado = 'confirmado' AND created_at >= $1`, [INICIO_TESTS, new Date(sabado.getTime() + 2 * 3.6e6)]);
   await procesarCola({ ahora: new Date(sabado.getTime() + 2 * 3.6e6) });
   const recibieron = todos.filter((x) => llamadas.ycloud.some((m) => m.to === x.telefono && m.template?.name === 'rukc_nueva_ronda')).map((x) => x.telefono);
-  assert.deepEqual(recibieron.sort(), [a.telefono, b.telefono].sort());
+  assert.deepEqual(recibieron.sort(), [a.telefono, b.telefono].sort(), JSON.stringify(await q(`SELECT c.phone_e164, o.estado, o.ultimo_error, o.enviar_at FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id WHERE o.automatizacion = 'C2' AND o.created_at >= $1`, [INICIO_TESTS])) + JSON.stringify(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => (m.text?.body ?? '').slice(0, 80)).slice(-3)));
   const [j] = await q(`SELECT o.estado, o.ultimo_error FROM wa_outbox o WHERE o.contact_id = $1 AND o.automatizacion = 'C2'`, [jRevocaDespues.id]);
   assert.equal(j.estado, 'cancelado');
   assert.equal(j.ultimo_error, 'sin consentimiento comercial vigente');
@@ -874,4 +878,65 @@ test('resto por Bizum: el justificante de quien tiene 69 € pendientes avisa co
   // Pagada del todo: otra foto ya no genera propuesta (sigue el camino normal del bot).
   assert.equal((await q(`SELECT count(*)::int AS n FROM admin_actions WHERE tipo = 'confirmar_bizum' AND estado = 'propuesta'
     AND parametros->>'telefono' = $1`, [telefono]))[0].n, 0);
+});
+
+// --- Recordatorio de la ficha de piloto (B4 en el programador) ----------------------------------------------------
+test('ficha: propuesta a las 11:00 con quien no la ha completado; sale con su enlace, no se repite en 3 días y se salta a quien ya la terminó', async () => {
+  const { tokenGrupo } = await import('../../lib/whatsapp/confirmacion.js');
+  const sinFicha = await pilotoConPlaza('LIG');
+  const laTermina = await pilotoConPlaza('LIG');
+  const conVentana = await pilotoConPlaza('PES');
+  await q(`UPDATE wa_contacts SET last_inbound_at = NULL WHERE phone_e164 = ANY($1)`, [[sinFicha, laTermina]]);
+  const datosDe = async (tel) => (await q(`SELECT i.id AS inscripcion, o.id AS onboarding, o.estado, o.envios FROM inscripcion i
+    JOIN persona p ON p.id = i.piloto_persona_id JOIN ronda r ON r.id = i.ronda_id
+    JOIN onboarding o ON o.persona_id = p.id AND o.temporada_id = r.temporada_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [tel, ronda.id]))[0];
+  const a = await datosDe(sinFicha);
+  assert.ok(a, 'el pago crea la ficha pendiente');
+  assert.notEqual(a.estado, 'completado');
+  await q(`UPDATE onboarding SET enlace_enviado_en = NULL WHERE id IN (SELECT o.id FROM onboarding o JOIN persona p ON p.id = o.persona_id WHERE p.telefono = ANY($1))`,
+    [[sinFicha, laTermina, conVentana]]);
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
+  llamadas.ycloud.length = 0;
+
+  // 5 días antes, 11:05: propuesta a John.
+  const dia = await enMadrid(-5, '11:05');
+  await planificar({ ahora: dia, filtrarDestinatarios: deEstosTests });
+  const propuesta = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '').find((x) => /Recordatorio de la ficha de piloto/.test(x)) ?? '';
+  assert.match(propuesta, new RegExp(`de la R${ronda.numero}`));
+  assert.match(propuesta, /falta completar la ficha de piloto/);
+  const codigo = propuesta.match(/CONFIRMO (\d{4})/)?.[1];
+  assert.ok(codigo, propuesta);
+  // Otra vez el mismo día: no repite.
+  const n = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).length;
+  await planificar({ ahora: new Date(dia.getTime() + 30 * 60e3), filtrarDestinatarios: deEstosTests });
+  assert.equal(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).length, n);
+
+  // Uno la termina antes del envío; otro tiene la ventana abierta.
+  await q(`UPDATE onboarding SET estado = 'en_curso' WHERE id = $1`, [(await datosDe(laTermina)).onboarding]);
+  await q(`UPDATE onboarding SET estado = 'completado' WHERE id = $1`, [(await datosDe(laTermina)).onboarding]);
+  await q(`UPDATE wa_contacts SET last_inbound_at = $2 WHERE phone_e164 = $1`, [conVentana, await enMadrid(-5, '11:30')]);
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  await procesarCola({ ahora: await enMadrid(-5, '12:05') });
+
+  const plantilla = llamadas.ycloud.filter((m) => m.to === sinFicha && m.template?.name === 'rukc_ficha_piloto');
+  assert.equal(plantilla.length, 1, JSON.stringify(await q(`SELECT idempotency_key, estado, lote_id FROM wa_outbox WHERE idempotency_key LIKE 'FICHA:%' AND contact_id = (SELECT id FROM wa_contacts WHERE phone_e164 = $1)`, [sinFicha])));
+  assert.equal(plantilla[0].template.components.find((c) => c.type === 'button').parameters[0].text, tokenGrupo(a.inscripcion));
+  assert.ok(!llamadas.ycloud.some((m) => m.to === laTermina), 'quien ya la completó no recibe nada');
+  const libre = llamadas.ycloud.filter((m) => m.to === conVentana).at(-1)?.text?.body ?? '';
+  assert.match(libre, /https:\/\/raceupkc\.com\/ficha\/[\w-]{44}/);
+  assert.equal((await datosDe(sinFicha)).envios, a.envios + 1, 'cuenta como un envío más en el panel ' + JSON.stringify(await q(`SELECT o.idempotency_key, o.estado, o.automatizacion, o.variables->>'onboarding_id' AS ob FROM wa_outbox o WHERE o.variables->>'onboarding_id' = $1`, [a.onboarding])) + ' antes=' + a.envios);
+
+  // Al día siguiente no le toca (cada 3 días); a los 3 días, sí. Los envíos se anotan con la hora real: se pasan a la
+  // hora simulada del test.
+  const envioSimulado = await enMadrid(-5, '12:05');
+  await q(`UPDATE wa_outbox SET created_at = $2 WHERE idempotency_key LIKE 'FICHA:%' AND created_at >= $1`, [INICIO_TESTS, envioSimulado]);
+  await q('UPDATE onboarding SET enlace_enviado_en = $2 WHERE enlace_enviado_en >= $1', [INICIO_TESTS, envioSimulado]);
+  llamadas.ycloud.length = 0;
+  await planificar({ ahora: await enMadrid(-4, '11:05'), filtrarDestinatarios: deEstosTests });
+  assert.ok(!llamadas.ycloud.some((m) => m.to === ADMIN_WA && /Recordatorio de la ficha/.test(m.text?.body ?? '') && /para \d+ persona/.test(m.text?.body ?? '')), 'nadie a quien recordar al día siguiente');
+  const antiguo = await enMadrid(-6, '12:00');
+  await q('UPDATE onboarding SET enlace_enviado_en = $2 WHERE id = $1', [a.onboarding, antiguo]);
+  await q('UPDATE wa_outbox SET created_at = $2 WHERE idempotency_key LIKE $1', [`FICHA:R${ronda.numero}:${sinFicha}:%`, antiguo]);
+  await planificar({ ahora: await enMadrid(-2, '11:05'), filtrarDestinatarios: deEstosTests });
+  assert.ok(llamadas.ycloud.some((m) => m.to === ADMIN_WA && /Recordatorio de la ficha de piloto/.test(m.text?.body ?? '')), 'a los 3 días vuelve a proponerlo');
 });
