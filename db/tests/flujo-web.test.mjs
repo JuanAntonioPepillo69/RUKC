@@ -437,6 +437,21 @@ test('Bizum: recordatorio a las 24 h, una sola vez y en horario', async () => {
   assert.equal(llamadas.ycloud.filter((m) => m.to === telefono).length, 1, 'no se repite');
 });
 
+test('formulario v2: el primer guardado ya trae las casillas del menor y de novedades (como manda el formulario)', async () => {
+  const telefono = tel();
+  const res = await crear(peticion('POST', '/api/solicitud', { cuerpo: {
+    campos: { pagador_telefono: telefono.replace('+34', ''), ronda_id: ronda.id, piloto_es_pagador: true, piloto_menor: false,
+      acepta_whatsapp_novedades: true, metodo_elegido: 'tarjeta', paso_actual: 1 },
+    consentimiento_medicion: false,
+  } }));
+  const cuerpo = await res.json();
+  assert.equal(res.status, 201, JSON.stringify(cuerpo));
+  const [s] = await q('SELECT id, piloto_menor, acepta_whatsapp_novedades FROM solicitud_inscripcion WHERE codigo = $1', [cuerpo.codigo]);
+  creadas.push(s.id);
+  assert.equal(s.piloto_menor, false);
+  assert.equal(s.acepta_whatsapp_novedades, true);
+});
+
 test('formulario v2: piloto menor con su tutor → tutela, confirmación al tutor y al menor, y consentimientos con su versión', async () => {
   await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
   const { cuerpo, telefono } = await nuevaSolicitud();

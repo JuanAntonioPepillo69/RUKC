@@ -64,7 +64,7 @@ export async function POST(request) {
           hashIp(ipCliente(request)), (request.headers.get('user-agent') || '').slice(0, 300) || null]);
       const v2 = ['piloto_menor', 'tutor_nombre', 'tutor_telefono', 'tutor_relacion', 'acepta_whatsapp_novedades'].filter((k) => k in campos);
       if (v2.length) {
-        await c.query(`UPDATE solicitud_inscripcion SET ${v2.map((k, i) => `${k} = ${i + 2}`).join(', ')} WHERE id = $1`,
+        await c.query(`UPDATE solicitud_inscripcion SET ${v2.map((k, i) => `${k} = $${i + 2}`).join(', ')} WHERE id = $1`,
           [s.id, ...v2.map((k) => (k === 'piloto_menor' || k === 'acepta_whatsapp_novedades' ? Boolean(campos[k]) : campos[k]))]);
       }
       const extra = { consentimiento: consentimiento_medicion, fbc, fbp };
