@@ -23,9 +23,12 @@ test('firma de YCloud: válida, alterada, caducada y con otro secreto', () => {
   assert.ok(!firmaValida(cuerpo, 't=abc,s=zz', 'secreto', ahora));
 });
 
-test('el bot público tiene exactamente las 9 herramientas de la especificación', () => {
+// Las 9 de la especificación (3d) más registrar_asistencia, que hace falta para la condición del D2 ("sin los que
+// avisaron de que no van"; 2026-11-14).
+test('el bot público tiene exactamente sus 10 herramientas', () => {
   assert.deepEqual(DEFINICIONES.map((d) => d.name), ['buscar_conocimiento', 'consultar_rondas', 'consultar_mi_inscripcion',
-    'generar_enlace_reserva', 'enviar_enlace', 'registrar_lead', 'registrar_consentimiento_comercial', 'registrar_baja', 'escalar_a_john']);
+    'generar_enlace_reserva', 'enviar_enlace', 'registrar_lead', 'registrar_consentimiento_comercial', 'registrar_asistencia',
+    'registrar_baja', 'escalar_a_john']);
   for (const d of DEFINICIONES) {
     assert.equal(d.input_schema.additionalProperties, false, d.name);
     assert.deepEqual([...d.input_schema.required].sort(), Object.keys(d.input_schema.properties).sort(), d.name);

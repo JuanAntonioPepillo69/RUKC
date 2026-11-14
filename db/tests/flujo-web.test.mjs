@@ -781,3 +781,43 @@ test('fase 4 · métricas del mes: consumo de Claude guardado y coste calculado 
     await m.end();
   }
 });
+
+// --- Respuestas al recordatorio de una semana: confirma / no va -----------------------------------------------------
+const { ejecutarHerramienta } = await import('../../lib/bot/tools.js');
+const datosBot = await import('../../lib/bot/datos.js');
+const { datosRonda, destinatariosRonda } = await import('../../lib/whatsapp/programador.js');
+
+test('asistencia: el botón «Confirmo asistencia» se anota con texto fijo; quien dice que no va avisa a John una vez y no recibe el D2', async () => {
+  const va = await pilotoConPlaza('LIG');
+  const noVa = await pilotoConPlaza('PES');
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
+  llamadas.ycloud.length = 0;
+
+  // Botón del D1: se anota sin pasar por Claude y se le contesta.
+  await whatsappEntrante(va, { type: 'button', button: { text: 'Confirmo asistencia', payload: 'Confirmo asistencia' } });
+  const respuesta = llamadas.ycloud.filter((m) => m.to === va).at(-1)?.text?.body ?? '';
+  assert.match(respuesta, new RegExp(`Apuntado: te esperamos en la R${ronda.numero}`));
+  const [d1] = await q(`SELECT o.variables->>'respuesta' AS r FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id
+    WHERE c.phone_e164 = $1 AND o.automatizacion = 'D1'`, [va]);
+  assert.equal(d1.r, 'confirma');
+
+  // «No puedo ir», por la herramienta del bot: aviso a John (una sola vez aunque lo repita).
+  const [contacto] = await q(`INSERT INTO wa_contacts (phone_e164, display_name) VALUES ($1, 'Prueba No Va')
+    ON CONFLICT (phone_e164) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING *`, [noVa]);
+  const res = await ejecutarHerramienta('registrar_asistencia', { va: false, ronda: null, cita: 'al final no puedo ir' }, { contacto, datos: datosBot });
+  assert.equal(res.status, 'ok', JSON.stringify(res));
+  await ejecutarHerramienta('registrar_asistencia', { va: false, ronda: `R${ronda.numero}`, cita: 'que no voy' }, { contacto, datos: datosBot });
+  const avisos = llamadas.ycloud.filter((m) => m.to === ADMIN_WA && /no va a la R\d+/.test(m.text?.body ?? ''));
+  assert.equal(avisos.length, 1);
+  assert.match(avisos[0].text.body, /al final no puedo ir/);
+  assert.doesNotMatch(avisos[0].text.body, /John/);
+
+  // El D2 no le incluye; al que confirmó, sí.
+  const d2 = (await destinatariosRonda(await datosRonda(ronda.id), 'D2')).map((x) => x.telefono);
+  assert.ok(d2.includes(va));
+  assert.ok(!d2.includes(noVa), 'quien no va no recibe el recordatorio de la víspera');
+
+  // Sin plaza no se anota nada.
+  const [otro] = await q(`INSERT INTO wa_contacts (phone_e164) VALUES ($1) RETURNING *`, [tel()]);
+  assert.equal((await ejecutarHerramienta('registrar_asistencia', { va: false, ronda: null, cita: 'no voy' }, { contacto: otro, datos: datosBot })).status, 'error');
+});
