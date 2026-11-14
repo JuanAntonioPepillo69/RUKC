@@ -115,6 +115,7 @@ test('endpoint semanal: sin token 401; fuera de hora no hace nada', async () => 
 // --- envío ---------------------------------------------------------------------------------------------------------------
 function dobles({ abierta = true, plantillaFalla = false, yaEnviado = false } = {}) {
   const enviados: any[] = [], avisos: any[] = [], sql: string[] = [];
+  const contador = { avisoUnico: 0 };
   const d = {
     proximaRonda: async () => RONDA,
     parrilla: async (_r: unknown, c: string) => ({ categoria: c, nombre: c === 'LIG' ? 'Ligeros' : 'Pesados', plazas: 30,
@@ -123,9 +124,11 @@ function dobles({ abierta = true, plantillaFalla = false, yaEnviado = false } = 
     contactoJohn: async () => ({ contacto: { id: 'john', phone_e164: '+34600000000' }, abierta }),
     consulta: async (t: string) => { sql.push(t); return t.startsWith('INSERT') ? (yaEnviado ? [] : [{ id: 'cerrojo' }]) : []; },
     enviar: async (m: any) => { enviados.push(m); return m.plantilla && plantillaFalla ? { ok: false, error: 'template not found' } : { ok: true, id: 'msg' }; },
-    enviarAJohn: async (m: any) => { avisos.push(m); return { ok: true, id: 'aviso' }; },
+    // Como enviarAJohn: con la ventana cerrada y avisar=false queda pendiente sin aviso.
+    enviarAJohn: async (m: any) => { avisos.push(m); return !abierta && m.avisar === false ? { ok: true, pendiente: true, sinAviso: true } : { ok: true, id: 'aviso' }; },
+    avisarPendientesJohn: async () => { contador.avisoUnico++; return { ok: true }; },
   };
-  return { d, enviados, avisos, sql };
+  return { d, enviados, avisos, sql, contador };
 }
 const AHORA = new Date('2026-11-18T18:00:00Z');
 
@@ -144,7 +147,7 @@ test('envío: ventana abierta → dos imágenes con el texto del grupo de pie', 
   assert.match(avisos[0].texto, /2 inscritos con pago no tienen categoría/);
 });
 
-test('envío: ventana cerrada → plantilla con imagen; si falla, aviso con enlace', async () => {
+test('envío: ventana cerrada → plantilla con imagen; si falla, imágenes pendientes y un solo aviso', async () => {
   const a = dobles({ abierta: false });
   await enviarSemana({ origen: 'https://raceupkc.com', ahora: AHORA, d: a.d });
   assert.equal(a.enviados[0].plantilla.name, 'rukc_inscritos_semana');
@@ -153,8 +156,14 @@ test('envío: ventana cerrada → plantilla con imagen; si falla, aviso con enla
 
   const b = dobles({ abierta: false, plantillaFalla: true });
   const r = await enviarSemana({ origen: 'https://raceupkc.com', ahora: AHORA, d: b.d });
-  assert.deepEqual(r.resultados.map((x: any) => x.via), ['aviso con enlace', 'aviso con enlace']);
-  assert.match(b.avisos[0].texto, /https:\/\/raceupkc\.com\/api\/inscritos\/imagen\?/);
+  assert.deepEqual(r.resultados.map((x: any) => x.via), ['pendiente de que contestes', 'pendiente de que contestes']);
+  assert.equal(b.avisos.length, 3);                                   // 2 imágenes + nota de sin categoría, sin aviso cada una
+  assert.ok(b.avisos.every((m: any) => m.avisar === false));
+  assert.ok(b.avisos[0].imagen.link.startsWith('https://raceupkc.com/api/inscritos/imagen?'));
+  assert.ok(b.avisos[0].imagen.caption.length > 20);
+  assert.match(b.avisos[0].texto, /https:\/\/raceupkc\.com\/api\/inscritos\/imagen\?/);   // respaldo si la imagen no sale
+  assert.equal(b.contador.avisoUnico, 1);                             // un solo rukc_aviso_admin
+  assert.equal(a.contador.avisoUnico, 1);                             // plantilla aprobada: solo la nota de sin categoría espera
 });
 
 test('envío: una sola vez por día salvo forzar; simular no envía', async () => {
