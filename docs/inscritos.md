@@ -22,8 +22,8 @@ semana de carrera) y rota cada semana (`lib/inscritos/textos.js`).
 
 1. Si John ha escrito al número RUKC en las últimas 24 h: dos mensajes de imagen con el texto para el grupo como pie.
 2. Si no: la plantilla `rukc_inscritos_semana` (abajo), con la imagen de cabecera.
-3. Si la plantilla falla (por ejemplo, aún no está aprobada): el aviso de siempre (`rukc_aviso_admin`); al contestar,
-   llegan los enlaces a las imágenes (valen 7 días) y el texto para el grupo.
+3. Si la plantilla falla (por ejemplo, aún no está aprobada): un solo aviso de siempre (`rukc_aviso_admin`); al contestar,
+   llegan las dos imágenes con el texto para el grupo de pie (si una no sale, su enlace, que vale 7 días).
 
 Se manda una sola vez por ronda, día y categoría (cerrojo en `wa_outbox`, automatización A4).
 
