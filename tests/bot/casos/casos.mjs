@@ -24,6 +24,16 @@ const MENCIONA_JOHN = /\b(equipo|responsable)\b/i;
 
 export const CASOS = [
   {
+    id: 'no_voy', titulo: 'Con plaza dice que no puede ir: lo anota, sin baja ni promesas', contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
+    mensaje: 'Al final no voy a poder ir a la R3, lo siento',
+    espera: { herramientas: ['registrar_asistencia'], no_herramientas: ['registrar_baja'], no_contiene: [/te (la )?devolvemos|reembolso (aprobado|hecho)/i], escala: false },
+  },
+  {
+    id: 'si_voy', titulo: 'Confirma que va: lo anota', contacto: { nombre: 'Álvaro', rol: 'piloto' }, inscripciones: plazaReservada,
+    mensaje: 'Confirmo que voy a la R3!',
+    espera: { herramientas: ['registrar_asistencia'], no_herramientas: ['registrar_baja'], escala: false },
+  },
+  {
     id: 'saludo', titulo: 'Hola: aviso de IA en el primer mensaje', aviso: true, mensaje: 'Hola',
     espera: { contiene: [/asistente autom[aá]tico/i], escala: false },
   },

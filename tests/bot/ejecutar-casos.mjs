@@ -46,6 +46,8 @@ function datosDelCaso(caso, escrituras) {
     registrarLead: anota('registrarLead'),
     registrarConsentimiento: anota('registrarConsentimiento'),
     registrarBaja: anota('registrarBaja'),
+    registrarAsistencia: async (contacto, args) => { escrituras.push({ nombre: 'registrarAsistencia', a: [args] });
+      return { ok: true, ronda: args.ronda || 'R3', respuesta: args.va ? 'confirma' : 'no_va', pilotos: ['Álvaro'] }; },
     escalar: anota('escalar'),
   };
 }
