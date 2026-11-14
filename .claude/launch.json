@@ -4,14 +4,36 @@
     {
       "name": "rukc-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["astro", "preview", "--port", "4321"],
+      "runtimeArgs": [
+        "astro",
+        "preview",
+        "--port",
+        "4321"
+      ],
       "port": 4321
     },
     {
       "name": "rukc-vercel-dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vercel", "dev", "--listen", "3000"],
+      "runtimeArgs": [
+        "vercel",
+        "dev",
+        "--listen",
+        "3000"
+      ],
       "port": 3000
+    },
+    {
+      "name": "rukc-vercel-dev-bot",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file=.env.bot",
+        "C:/Users/jrfmp/AppData/Roaming/npm/node_modules/vercel/dist/index.js",
+        "dev",
+        "--listen",
+        "3001"
+      ],
+      "port": 3001
     }
   ]
 }

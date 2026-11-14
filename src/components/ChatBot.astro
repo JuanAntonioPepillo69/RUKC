@@ -1,0 +1,225 @@
+---
+// Burbuja de chat con el asistente de RUKC (api/chat.js, lib/bot/web.js). En todas las páginas públicas (Base.astro).
+// El historial vive solo en esta pestaña (sessionStorage) y se manda con cada mensaje; RUKC no guarda la conversación.
+// Lo que necesita al equipo o la reserva de la persona sale con un botón "Seguir por WhatsApp".
+import { whatsappUrl } from '../config/site.js';
+const respaldo = whatsappUrl('Hola, tenía una duda en el chat de la web.');
+---
+<div class="rc" data-respaldo={respaldo}>
+  <button class="rc-abrir" type="button" aria-expanded="false" aria-controls="rc-panel">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm3 6.5a1.5 1.5 0 1 0 0 .01Zm5 0a1.5 1.5 0 1 0 0 .01Zm5 0a1.5 1.5 0 1 0 0 .01Z"/></svg>
+    <span>Pregúntanos</span>
+  </button>
+
+  <section id="rc-panel" class="rc-panel" role="dialog" aria-modal="false" aria-labelledby="rc-titulo" hidden>
+    <header class="rc-cab">
+      <div>
+        <p id="rc-titulo" class="rc-titulo">Asistente de RUKC</p>
+        <p class="rc-sub">Respuesta automática · IA</p>
+      </div>
+      <button class="rc-cerrar" type="button" aria-label="Cerrar el chat">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z"/></svg>
+      </button>
+    </header>
+
+    <div class="rc-lista" aria-live="polite">
+      <div class="rc-msg rc-bot rc-intro">
+        <p>Hola. Soy el asistente automático de RUKC: te ayudo con rondas, precios, inscripción, normas y el día de carrera. Si necesitas al equipo o algo de tu reserva, te paso a WhatsApp.</p>
+        <p class="rc-nota">Es una IA y puede equivocarse. No escribas datos personales: lo que pongas se usa solo para responderte y RUKC no lo guarda. <a href="/privacidad#chat">Privacidad</a></p>
+      </div>
+    </div>
+
+    <form class="rc-form">
+      <label class="rc-oculto" for="rc-texto">Tu pregunta</label>
+      <textarea id="rc-texto" rows="1" maxlength="800" placeholder="Escribe tu pregunta" autocomplete="off"></textarea>
+      <button class="rc-enviar" type="submit" aria-label="Enviar">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg>
+      </button>
+    </form>
+  </section>
+</div>
+
+<style is:global>
+  .rc { --rc-borde: rgba(246, 243, 236, 0.12); position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 60; font-family: var(--font-body); }
+  .rc-abrir {
+    display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px 0 14px; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--grad-gold); color: var(--ink); font: 600 15px/1 var(--font-body); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .rc-abrir:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+  .rc-abrir:focus-visible, .rc-cerrar:focus-visible, .rc-enviar:focus-visible, .rc-wa:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+  .rc.abierto .rc-abrir { display: none; }
+
+  .rc-panel {
+    display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); height: min(560px, calc(100dvh - 32px));
+    background: var(--ink-2); color: var(--paper); border: 1px solid var(--rc-borde); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  }
+  .rc-panel[hidden] { display: none; }
+  .rc-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 14px 12px 16px; border-bottom: 1px solid var(--rc-borde); background: var(--ink-3); }
+  .rc-titulo { margin: 0; font: 700 15px/1.2 var(--font-display); letter-spacing: -0.01em; }
+  .rc-sub { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .rc-cerrar { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+  .rc-cerrar:hover { color: var(--paper); background: rgba(246, 243, 236, 0.06); }
+
+  .rc-lista { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+  .rc-msg { max-width: 86%; padding: 10px 12px; border-radius: 14px; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .rc-msg p { margin: 0; }
+  .rc-msg p + p { margin-top: 8px; }
+  .rc-bot { align-self: flex-start; background: var(--ink-3); border: 1px solid var(--rc-borde); border-bottom-left-radius: 4px; }
+  .rc-yo { align-self: flex-end; background: rgba(212, 166, 42, 0.16); border: 1px solid rgba(212, 166, 42, 0.35); border-bottom-right-radius: 4px; }
+  .rc-msg a { color: var(--gold-hi); text-decoration: underline; text-underline-offset: 2px; }
+  .rc-nota { font-size: 12px; color: var(--muted); }
+  .rc-error { border-color: rgba(209, 0, 7, 0.5); }
+  .rc-wa {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 12px; border-radius: 999px;
+    background: #1f9d55; color: #fff !important; text-decoration: none !important; font-weight: 600; font-size: 14px;
+  }
+  .rc-escribiendo { display: inline-flex; gap: 4px; padding: 12px 14px; }
+  .rc-escribiendo i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: rc-punto 1s infinite ease-in-out; }
+  .rc-escribiendo i:nth-child(2) { animation-delay: 0.15s; }
+  .rc-escribiendo i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes rc-punto { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+  .rc-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px; border-top: 1px solid var(--rc-borde); background: var(--ink-2); }
+  .rc-form textarea {
+    flex: 1; min-height: 42px; max-height: 120px; resize: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--rc-borde);
+    background: var(--ink); color: var(--paper); font: 15px/1.4 var(--font-body);
+  }
+  .rc-form textarea:focus { outline: none; border-color: var(--gold); }
+  .rc-enviar { display: grid; place-items: center; width: 42px; height: 42px; flex: none; border: 0; border-radius: 12px; background: var(--gold); color: var(--ink); cursor: pointer; }
+  .rc-enviar:disabled { opacity: 0.5; cursor: default; }
+  .rc-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 520px) {
+    .rc.abierto { inset: auto 0 0 0; }
+    .rc-panel { width: 100vw; height: min(88dvh, 640px); border-radius: 16px 16px 0 0; border-bottom: 0; }
+    .rc-abrir span { display: none; }
+    .rc-abrir { width: 52px; height: 52px; padding: 0; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rc-abrir, .rc-escribiendo i { transition: none; animation: none; }
+  }
+</style>
+
+<script>
+  type Mensaje = { rol: 'user' | 'assistant'; texto: string; ft?: boolean; whatsapp?: string | null; error?: boolean };
+  const CLAVE = 'rukc-chat-v1';
+  const raiz = document.querySelector<HTMLElement>('.rc');
+  if (raiz) {
+    const abrir = raiz.querySelector<HTMLButtonElement>('.rc-abrir')!;
+    const panel = raiz.querySelector<HTMLElement>('.rc-panel')!;
+    const cerrar = raiz.querySelector<HTMLButtonElement>('.rc-cerrar')!;
+    const lista = raiz.querySelector<HTMLElement>('.rc-lista')!;
+    const form = raiz.querySelector<HTMLFormElement>('.rc-form')!;
+    const campo = raiz.querySelector<HTMLTextAreaElement>('#rc-texto')!;
+    const enviarBtn = raiz.querySelector<HTMLButtonElement>('.rc-enviar')!;
+    const respaldo = raiz.dataset.respaldo ?? null;
+
+    const leer = (): Mensaje[] => { try { return JSON.parse(sessionStorage.getItem(CLAVE) || '[]'); } catch { return []; } };
+    const guardar = (m: Mensaje[]) => { try { sessionStorage.setItem(CLAVE, JSON.stringify(m.slice(-30))); } catch { /* sin almacenamiento */ } };
+    let mensajes: Mensaje[] = leer();
+    let esperando = false;
+
+    // Texto con enlaces: se escapa todo y solo se convierten en enlace las URLs https.
+    function parrafo(texto: string): HTMLParagraphElement {
+      const p = document.createElement('p');
+      const trozos = texto.split(/(https:\/\/[^\s<>"']+)/g);
+      for (const t of trozos) {
+        if (/^https:\/\//.test(t)) {
+          const url = t.replace(/[).,;:!?]+$/, '');
+          const a = document.createElement('a');
+          a.href = url;
+          a.textContent = url.replace(/^https:\/\/(www\.)?/, '').replace(/[?#].*$/, '');
+          if (!/^https:\/\/(www\.)?raceupkc\.com/.test(url)) { a.target = '_blank'; a.rel = 'noopener'; }
+          p.append(a, t.slice(url.length));
+        } else if (t) p.append(t);
+      }
+      return p;
+    }
+
+    function burbuja(m: Mensaje) {
+      const div = document.createElement('div');
+      div.className = `rc-msg ${m.rol === 'user' ? 'rc-yo' : 'rc-bot'}${m.error ? ' rc-error' : ''}`;
+      div.append(parrafo(m.texto));
+      if (m.rol === 'assistant' && m.whatsapp) {
+        const a = document.createElement('a');
+        a.className = 'rc-wa';
+        a.href = m.whatsapp;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Seguir por WhatsApp';
+        div.append(a);
+      }
+      lista.append(div);
+    }
+
+    function pintar() {
+      lista.querySelectorAll('.rc-msg:not(.rc-intro), .rc-escribiendo').forEach((n) => n.remove());
+      mensajes.forEach(burbuja);
+      if (esperando) {
+        const e = document.createElement('div');
+        e.className = 'rc-msg rc-bot rc-escribiendo';
+        e.setAttribute('aria-label', 'Escribiendo');
+        e.innerHTML = '<i></i><i></i><i></i>';
+        lista.append(e);
+      }
+      lista.scrollTop = lista.scrollHeight;
+    }
+
+    function abrirPanel() {
+      panel.hidden = false;
+      raiz!.classList.add('abierto');
+      abrir.setAttribute('aria-expanded', 'true');
+      pintar();
+      campo.focus();
+    }
+    function cerrarPanel() {
+      panel.hidden = true;
+      raiz!.classList.remove('abierto');
+      abrir.setAttribute('aria-expanded', 'false');
+      abrir.focus();
+    }
+
+    async function enviar() {
+      const texto = campo.value.trim();
+      if (!texto || esperando) return;
+      mensajes.push({ rol: 'user', texto });
+      campo.value = '';
+      ajustar();
+      esperando = true;
+      enviarBtn.disabled = true;
+      guardar(mensajes);
+      pintar();
+      try {
+        const historial = mensajes.filter((m) => !m.error).slice(-16).map(({ rol, texto: t, ft }) => ({ rol, texto: t, ft: Boolean(ft) }));
+        const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensajes: historial }) });
+        const datos = await r.json().catch(() => ({}));
+        if (r.ok && datos.texto) mensajes.push({ rol: 'assistant', texto: datos.texto, ft: Boolean(datos.ft), whatsapp: datos.whatsapp ?? null });
+        else mensajes.push({ rol: 'assistant', texto: datos.error || 'No he podido responder ahora mismo. Inténtalo en un momento.', whatsapp: datos.whatsapp ?? respaldo, error: true });
+      } catch {
+        mensajes.push({ rol: 'assistant', texto: 'No hay conexión. Inténtalo en un momento o escríbenos por WhatsApp.', whatsapp: respaldo, error: true });
+      } finally {
+        esperando = false;
+        enviarBtn.disabled = false;
+        guardar(mensajes);
+        pintar();
+        campo.focus();
+      }
+    }
+
+    function ajustar() {
+      campo.style.height = 'auto';
+      campo.style.height = `${Math.min(campo.scrollHeight, 120)}px`;
+    }
+
+    abrir.addEventListener('click', abrirPanel);
+    cerrar.addEventListener('click', cerrarPanel);
+    panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarPanel(); });
+    form.addEventListener('submit', (e) => { e.preventDefault(); enviar(); });
+    campo.addEventListener('input', ajustar);
+    campo.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); enviar(); }
+    });
+  }
+</script>

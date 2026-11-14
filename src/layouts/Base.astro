@@ -1,12 +1,15 @@
 ---
 import '../styles/global.css';
+import ChatBot from '../components/ChatBot.astro';
 
 interface Props {
   title: string;
   description: string;
   noindex?: boolean;
+  /** Burbuja del chat con el asistente de RUKC (por defecto, en todas las páginas públicas). */
+  chat?: boolean;
 }
-const { title, description, noindex = false } = Astro.props;
+const { title, description, noindex = false, chat = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 <!doctype html>
@@ -29,6 +32,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 </head>
 <body>
   <slot />
+  {chat && <ChatBot />}
   <script>
     import '../scripts/origen';
     import '../scripts/smooth';

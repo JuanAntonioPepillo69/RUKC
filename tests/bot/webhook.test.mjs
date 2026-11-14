@@ -570,3 +570,34 @@ test('canal admin: una pregunta normal la contesta Claude con las herramientas d
   assert.equal(llamadasLlm, antes + 1);
   assert.equal(enviadosA(ADMIN).at(-1).text.body, 'Hoy todo tranquilo.');
 });
+
+// --- Chat de la web (api/chat.js) ------------------------------------------------------------------------------------
+test('chat web: solo desde nuestra web, responde con el bot y corta a los 12 mensajes en 10 minutos', async () => {
+  const { manejar: chat } = await import('../../api/chat.js');
+  const { hashIp } = await import('../../lib/http.js');
+  const ip = `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+  const datos = { botActivo: async () => true, documentosKb: async () => [], rondas: async () => [], rondaPorReferencia: async () => null };
+  const llm = { crear: async () => ({ stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: 'Cada ronda son 99 €.' }] }) };
+  const pedir = (origen = 'https://raceupkc.com', cuerpo = { mensajes: [{ rol: 'user', texto: 'Cuánto cuesta?' }] }) => chat(new Request('https://raceupkc.com/api/chat', {
+    method: 'POST', body: JSON.stringify(cuerpo), headers: { 'Content-Type': 'application/json', Origin: origen, 'x-forwarded-for': ip },
+  }), { llm, modelo: 'm', datos });
+  try {
+    assert.equal((await pedir('https://otra-web.com')).status, 403);
+    assert.equal((await pedir(undefined, { mensajes: [] })).status, 400);
+    const ok = await pedir();
+    assert.equal(ok.status, 200);
+    assert.deepEqual(await ok.json(), { texto: 'Cada ronda son 99 €.', whatsapp: null, ft: false });
+    for (let i = 0; i < 11; i += 1) assert.equal((await pedir()).status, 200);
+    const corte = await pedir();
+    assert.equal(corte.status, 429);
+    assert.match((await corte.json()).error, /muchos mensajes/);
+    // Con el bot apagado (PARA TODO), texto fijo.
+    const apagado = await chat(new Request('https://raceupkc.com/api/chat', {
+      method: 'POST', body: JSON.stringify({ mensajes: [{ rol: 'user', texto: 'hola' }] }),
+      headers: { 'Content-Type': 'application/json', Origin: 'https://raceupkc.com', 'x-forwarded-for': `${ip}9` } }),
+    { llm, modelo: 'm', datos: { ...datos, botActivo: async () => false } });
+    assert.match((await apagado.json()).texto, /no está disponible/);
+  } finally {
+    await q('DELETE FROM limite_peticion WHERE clave LIKE $1 OR clave LIKE $2', [`${hashIp(ip)}:%`, `${hashIp(`${ip}9`)}:%`]);
+  }
+});
