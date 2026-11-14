@@ -821,3 +821,42 @@ test('asistencia: el botón «Confirmo asistencia» se anota con texto fijo; qui
   const [otro] = await q(`INSERT INTO wa_contacts (phone_e164) VALUES ($1) RETURNING *`, [tel()]);
   assert.equal((await ejecutarHerramienta('registrar_asistencia', { va: false, ronda: null, cita: 'no voy' }, { contacto: otro, datos: datosBot })).status, 'error');
 });
+
+// --- Resto por Bizum (69 €) ----------------------------------------------------------------------------------------
+test('resto por Bizum: el justificante de quien tiene 69 € pendientes avisa con código; CONFIRMO deja la inscripción pagada y le confirma', async () => {
+  const telefono = await pilotoConPlaza('LIG');
+  const [antes] = await q(`SELECT vi.estado, vi.saldo_cent FROM v_inscripciones vi JOIN inscripcion i ON i.id = vi.id
+    JOIN persona p ON p.id = i.piloto_persona_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [telefono, ronda.id]);
+  assert.equal(antes.estado, 'reservada');
+  assert.ok(Number(antes.saldo_cent) > 0);
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: 'ESTADO' } });
+  llamadas.ycloud.length = 0;
+
+  await whatsappEntrante(telefono, { type: 'image', image: { id: 'media_resto_1', mime_type: 'image/jpeg' } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === telefono).at(-1)?.text?.body ?? '', /Recibido, gracias.*queda pagada/s);
+  const aviso = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).map((m) => m.text?.body ?? '').find((x) => /Bizum del resto/.test(x)) ?? '';
+  assert.match(aviso, new RegExp(`R${ronda.numero}`));
+  assert.match(aviso, new RegExp(`total ${Number(antes.saldo_cent) / 100} €`));
+  assert.doesNotMatch(aviso, /John/);
+  const codigo = aviso.match(/CONFIRMO (\d{4})/)?.[1];
+  assert.ok(codigo, aviso);
+
+  // Una segunda foto no repite el aviso.
+  const n = llamadas.ycloud.filter((m) => m.to === ADMIN_WA).length;
+  await whatsappEntrante(telefono, { type: 'image', image: { id: 'media_resto_2', mime_type: 'image/jpeg' } });
+  assert.equal(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).length, n);
+
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /Pago de \d+ € registrado .*pagado del todo/);
+  const [despues] = await q(`SELECT vi.estado, vi.saldo_cent FROM v_inscripciones vi JOIN inscripcion i ON i.id = vi.id
+    JOIN persona p ON p.id = i.piloto_persona_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [telefono, ronda.id]);
+  assert.equal(Number(despues.saldo_cent), 0);
+  assert.equal(despues.estado, 'pagada');
+  assert.match(llamadas.ycloud.filter((m) => m.to === telefono).at(-1)?.text?.body ?? '', /está pagada del todo/);
+  const [pg] = await q(`SELECT metodo, estado FROM pago WHERE referencia_externa LIKE 'Bizum resto%' AND pagador_persona_id IN (SELECT id FROM persona WHERE telefono = $1)`, [telefono]);
+  assert.deepEqual(pg, { metodo: 'bizum_manual', estado: 'confirmado' });
+
+  // Pagada del todo: otra foto ya no genera propuesta (sigue el camino normal del bot).
+  assert.equal((await q(`SELECT count(*)::int AS n FROM admin_actions WHERE tipo = 'confirmar_bizum' AND estado = 'propuesta'
+    AND parametros->>'telefono' = $1`, [telefono]))[0].n, 0);
+});
