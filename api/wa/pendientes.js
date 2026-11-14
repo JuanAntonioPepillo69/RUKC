@@ -2,12 +2,14 @@
 // conversación estaba en manos de John (3 h desde su último mensaje, o un escalado), el bot contesta lo que el
 // contacto escribió y nadie contestó, sin esperar a que vuelva a escribir. También manda el recordatorio de Bizum
 // a las 24 h (B4, lib/bot/bizum.js) y el seguimiento de las reservas con tarjeta abandonadas (C1,
-// lib/whatsapp/comercial.js). Protegido con CRON_SECRET.
+// lib/whatsapp/comercial.js) y el enlace de la ficha de piloto a las 24 h a quien no la ha empezado ni lo ha recibido
+// (lib/whatsapp/ficha.js). Protegido con CRON_SECRET.
 import crypto from 'node:crypto';
 import { json } from '../../lib/http.js';
 import { responderPendientesVencidos } from '../../lib/whatsapp/entrante.js';
 import { recordatoriosBizum } from '../../lib/bot/bizum.js';
 import { seguimientosReserva } from '../../lib/whatsapp/comercial.js';
+import { enviosAutomaticosFicha } from '../../lib/whatsapp/ficha.js';
 
 function autorizado(request) {
   const secreto = process.env.CRON_SECRET;
@@ -20,7 +22,8 @@ export async function manejar(request, deps) {
   const pendientes = await responderPendientesVencidos(deps);
   const bizum = await recordatoriosBizum(deps);
   const seguimientos = await seguimientosReserva(deps);
-  return json({ ...pendientes, bizum, seguimientos });
+  const ficha = await enviosAutomaticosFicha(deps);
+  return json({ ...pendientes, bizum, seguimientos, ficha });
 }
 
 export const GET = (request) => manejar(request);

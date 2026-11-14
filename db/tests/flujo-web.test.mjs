@@ -712,6 +712,8 @@ test('fase 4 · C1: reserva con tarjeta abandonada → seguimiento a las 2 h y o
 test('fase 4 · C2 con 10 contactos mezclados: solo sale a quien tiene consentimiento comercial vigente', async (t) => {
   const { t: sabado, cierre } = await relativoACierre(-3, '10:05');
   if (cierre < new Date().toISOString().slice(0, 10)) return t.skip('la inscripción de la ronda de pruebas ya ha cerrado');
+  // Los códigos de confirmación caducan con la hora real: pasado ese sábado a las 21:30, el test no se puede hacer.
+  if (Date.now() > (await relativoACierre(-3, '21:30')).t.getTime()) return t.skip('el sábado del aviso ya ha pasado');
   await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
   const a = await contactoComercial(['otorga']);
   const b = await contactoComercial(['otorga']);
@@ -939,4 +941,41 @@ test('ficha: propuesta a las 11:00 con quien no la ha completado; sale con su en
   await q('UPDATE wa_outbox SET created_at = $2 WHERE idempotency_key LIKE $1', [`FICHA:R${ronda.numero}:${sinFicha}:%`, antiguo]);
   await planificar({ ahora: await enMadrid(-2, '11:05'), filtrarDestinatarios: deEstosTests });
   assert.ok(llamadas.ycloud.some((m) => m.to === ADMIN_WA && /Recordatorio de la ficha de piloto/.test(m.text?.body ?? '')), 'a los 3 días vuelve a proponerlo');
+});
+
+test('ficha: a las 24 h, si no la ha empezado y nadie le ha mandado el enlace, el bot se lo manda solo (una vez)', async () => {
+  const { enviosAutomaticosFicha } = await import('../../lib/whatsapp/ficha.js');
+  const { tokenGrupo } = await import('../../lib/whatsapp/confirmacion.js');
+  const nadie = await pilotoConPlaza('LIG');
+  const yaPanel = await pilotoConPlaza('LIG');
+  const empezada = await pilotoConPlaza('PES');
+  const datosDe = async (tel) => (await q(`SELECT i.id AS inscripcion, o.id AS onboarding, o.envios FROM inscripcion i
+    JOIN persona p ON p.id = i.piloto_persona_id JOIN ronda r ON r.id = i.ronda_id
+    JOIN onboarding o ON o.persona_id = p.id AND o.temporada_id = r.temporada_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [tel, ronda.id]))[0];
+  const [a, b, c] = [await datosDe(nadie), await datosDe(yaPanel), await datosDe(empezada)];
+  const ahora = await enMadrid(-3, '12:00');
+  await q(`UPDATE onboarding SET envios = 0, enlace_enviado_en = NULL, creado_en = $2 WHERE id = ANY($1::uuid[])`,
+    [[a.onboarding, b.onboarding, c.onboarding], new Date(ahora.getTime() - 23 * 3.6e6)]);
+  await q(`UPDATE onboarding SET envios = 1, enlace_enviado_en = $2 WHERE id = $1`, [b.onboarding, new Date(ahora.getTime() - 20 * 3.6e6)]);
+  await q(`UPDATE onboarding SET estado = 'en_curso' WHERE id = $1`, [c.onboarding]);
+  await q(`UPDATE wa_contacts SET last_inbound_at = NULL WHERE phone_e164 = ANY($1)`, [[nadie, yaPanel, empezada]]);
+  llamadas.ycloud.length = 0;
+  const fichas = (tel) => llamadas.ycloud.filter((m) => m.to === tel && (m.template?.name === 'rukc_ficha_piloto' || /\/ficha\//.test(m.text?.body ?? '')));
+
+  // A las 23 h, todavía nada.
+  await enviosAutomaticosFicha({ ahora });
+  assert.equal(fichas(nadie).length, 0);
+  // A las 25 h: solo a quien no la ha empezado y no ha recibido el enlace.
+  await q(`UPDATE onboarding SET creado_en = $2 WHERE id = ANY($1::uuid[])`, [[a.onboarding, b.onboarding, c.onboarding], new Date(ahora.getTime() - 25 * 3.6e6)]);
+  await enviosAutomaticosFicha({ ahora });
+  assert.equal(fichas(nadie).length, 1);
+  assert.equal(fichas(nadie)[0].template.components.find((x) => x.type === 'button').parameters[0].text, tokenGrupo(a.inscripcion));
+  assert.equal(fichas(yaPanel).length, 0, 'si John ya le mandó el enlace, no');
+  assert.equal(fichas(empezada).length, 0, 'si ya la empezó, no');
+  assert.equal((await datosDe(nadie)).envios, 1, 'cuenta como envío en el panel');
+  // Una sola vez.
+  await enviosAutomaticosFicha({ ahora: new Date(ahora.getTime() + 3.6e6) });
+  assert.equal(fichas(nadie).length, 1);
+  // Fuera de horario no se manda nada.
+  assert.equal((await enviosAutomaticosFicha({ ahora: await enMadrid(-3, '23:00') })).nota, 'fuera de horario');
 });
