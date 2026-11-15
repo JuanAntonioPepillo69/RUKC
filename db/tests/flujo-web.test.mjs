@@ -567,14 +567,21 @@ test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 
   assert.ok(!llamadas.ycloud.some((m) => m.to === telefono), 'sin CONFIRMO no sale');
   assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /no ha salido a las 18:00 porque falta tu CONFIRMO/);
 
-  // CONFIRMO: queda en la cola; el cron dos veces → un solo mensaje, con su hora de llegada.
-  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CONFIRMO ${codigo}` } });
+  // CONFIRMO como pie de una captura y entre comillas invertidas (como lo copió John el 15/11): el sistema lo reconoce.
+  await whatsappEntrante(ADMIN_WA, { type: 'image', image: { id: 'media_confirmo', mime_type: 'image/jpeg', caption: `\`CONFIRMO ${codigo}\`` } });
   assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /Confirmado/);
-  await procesarCola({ ahora: await enMadrid(-7, '18:10') });
-  await procesarCola({ ahora: await enMadrid(-7, '18:15') });
+  // Cambia la hora de los Ligeros después de confirmar: sale con la nueva.
+  const [cupoLig] = await q(`SELECT cr.categoria_id, cr.hora_llegada::text AS h FROM cupo_ronda cr JOIN categoria c ON c.id = cr.categoria_id WHERE cr.ronda_id = $1 AND c.codigo = 'LIG'`, [ronda.id]);
+  await q('UPDATE cupo_ronda SET hora_llegada = $3 WHERE ronda_id = $1 AND categoria_id = $2', [ronda.id, cupoLig.categoria_id, '14:45']);
+  try {
+    await procesarCola({ ahora: await enMadrid(-7, '18:10') });
+    await procesarCola({ ahora: await enMadrid(-7, '18:15') });
+  } finally {
+    await q('UPDATE cupo_ronda SET hora_llegada = $3 WHERE ronda_id = $1 AND categoria_id = $2', [ronda.id, cupoLig.categoria_id, cupoLig.h]);
+  }
   const recibidos = llamadas.ycloud.filter((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_semana');
   assert.equal(recibidos.length, 1);
-  assert.equal(recibidos[0].template.components[0].parameters[4].text, '14:30');
+  assert.equal(recibidos[0].template.components[0].parameters[4].text, '14:45', 'sale con la hora vigente al enviar');
   assert.ok(!llamadas.ycloud.some((m) => m.to === baja && m.template?.name === 'rukc_recordatorio_semana'));
 });
 
@@ -593,11 +600,16 @@ test('fase 3 · D2 fuera de horario espera a las 9:30 y se anula si la ronda ya 
   // A las 22:00 no se manda nada (fuera de horario).
   assert.equal((await procesarCola({ ahora: await enMadrid(-1, '22:00') })).nota, 'fuera de horario');
   assert.ok(!llamadas.ycloud.some((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_manana'));
-  // El día después de la ronda: se anula, no se manda.
-  await procesarCola({ ahora: await enMadrid(1, '10:00') });
+  // Ya confirmado y sin salir todavía: CANCELO lo para (también escrito con formato).
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `*CANCELO ${codigo}*` } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /Cancelado: el recordatorio de la víspera de la R\d+ no saldrá/);
+  await procesarCola({ ahora: await enMadrid(-1, '10:00') });
   assert.ok(!llamadas.ycloud.some((m) => m.to === telefono && m.template?.name === 'rukc_recordatorio_manana'));
   const [o] = await q(`SELECT o.estado FROM wa_outbox o JOIN wa_contacts c ON c.id = o.contact_id WHERE c.phone_e164 = $1 AND o.automatizacion = 'D2'`, [telefono]);
-  assert.equal(o.estado, 'caducado');
+  assert.equal(o.estado, 'cancelado');
+  // Un segundo CANCELO ya no encuentra nada que parar.
+  await whatsappEntrante(ADMIN_WA, { type: 'text', text: { body: `CANCELO ${codigo}` } });
+  assert.match(llamadas.ycloud.filter((m) => m.to === ADMIN_WA).at(-1).text.body, /no tiene mensajes pendientes/);
 });
 
 let plantillaFeedback = null;
