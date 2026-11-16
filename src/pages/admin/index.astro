@@ -63,7 +63,10 @@ import Admin from '../../layouts/Admin.astro';
       caja('Grupo por aprobar', d.grupo.length, ...d.grupo.map((g: any) => fila(g.piloto, fechaHora(g.solicitado_en), h('a', { class: 'b b--peq b--oro', href: '/admin/onboarding' }, 'Revisar')))),
       ...(d.edad.length ? [caja('Edad mínima del circuito', d.edad.length, ...d.edad.map((e: any) => fila(e.piloto, `R${e.ronda} · ${e.circuito}: tendrá ${e.edad_en_ronda} años y el mínimo es ${e.edad_minima}`, ficha(e.persona_id))))] : []),
       caja('Feedback', `${d.feedback.por_enviar + d.feedback.sin_responder}`, fila('Por enviar', String(d.feedback.por_enviar)), fila('Sin responder', String(d.feedback.sin_responder))),
-      caja('Sobrecupo', d.sobrecupo.length, ...d.sobrecupo.map((s: any) => fila(`R${s.ronda} · ${s.categoria}`, `${s.inscritos} inscritos para ${s.plazas} plazas`))),
+      caja('Sobrecupo', d.sobrecupo.length + d.sobrecupoInscripciones.length,
+        ...d.sobrecupo.map((s: any) => fila(`R${s.ronda} · ${s.categoria}`, `${s.inscritos} inscritos para ${s.plazas} plazas`)),
+        ...d.sobrecupoInscripciones.map((s: any) => fila(s.piloto, `${s.codigo} · R${s.ronda} · ${s.categoria ?? 'sin categoría'}: entró con la categoría llena o cerrada`, ficha(s.persona_id),
+          boton('Mantener plaza', async () => { if (confirm(`¿${s.piloto} se queda en ${s.categoria ?? 'su categoría'} de la R${s.ronda}?`) && await accion(() => api(`inscripciones/${s.id}/sobrecupo-resuelto`, {}), 'Plaza mantenida.')) cargar(); })))),
     );
   }
   cargar().catch(() => {});

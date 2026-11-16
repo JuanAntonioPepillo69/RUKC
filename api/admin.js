@@ -44,6 +44,7 @@ const RUTAS = [
   ['GET', 'rondas/:id/cobros', ventas.pendientesDeCobro],
   ['POST', 'rondas/:id/cobro', ventas.cobroEnCircuito],
   ['POST', 'inscripciones/:id/categoria', acciones.cambiarCategoria],
+  ['POST', 'inscripciones/:id/sobrecupo-resuelto', acciones.sobrecupoResuelto],
   // Ventas y pagos (F4)
   ['GET', 'catalogo-venta', ventas.catalogoVenta],
   ['POST', 'ventas', ventas.nuevaVenta],

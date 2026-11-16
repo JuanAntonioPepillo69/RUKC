@@ -323,3 +323,22 @@ test('Seguimiento de la ficha: sin enviar → enviada → sin respuesta a los 3 
   const notas = (await q(`SELECT resumen FROM interaccion WHERE persona_id = $1 AND tipo = 'whatsapp_saliente' ORDER BY creado_en`, [p.persona])).map((r) => r.resumen);
   assert.deepEqual(notas, ['WhatsApp preparado: enlace de onboarding', 'WhatsApp preparado: recordatorio de la ficha (envío 2)']);
 });
+
+test('ficha: si el peso le lleva a una categoría cerrada, entra en sobrecupo, se avisa al piloto y sale en Hoy hasta resolverlo', async () => {
+  const [cupo] = await q(`SELECT cr.estado_inscripcion FROM cupo_ronda cr JOIN categoria c ON c.id = cr.categoria_id WHERE cr.ronda_id = $1 AND c.codigo = 'PES'`, [ronda.id]);
+  await q(`UPDATE cupo_ronda cr SET estado_inscripcion = 'cerrada' FROM categoria c WHERE c.id = cr.categoria_id AND cr.ronda_id = $1 AND c.codigo = 'PES'`, [ronda.id]);
+  try {
+    const p = await nuevoPiloto('Peso Cerrada');
+    const r = await ok(p.token, 'paso/fisicos', { consiente_peso: true, peso_kg: 82.5, altura_cm: 180, categoria: 'PES' });
+    assert.match(r.aviso ?? '', /completa en la R\d+.*John te escribirá/);
+    const [i] = await q('SELECT sobrecupo FROM inscripcion WHERE id = $1', [p.inscripcion]);
+    assert.equal(i.sobrecupo, true);
+    const [nota] = await q(`SELECT resumen FROM interaccion WHERE persona_id = $1 AND resumen LIKE 'Onboarding: por su peso%'`, [p.persona]);
+    assert.match(nota.resumen, /cerrada/);
+    assert.ok((await admin.panel('hoy')).sobrecupoInscripciones.some((s) => s.id === p.inscripcion), 'Sale en Hoy');
+    await admin.panel(`inscripciones/${p.inscripcion}/sobrecupo-resuelto`, {});
+    assert.ok(!(await admin.panel('hoy')).sobrecupoInscripciones.some((s) => s.id === p.inscripcion), 'Mantener plaza lo quita de Hoy');
+  } finally {
+    await q(`UPDATE cupo_ronda cr SET estado_inscripcion = $2 FROM categoria c WHERE c.id = cr.categoria_id AND cr.ronda_id = $1 AND c.codigo = 'PES'`, [ronda.id, cupo.estado_inscripcion]);
+  }
+});

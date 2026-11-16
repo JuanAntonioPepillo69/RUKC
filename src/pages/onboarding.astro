@@ -171,6 +171,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
         <button class="btn btn--ghost" type="button" id="atras">Atrás</button>
         <button class="btn btn--gold" type="button" id="seguir">Guardar y seguir</button>
       </div>
+      <p class="card__notice" id="aviso-paso" role="status" hidden></p>
       <p class="ob-guardado" id="guardado" aria-live="polite"></p>
     </div>
 
@@ -435,6 +436,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       b.disabled = true;
       try {
         const r = await api(`paso/${paso}`, datosDe(paso));
+        const aviso = $('#aviso-paso'); aviso.textContent = r.aviso ?? r.resultado?.aviso ?? ''; aviso.hidden = !aviso.textContent;
         ficha = r.ficha;
         prepararFormularios();
         if (ficha.estado === 'completado') return pintarFin();
