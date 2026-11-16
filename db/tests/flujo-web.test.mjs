@@ -28,7 +28,7 @@ const { GET: catalogo } = await import('../../api/catalogo.js');
 const { GET: grupo } = await import('../../api/grupo.js');
 const { enviarConfirmacionReserva, leerTokenGrupo, fechaLarga } = await import('../../lib/whatsapp/confirmacion.js');
 const { manejar: webhookWa } = await import('../../api/wa/webhook.js');
-const { recordatoriosBizum } = await import('../../lib/bot/bizum.js');
+const { recordatoriosBizum, bizumPendientesDe } = await import('../../lib/bot/bizum.js');
 const { planificar, procesarCola } = await import('../../lib/whatsapp/programador.js');
 const INICIO_TESTS = new Date();
 const { firmar } = await import('../../lib/whatsapp/signature.js');
@@ -437,6 +437,42 @@ test('Bizum: recordatorio a las 24 h, una sola vez y en horario', async () => {
   assert.equal(llamadas.ycloud.filter((m) => m.to === telefono).length, 1, 'no se repite');
 });
 
+test('Bizum: sin recordatorio si luego pagó con tarjeta, y uno solo si rellenó el formulario dos veces', async () => {
+  await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
+  const mediodia = new Date(`${new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })}T11:00:00Z`);
+  const bizum = async (telefono = null) => {
+    const { cuerpo, telefono: t } = await nuevaSolicitud();
+    await completar(cuerpo.token, { pagador_nombre: 'Alejandro Doble' });
+    if (telefono) await q('UPDATE solicitud_inscripcion SET pagador_telefono = $2 WHERE codigo = $1', [cuerpo.codigo, telefono]);
+    await pagar(peticion('POST', '/api/checkout', { token: cuerpo.token, cuerpo: { metodo: 'bizum', acepta: true } }));
+    await q(`UPDATE solicitud_inscripcion SET enviada_en = $2::timestamptz - interval '25 hours' WHERE codigo = $1`, [cuerpo.codigo, mediodia.toISOString()]);
+    return { cuerpo, telefono: telefono ?? t };
+  };
+
+  // Elige Bizum, no lo paga y a los pocos minutos reserva otra vez con tarjeta y paga.
+  const { telefono } = await bizum();
+  const { cuerpo: tarjeta } = await nuevaSolicitud();
+  await completar(tarjeta.token, { pagador_nombre: 'Alejandro Doble' });
+  await q('UPDATE solicitud_inscripcion SET pagador_telefono = $2 WHERE codigo = $1', [tarjeta.codigo, telefono]);
+  await pagar(peticion('POST', '/api/checkout', { token: tarjeta.token, cuerpo: { metodo: 'tarjeta', acepta: true } }));
+  const [s] = await q('SELECT id, stripe_checkout_session_id FROM solicitud_inscripcion WHERE codigo = $1', [tarjeta.codigo]);
+  const ev = eventoFirmado('checkout.session.completed', { id: s.stripe_checkout_session_id, payment_status: 'paid', amount_total: 3000,
+    payment_intent: `pi_sim_doble_${Date.now()}`, metadata: { solicitud_id: s.id }, client_reference_id: s.id, created: Math.floor(Date.now() / 1000) });
+  assert.equal((await webhook(ev.request())).status, 200);
+  assert.deepEqual(await bizumPendientesDe(telefono), [], 'ya no cuenta como Bizum pendiente');
+
+  // Dos formularios por Bizum para la misma ronda: un solo recordatorio.
+  const { telefono: otro } = await bizum();
+  await bizum(otro);
+
+  llamadas.ycloud.length = 0;
+  await recordatoriosBizum({ ahora: mediodia });
+  await recordatoriosBizum({ ahora: mediodia });
+  const avisos = (t) => llamadas.ycloud.filter((m) => m.to === t && m.template?.name === 'rukc_bizum_pendiente').length;
+  assert.equal(avisos(telefono), 0, 'con plaza pagada no se le pide el Bizum');
+  assert.equal(avisos(otro), 1, 'un solo recordatorio por pagador y ronda');
+});
+
 test('formulario v2: el primer guardado ya trae las casillas del menor y de novedades (como manda el formulario)', async () => {
   const telefono = tel();
   const res = await crear(peticion('POST', '/api/solicitud', { cuerpo: {
@@ -533,8 +569,10 @@ const deEstosTests = (d) => telefonosPrueba.has(d.telefono);
 const SIN_FICHA = ['D1', 'D2', 'D3', 'E1', 'C2'];
 
 
-test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 no sale; con CONFIRMO, una sola vez', async () => {
+test('fase 3 · D1: propuesta a las 12:00 con código; sin CONFIRMO a las 18:00 no sale; con CONFIRMO, una sola vez', async (t) => {
   [ronda.fecha] = (await q('SELECT fecha::text AS f FROM ronda WHERE id = $1', [ronda.id])).map((x) => x.f);
+  // CONFIRMO y la caducidad van con la hora real: pasadas las 18:00 del día del D1 de la ronda de pruebas no se puede probar.
+  if (Date.now() > (await enMadrid(-7, '18:00')).getTime()) return t.skip('el día del recordatorio de una semana ya ha pasado');
   await q(`UPDATE ronda SET maps_url = coalesce(maps_url, 'https://maps.app.goo.gl/prueba') WHERE id = $1`, [ronda.id]);
   await q(`UPDATE cupo_ronda SET hora_llegada = coalesce(hora_llegada, '14:30'), hora_briefing = coalesce(hora_briefing, '15:30') WHERE ronda_id = $1`, [ronda.id]);
   const telefono = await pilotoConPlaza('LIG');
