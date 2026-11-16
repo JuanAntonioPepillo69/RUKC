@@ -10,6 +10,7 @@ import Admin from '../../layouts/Admin.astro';
 
 <script>
   import { api, accion, aCentimos, etiquetaEstado, euros, fecha, fechaHora, formulario, h, whatsapp } from '../../scripts/admin/api';
+  import { selectorCategoria } from '../../scripts/admin/categoria';
   import * as Op from '../../scripts/admin/operacion';
   import * as Rgpd from '../../scripts/admin/rgpd';
   const id = new URLSearchParams(location.search).get('id') ?? '';
@@ -111,7 +112,7 @@ import Admin from '../../layouts/Admin.astro';
       h('section', { class: 'caja' }, h('h2', {}, 'Oportunidad'), op ? h('p', { class: 'sub' }, `${op.temporada} · ${op.origen.replace('_', ' ')} · próxima acción: ${op.proxima_accion ?? '-'} ${fechaHora(op.proxima_accion_en)}`) : '', etapas),
       h('section', { class: 'caja' }, h('h2', {}, 'Registrar interacción'), interaccion)),
       h('section', { class: 'caja' }, h('h2', {}, 'Inscripciones'), tabla(['Código', 'Ronda', 'Categoría', 'Precio', 'Pagado', 'Saldo', 'Estado', 'Onboarding', ''],
-        d.inscripciones.map((i: any) => [i.codigo, `R${i.ronda} · ${fecha(i.ronda_fecha)}`, i.categoria ?? '-', euros(i.precio_cent), euros(i.pagado_cent), euros(i.saldo_cent), etiquetaEstado(i.estado), i.onboarding ?? '-',
+        d.inscripciones.map((i: any) => [i.codigo, `R${i.ronda} · ${fecha(i.ronda_fecha)}`, selectorCategoria({ id: i.id, codigo: i.codigo, categoria: i.categoria, estado: i.estado }, () => { cargar(); }), euros(i.precio_cent), euros(i.pagado_cent), euros(i.saldo_cent), etiquetaEstado(i.estado), i.onboarding ?? '-',
           h('span', { class: 'acciones' },
             h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'confirmacion', inscripcion_id: i.id }) }, 'Confirmación'),
             i.saldo_cent > 0 ? h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'saldo_pendiente', inscripcion_id: i.id }) }, 'Recordar saldo') : '',

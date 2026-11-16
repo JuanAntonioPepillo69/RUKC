@@ -82,3 +82,5 @@ dialog.dlg::backdrop { background: rgba(0, 0, 0, 0.6); }
 .pagos-tile__s { color: var(--muted); font-size: 12.5px; }
 .pagos-det summary { cursor: pointer; user-select: none; color: var(--muted); font-size: 14px; font-weight: 600; }
 .pagos-det[open] > * + * { margin-top: 10px; }
+
+.ctrl--cat { min-height: 32px; min-width: 120px; padding: 0 8px; }

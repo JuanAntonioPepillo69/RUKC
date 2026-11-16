@@ -36,6 +36,8 @@ export interface OpcionesLista {
   contenedor: HTMLElement;
   alPulsar?: (fila: Record<string, any>) => void;
   acciones?: (fila: Record<string, any>, recargar: () => void) => Node | null;
+  /** Celda propia para una columna (por ejemplo, un selector), en lugar del valor. */
+  celdas?: Record<string, (fila: Record<string, any>, recargar: () => void) => Node>;
   filtros?: Filtro[];
   sensibles?: boolean;   // permite exportar datos sensibles (con confirmación)
 }
@@ -120,8 +122,8 @@ export function crearLista(op: OpcionesLista) {
       cargar();
     } }, x.t + (estado.o === x.c ? (estado.d === 'asc' ? ' ↑' : ' ↓') : ''))), op.acciones ? h('th', {}, '') : null);
     const cuerpo = r.filas.length ? r.filas.map((fila) => h('tr', { class: op.alPulsar ? 'clic' : '', onclick: op.alPulsar ? (e: Event) => {
-      if (!(e.target as HTMLElement).closest('button, a')) op.alPulsar!(fila);
-    } : null }, ...columnas.map((x) => h('td', { class: ['cent', 'num'].includes(x.tipo) ? 'num' : '' }, celda(x, fila[x.c]))),
+      if (!(e.target as HTMLElement).closest('button, a, select, input, label')) op.alPulsar!(fila);
+    } : null }, ...columnas.map((x) => h('td', { class: ['cent', 'num'].includes(x.tipo) ? 'num' : '' }, op.celdas?.[x.c] ? op.celdas[x.c](fila, cargar) : celda(x, fila[x.c]))),
       op.acciones ? h('td', {}, op.acciones(fila, cargar) ?? '') : null))
       : [h('tr', {}, h('td', { colSpan: columnas.length + 1, class: 'vacio' }, 'No hay resultados.'))];
     tabla.replaceChildren(h('thead', {}, cab), h('tbody', {}, ...cuerpo));

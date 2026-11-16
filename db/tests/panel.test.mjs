@@ -146,3 +146,24 @@ test('Cerrar sesión en todos los dispositivos: las dos sesiones dejan de valer'
   assert.equal((await movil.panel('hoy')).status, 401, 'El otro dispositivo queda fuera');
   assert.equal((await otro.crudo('hoy')).status, 401, 'Y este también');
 });
+
+test('cambiar la categoría desde el panel conserva cómo se eligió y quita el sobrecupo', async () => {
+  const cat = await admin.panel('catalogo-venta');
+  const ronda = cat.rondas[0];
+  const venta = await admin.panel('ventas', {
+    pagador: { nombre: 'Piloto Franja', telefono: tel() },
+    lineas: [{ piloto: 'pagador', producto: 'carrera_suelta', ronda_id: ronda.id, categoria: 'PES' }],
+    pagos: [{ metodo: 'bizum_manual', importe_cent: 3000, verificado: true }],
+  });
+  const [ped] = await q('SELECT pagador_persona_id FROM pedido WHERE id = $1', [venta.pedido_id]);
+  personas.push(ped.pagador_persona_id);
+  const id = venta.inscripciones[0].id;
+  await q(`UPDATE inscripcion SET categoria_origen = 'eleccion_franja', sobrecupo = true WHERE id = $1`, [id]);
+  await admin.panel(`inscripciones/${id}/categoria`, { categoria: 'LIG' });
+  const leer = async () => (await q(`SELECT c.codigo AS categoria, i.categoria_origen, i.sobrecupo FROM inscripcion i LEFT JOIN categoria c ON c.id = i.categoria_id WHERE i.id = $1`, [id]))[0];
+  assert.deepEqual(await leer(), { categoria: 'LIG', categoria_origen: 'eleccion_franja', sobrecupo: false });
+  await admin.panel(`inscripciones/${id}/categoria`, { categoria: null });
+  assert.deepEqual(await leer(), { categoria: null, categoria_origen: 'pendiente', sobrecupo: false });
+  await admin.panel(`inscripciones/${id}/categoria`, { categoria: 'PES' });
+  assert.deepEqual(await leer(), { categoria: 'PES', categoria_origen: 'por_peso', sobrecupo: false });
+});

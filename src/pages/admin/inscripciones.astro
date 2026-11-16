@@ -6,18 +6,16 @@ import Admin from '../../layouts/Admin.astro';
 </Admin>
 
 <script>
-  import { api, accion, h, whatsapp } from '../../scripts/admin/api';
+  import { h, whatsapp } from '../../scripts/admin/api';
+  import { selectorCategoria } from '../../scripts/admin/categoria';
   import { crearLista } from '../../scripts/admin/lista';
   crearLista({
     vista: 'inscripciones',
     contenedor: document.getElementById('lista')!,
     sensibles: true,
     alPulsar: (f) => { location.href = `/admin/persona?id=${f.piloto_persona_id}`; },
-    acciones: (f, recargar) => h('span', { class: 'acciones' },
-      h('select', { class: 'ctrl', 'aria-label': 'Categoría', onchange: async (e: Event) => {
-        const v = (e.target as HTMLSelectElement).value;
-        if (await accion(() => api(`inscripciones/${f.id}/categoria`, { categoria: v || null }), 'Categoría cambiada.')) recargar();
-      } }, ...[['', 'Sin categoría'], ['LIG', 'Ligeros'], ['PES', 'Pesados']].map(([v, t]) => h('option', { value: v, selected: (f.categoria ?? '') === v }, t))),
+    celdas: { categoria: (f, recargar) => selectorCategoria({ id: f.id, codigo: f.codigo, categoria: f.categoria, estado: f.estado, piloto: f.piloto }, recargar) },
+    acciones: (f) => h('span', { class: 'acciones' },
       h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'confirmacion', inscripcion_id: f.id }) }, 'Confirmación'),
       f.saldo_cent > 0 ? h('button', { class: 'b b--peq', type: 'button', onclick: () => whatsapp({ tipo: 'saldo_pendiente', inscripcion_id: f.id }) }, 'Recordar saldo') : null),
   });
