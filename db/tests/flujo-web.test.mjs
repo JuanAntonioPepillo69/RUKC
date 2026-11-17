@@ -437,6 +437,46 @@ test('Bizum: recordatorio a las 24 h, una sola vez y en horario', async () => {
   assert.equal(llamadas.ycloud.filter((m) => m.to === telefono).length, 1, 'no se repite');
 });
 
+test('recordatorio de una semana: «Ok» y 👍 cuentan como confirmación; después, «perfecto» no se contesta', async () => {
+  const { enviar } = await import('../../lib/whatsapp/client.js');
+  const { construirPlantilla } = await import('../../lib/whatsapp/templates.js');
+  const { asegurarContacto, conversacionActual } = await import('../../lib/whatsapp/entrante.js');
+  const mandarD1 = async (tel) => {
+    const contacto = await asegurarContacto(tel, null, false);
+    const conv = await conversacionActual(contacto.id);
+    const env = await enviar({ contacto, conversacionId: conv.id, autor: 'sistema',
+      plantilla: construirPlantilla('rukc_recordatorio_semana', ['Prueba', `R${ronda.numero}`, 'domingo, 22 de noviembre', 'Karting', '14:30', '69']) });
+    await q(`INSERT INTO wa_outbox (contact_id, automatizacion, ronda_id, plantilla, variables, enviar_at, estado, idempotency_key, message_id)
+      VALUES ($1, 'D1', $2, 'rukc_recordatorio_semana', '{}', now(), 'enviado', $3, $4)`, [contacto.id, ronda.id, `D1:R${ronda.numero}:${tel}`, env.id]);
+    return env;
+  };
+  const respuesta = async (tel) => (await q(`SELECT variables->>'respuesta' AS r, variables->>'cita' AS cita FROM wa_outbox WHERE idempotency_key = $1`,
+    [`D1:R${ronda.numero}:${tel}`]))[0];
+
+  // «Ok, gracias.» al D1: anotado y el mismo texto fijo que el botón, sin pasar por Claude.
+  const a = await pilotoConPlaza('LIG');
+  await mandarD1(a);
+  llamadas.ycloud.length = 0;
+  await whatsappEntrante(a, { type: 'text', text: { body: 'Ok, gracias.' } });
+  assert.deepEqual(await respuesta(a), { r: 'confirma', cita: 'Ok, gracias.' });
+  assert.equal(llamadas.ycloud.filter((m) => m.to === a).length, 1);
+  assert.match(llamadas.ycloud.find((m) => m.to === a).text.body, /Apuntado: te esperamos en la R\d+/);
+  // Después, «Perfecto» y un emoji no tienen respuesta.
+  await whatsappEntrante(a, { type: 'text', text: { body: 'Perfecto' } });
+  await whatsappEntrante(a, { type: 'text', text: { body: '👍' } });
+  assert.equal(llamadas.ycloud.filter((m) => m.to === a).length, 1);
+
+  // 👍 como reacción al D1: anotado y sin respuesta. Una reacción a otro mensaje no anota nada.
+  const b = await pilotoConPlaza('PES');
+  const d1 = await mandarD1(b);
+  llamadas.ycloud.length = 0;
+  await whatsappEntrante(b, { type: 'reaction', reaction: { emoji: '👍', message_id: 'wamid.otro.mensaje' } });
+  assert.equal((await respuesta(b)).r, null);
+  await whatsappEntrante(b, { type: 'reaction', reaction: { emoji: '👍', message_id: d1.wamid } });
+  assert.equal((await respuesta(b)).r, 'confirma');
+  assert.equal(llamadas.ycloud.filter((m) => m.to === b).length, 0, 'una reacción nunca se contesta');
+});
+
 test('Bizum: sin recordatorio si luego pagó con tarjeta, y uno solo si rellenó el formulario dos veces', async () => {
   await q(`UPDATE cupo_ronda SET estado_inscripcion = 'abierta' WHERE ronda_id = $1`, [ronda.id]);
   const mediodia = new Date(`${new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })}T11:00:00Z`);

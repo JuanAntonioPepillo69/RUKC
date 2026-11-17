@@ -51,10 +51,12 @@ const texto = (t) => respuesta([{ type: 'text', text: t }]);
 const usoHerramienta = (name, input, id = `tu_${Math.random()}`) => ({ type: 'tool_use', id, name, input });
 let llamadasLlm = 0;
 let ultimosMensajes = null;
+let alPensar = null;   // gancho de los tests: se ejecuta mientras "piensa" Claude (p. ej. para que llegue otro mensaje)
 const llm = {
   async crear(params) {
     llamadasLlm += 1;
     ultimosMensajes = params.messages;
+    if (alPensar) { const f = alPensar; alPensar = null; await f(); }
     const ultimo = params.messages.at(-1);
     const esAdmin = params.tools?.some((h) => h.name === 'preparar_respuesta');
     if (esAdmin) {
@@ -73,6 +75,7 @@ const llm = {
     }
     if (t.includes('lento')) return new Promise(() => {});
     if (t.includes('paella')) return texto('[FT] De eso no te puedo ayudar, yo solo llevo lo de RUKC.');
+    if (t.includes('lastre')) return texto('Eso lo calcula el equipo; si quieres te paso con ellos.');
     return texto('Qué tal crack! Cada ronda son 99 €, con 30 € de reserva.');
   },
 };
@@ -323,6 +326,9 @@ test('REANUDA: el bot contesta en ese momento lo que quedó sin contestar', asyn
   assert.equal(enviadosA(tel).length, 2, 'el bot ha contestado lo pendiente sin esperar a otro mensaje');
   assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
   assert.equal(ultimosMensajes.at(-1).content, 'Cuánto cuesta una ronda?');
+  // El mensaje de John le llega al bot marcado: no es suyo (el 15/11 se disculpó por uno).
+  assert.ok(ultimosMensajes.some((m) => m.role === 'assistant' && m.content.includes('[Escrito por una persona del equipo desde la app, no por ti] Hola, soy John')),
+    JSON.stringify(ultimosMensajes));
   // Ya contestado: otro REANUDA no repite.
   await enviarAviso(entrante(ADMIN, `REANUDA ${tel}`));
   assert.equal(enviadosA(tel).length, 2);
@@ -338,13 +344,66 @@ test('fin de las horas de John: el cron contesta lo pendiente', async () => {
   await q(`UPDATE wa_contacts SET modo_hasta = now() - interval '1 minute' WHERE phone_e164 = $1`, [tel]);
   const url = 'https://raceupkc-pruebas.vercel.app/api/wa/pendientes';
   assert.equal((await pendientes.manejar(new Request(url))).status, 401);
-  const res = await (await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), deps)).json();
+  const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  const noche = { ...deps, ahora: new Date(`${hoy}T22:30:00Z`) };
+  const dia = { ...deps, ahora: new Date(`${hoy}T11:00:00Z`) };
+  // De noche no se contesta lo atrasado (15/11, 23:10).
+  assert.equal((await (await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), noche)).json()).nota, 'fuera de horario');
+  assert.equal(enviadosA(tel).length, 1);
+  const res = await (await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), dia)).json();
   assert.ok(res.respondidos >= 1, JSON.stringify(res));
   assert.equal(enviadosA(tel).length, 2);
   assert.match(enviadosA(tel).at(-1).text.body, /99 €/);
   // Segunda pasada: nada más que contestar.
-  await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), deps);
+  await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), dia);
   assert.equal(enviadosA(tel).length, 2);
+
+  // Si lo que quedó pendiente es solo un «gracias» a John, al terminar sus horas el bot no dice nada.
+  const otro = nuevoTelefono();
+  await enviarAviso(entrante(otro, 'Hola'));
+  await enviarAviso(eco(otro, 'Todo bien, no te preocupes'));
+  await enviarAviso(entrante(otro, 'Perfecto!!! Gracias, nos vemos el domingo en Campillos'));
+  await q(`UPDATE wa_contacts SET modo_hasta = now() - interval '1 minute' WHERE phone_e164 = $1`, [otro]);
+  const antes = llamadasLlm;
+  await pendientes.manejar(new Request(url, { headers: { authorization: 'Bearer cron_prueba_bot' } }), dia);
+  assert.equal(enviadosA(otro).length, 1);
+  assert.equal(llamadasLlm, antes);
+});
+
+test('cortesía: «gracias» o un emoji no se contestan; una reacción tampoco; «vale» a una oferta sí', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Cuánto cuesta?'));
+  assert.equal(enviadosA(tel).length, 1);
+  const antes = llamadasLlm;
+  await enviarAviso(entrante(tel, 'Perfecto, muchas gracias!'));
+  await enviarAviso(entrante(tel, '👌🏻'));
+  await enviarAviso(entrante(tel, 'Ok', { type: 'reaction', reaction: { emoji: '👍', message_id: 'wamid.cualquiera' }, text: undefined }));
+  assert.equal(enviadosA(tel).length, 1, 'sin respuesta a la cortesía ni a la reacción');
+  assert.equal(llamadasLlm, antes, 'ni pasa por Claude');
+  const [r] = await q(`SELECT cuerpo FROM wa_messages WHERE direccion = 'entrada' AND raw->>'type' = 'reaction'
+    AND contact_id = (SELECT id FROM wa_contacts WHERE phone_e164 = $1)`, [tel]);
+  assert.match(r.cuerpo, /reaccionado con 👍/);
+  // Una pregunta sí; y un «vale» a una oferta («si quieres te paso con ellos») también.
+  await enviarAviso(entrante(tel, 'Cuánto lastre necesito?'));
+  assert.equal(enviadosA(tel).length, 2);
+  await enviarAviso(entrante(tel, 'Vale'));
+  assert.equal(llamadasLlm, antes + 2);
+  assert.equal(enviadosA(tel).length, 3);
+});
+
+test('dos mensajes seguidos mientras el bot piensa: una sola respuesta, la del último', async () => {
+  const tel = nuevoTelefono();
+  await enviarAviso(entrante(tel, 'Hola'));
+  // El segundo mensaje llega (y se contesta) mientras Claude prepara la respuesta al primero. Con más margen que el de
+  // 500 ms de los demás tests, para que el primer turno no se corte por tiempo mientras se procesa el segundo.
+  let segundo = null;
+  alPensar = () => { segundo = enviarAviso(entrante(tel, 'Y cuánto cuesta?')); return segundo; };
+  await manejar(peticion(entrante(tel, 'Tengo una duda')), { ...deps, limiteMs: 20_000 });
+  await segundo;
+  assert.equal(enviadosA(tel).length, 2, 'una respuesta al saludo y otra a los dos mensajes seguidos');
+  assert.match(ultimosMensajes.at(-1).content, /Tengo una duda\nY cuánto cuesta\?/);
+  const [ev] = await q(`SELECT error FROM wa_webhook_events WHERE payload::text LIKE '%Tengo una duda%' AND payload::text LIKE '%' || $1 || '%'`, [tel]);
+  assert.equal(ev.error, 'respuesta descartada: ha llegado otro mensaje');
 });
 
 test('una urgencia con la conversación en manos de John: texto del 112 y aviso URGENTE', async () => {
@@ -384,6 +443,18 @@ test('aviso a John con su ventana cerrada: plantilla rukc_aviso_admin y, cuando 
   // Ya entregado: otro mensaje suyo no lo repite.
   await enviarAviso(entrante(ADMIN, 'ESTADO'));
   assert.match(enviadosA(ADMIN).at(-1).text.body, /^Bot activo/);
+
+  // Con avisos pendientes, una pregunta de verdad recibe los avisos y además su respuesta (16/11, 20:13).
+  await q(`UPDATE wa_contacts SET last_inbound_at = now() - interval '25 hours' WHERE phone_e164 = $1`, [ADMIN]);
+  await enviarAviso(entrante(nuevoTelefono(), 'Quiero que me devolváis la reserva'));
+  const desde = enviadosA(ADMIN).length;
+  await enviarAviso(entrante(ADMIN, 'Hay alguien que aún no haya dado la confirmación?'));
+  const despues = enviadosA(ADMIN).slice(desde);
+  assert.equal(despues.length, 2, JSON.stringify(despues));
+  assert.match(despues[0].text.body, /Escalado del bot/);
+  assert.equal(despues[1].text.body, 'Hoy todo tranquilo.');
+  // En el canal admin, las respuestas del asistente (autor sistema) no llevan la marca de «no lo escribiste tú».
+  assert.ok(!ultimosMensajes.some((m) => typeof m.content === 'string' && m.content.includes('[Mensaje automático del sistema')));
 });
 
 test('bot_activo = false: no contesta a nadie', async () => {

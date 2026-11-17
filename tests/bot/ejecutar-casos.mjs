@@ -43,6 +43,7 @@ function datosDelCaso(caso, escrituras) {
     inscripcionesDe: async () => ins,
     tienePlaza: async () => ins.inscripciones.some((i) => ['reservada', 'pagada'].includes(i.estado)),
     enlaceGrupo: async () => 'https://chat.whatsapp.com/PRUEBA123',
+    fichaDe: async () => caso.ficha ?? null,
     registrarLead: anota('registrarLead'),
     registrarConsentimiento: anota('registrarConsentimiento'),
     registrarBaja: anota('registrarBaja'),

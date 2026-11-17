@@ -252,4 +252,53 @@ export const CASOS = [
     id: 'pago_resto', titulo: 'No puede llevar efectivo: Bizum antes de la carrera', mensaje: 'Los 69 euros los tengo que llevar en efectivo? No suelo llevar dinero encima',
     espera: { contiene: [/bizum/i], euros: [69, 99, 30], escala: false },
   },
+  // --- Casos sacados de las conversaciones reales del 12 al 16/11 ---------------------------------------------------
+  {
+    id: 'riesgos_ficha', titulo: 'Dónde descargar el documento de riesgos: su enlace de la ficha, sin escalar',
+    contacto: { nombre: 'Juan', rol: 'piloto' }, ficha: { estado: 'pendiente', url: 'https://raceupkc.com/ficha/PRUEBA123' },
+    inscripciones: { ...plazaReservada, inscripciones: plazaReservada.inscripciones.map((i) => ({ ...i, ficha_piloto: 'pendiente' })) },
+    mensaje: 'El documento de riesgos donde lo puedo descargar',
+    espera: { herramientas: ['enviar_enlace'], contiene: [/raceupkc\.com\/ficha\/PRUEBA123/], escala: false },
+  },
+  {
+    id: 'mensaje_del_equipo', titulo: 'Un mensaje del equipo en el historial: no se disculpa por él ni dice que lo escribió',
+    contacto: { nombre: 'Cristóbal', rol: 'piloto' }, inscripciones: plazaReservada, temas: ['pago'],
+    historial: [
+      { role: 'user', content: 'Yo ya pagué 99€' },
+      { role: 'assistant', content: 'Ahora mismo me consta la reserva con 69 € pendientes, así que esto lo tiene que ver el equipo. Ya se lo he pasado y te contestan ellos.\n[Escrito por una persona del equipo desde la app, no por ti] Todo bien, no te preocupes Cristóbal' },
+    ],
+    mensaje: 'Genial. Y a qué hora tengo que estar?',
+    espera: { no_contiene: [/no era del equipo|lo escrib[ií] yo|por error|disculpa|perdona|rectific/i], escala: false },
+  },
+  {
+    id: 'sin_volver_atras', titulo: 'Pide el grupo después de recibir los datos de la ronda: no dice que lo anterior era correcto',
+    contacto: { nombre: 'Sergio', rol: 'piloto' }, inscripciones: plazaReservada,
+    historial: [
+      { role: 'user', content: 'A qué hora hay que llegar?' },
+      { role: 'assistant', content: 'En Ligeros tienes que estar a las 14:30 para acreditación y pesaje, y el briefing es a las 15:30.' },
+    ],
+    mensaje: 'Hola me podéis meter en el grupo de pilotos',
+    espera: { herramientas: ['enviar_enlace'], contiene: [ENLACE_GRUPO], no_contiene: [/era correct|rectific|lo que te dije|comprobad/i], escala: false },
+  },
+  {
+    id: 'ok_al_recordatorio', titulo: 'Contesta al recordatorio de una semana que va y que avisará: anota que va',
+    contacto: { nombre: 'Laura', rol: 'piloto' }, inscripciones: plazaReservada,
+    historial: [
+      { role: 'user', content: '[Inicio de la conversación]' },
+      { role: 'assistant', content: '[Mensaje automático del sistema, no lo escribiste tú] Hola, Laura. Queda una semana para la R3 de RUKC: sábado 12 de diciembre en Kart&Fun Málaga.\nHay que estar en el circuito a las 14:30 para la acreditación y el pesaje. El resto de la inscripción, 69 €, se paga allí.\nSi hay algún cambio, avísanos respondiendo a este mensaje.\n[Botones: Confirmo asistencia · Necesito hablar]' },
+    ],
+    mensaje: 'Okeys, si hubiera algún cambio aviso gracias',
+    espera: { herramientas: ['registrar_asistencia'], no_herramientas: ['registrar_baja'], escala: false },
+  },
+  {
+    id: 'dia_semana', titulo: 'Qué día es la ronda: el día de la semana de fecha_texto, sin calcularlo',
+    mensaje: 'Qué día cae la R2?',
+    rondas: [{
+      ronda_id: 'R2', ronda: 'R2', temporada: 'T2', fecha: '2026-11-22', fecha_texto: 'domingo 22 de noviembre', estado: 'programada',
+      circuito: 'Karting Campillos', municipio: 'Campillos', hora_acreditacion: null, hora_briefing: null, maps_url: null,
+      cierre_inscripcion: '2026-11-17', cierre_inscripcion_texto: 'martes 17 de noviembre', inscripcion_abierta: true,
+      plazas_por_categoria: [{ categoria: 'Ligeros', plazas: 22, libres: 4, inscripcion: 'abierta' }, { categoria: 'Pesados', plazas: 23, libres: 0, inscripcion: 'completa' }],
+    }],
+    espera: { herramientas: ['consultar_rondas'], contiene: [/domingo/i], no_contiene: [/s[aá]bado/i], escala: false },
+  },
 ];
