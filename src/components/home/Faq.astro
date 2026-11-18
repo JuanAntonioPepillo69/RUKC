@@ -1,0 +1,61 @@
+---
+// Preguntas frecuentes (portada, #preguntas). El contenido está en src/config/preguntas.js.
+import { PREGUNTAS } from '../../config/preguntas.js';
+import { whatsappUrl } from '../../config/site';
+---
+<section class="section faq" id="preguntas" aria-labelledby="faq-title">
+  <div class="wrap faq__grid">
+    <div class="faq__intro">
+      <p class="eyebrow" data-reveal>Preguntas frecuentes</p>
+      <h2 class="h2" id="faq-title" data-reveal>Lo que más <em>nos preguntáis</em></h2>
+      <p class="lead" data-reveal>Reserva, pagos, ficha de piloto y el día de la carrera. Si tu duda no está aquí, escríbenos.</p>
+      <a class="btn btn--ghost" href={whatsappUrl('Hola, tengo una duda sobre RUKC.')} target="_blank" rel="noopener" data-reveal>Preguntar por WhatsApp</a>
+    </div>
+
+    <div class="faq__list">
+      {PREGUNTAS.map((b) => (
+        <div class="faq__bloque" data-reveal>
+          <h3 class="faq__bloque-titulo">{b.bloque}</h3>
+          {b.preguntas.map((q) => (
+            <details class="faq__item">
+              <summary>{q.p}</summary>
+              <p set:html={q.r} />
+            </details>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq { border-top: 1px solid var(--line); }
+  .faq__grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+  .faq__intro { position: sticky; top: 110px; display: grid; gap: 22px; justify-items: start; }
+
+  .faq__list { display: grid; gap: clamp(28px, 4vw, 44px); }
+  .faq__bloque-titulo { font-size: 14px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+
+  .faq__item { border-bottom: 1px solid var(--line); }
+  .faq__item summary {
+    list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 20px;
+    padding: 18px 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(17px, 1.5vw, 20px); line-height: 1.3;
+    transition: color 0.2s;
+  }
+  .faq__item summary::-webkit-details-marker { display: none; }
+  .faq__item summary::after {
+    content: ''; flex: none; width: 10px; height: 10px; margin: -5px 6px 0 0;
+    border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold);
+    transform: rotate(45deg); transition: transform 0.25s ease, margin 0.25s ease;
+  }
+  .faq__item[open] summary::after { transform: rotate(225deg); margin-top: 5px; }
+  .faq__item summary:hover { color: var(--gold-hi); }
+  .faq__item summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
+  .faq__item p { margin: 0 0 20px; color: #cfcbc2; line-height: 1.65; max-width: 62ch; }
+  .faq__item p :global(a) { color: var(--gold-hi); }
+
+  @media (max-width: 900px) {
+    .faq__grid { grid-template-columns: 1fr; }
+    .faq__intro { position: static; }
+  }
+</style>
