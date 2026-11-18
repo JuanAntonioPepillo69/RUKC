@@ -1,0 +1,301 @@
+---
+// Cómo funciona (portada, #como-funciona): antes de la carrera (reserva, ficha, avisos), el día de la carrera paso a paso
+// y qué llevar. Sale de las preguntas que más llegan al WhatsApp y del reglamento (Arts. 19 bis, 21 bis, 23, 23 bis,
+// 23 ter, 23 quater, 26 a 29 bis y 46 a 47). Los importes salen de config/reserva.js y los puntos de lib/season/points.
+import { Picture } from 'astro:assets';
+import { RESERVA } from '../../config/reserva.js';
+import { BONUS, PUNTOS_FINALIZAR, PUNTOS_POSICION } from '../../lib/season/points';
+import paddock from '../../assets/t1/paddock-pilotos.jpg';
+import briefing from '../../assets/t2/briefing.jpg';
+import boxes from '../../assets/t1/boxes-karts.jpg';
+import pianos from '../../assets/t1/pianos.jpg';
+import salida from '../../assets/t1/parrilla-salida.jpg';
+import parrilla from '../../assets/t2/parrilla-cascos.jpg';
+
+const resto = RESERVA.precioCarrera - RESERVA.importe;
+
+const antes = [
+  {
+    t: 'Reserva tu plaza',
+    d: `${RESERVA.importe} € con tarjeta o Bizum, que se descuentan de los ${RESERVA.precioCarrera} € de la ronda. Los ${resto} € restantes, el día de la carrera.`,
+    nota: 'La inscripción cierra el martes anterior a la carrera, o antes si se llena tu categoría.',
+  },
+  {
+    t: 'Rellena tu ficha de piloto',
+    d: 'Una vez por temporada: tus datos, un contacto de emergencia, tu dorsal y la asunción de riesgos, firmada en la propia ficha.',
+    nota: 'El dorsal que eliges es tuyo toda la temporada.',
+  },
+  {
+    t: 'Te avisamos por WhatsApp',
+    d: 'Confirmación de plaza con acceso al grupo de pilotos, y la hora exacta de tu categoría una semana antes y la víspera.',
+    nota: 'Ligeros y Pesados pueden tener horas distintas.',
+  },
+];
+
+const podioTxt = PUNTOS_POSICION.slice(0, 3).join(', ');
+const dia = [
+  {
+    t: 'Acreditación', h: 'Al menos 1 h antes del briefing', img: paddock, alt: 'Pilotos en el paddock antes de una ronda',
+    d: `Llegas, te identificas con tu documento de identidad y pagas los ${resto} € restantes. La acreditación cierra 30 minutos antes del briefing.`,
+    datos: ['Documento de identidad', 'Llegar tarde se sanciona'],
+  },
+  {
+    t: 'Pesaje y lastre', h: 'Mismas reglas para todos', img: parrilla, alt: 'Pilotos con el casco puesto en la parrilla',
+    d: 'Te pesas con la ropa y el calzado con los que vas a correr, más 1,5 kg fijos por el casco. Lo que te falte para el mínimo de tu categoría se completa con lastre en un cinturón a la altura de la cadera.',
+    datos: ['Ligeros: mínimo 70 kg', 'Pesados: mínimo 85 kg', 'La organización pone hasta 2 kg'],
+  },
+  {
+    t: 'Briefing', h: 'Obligatorio, empieza a su hora', img: briefing, alt: 'Briefing de pilotos antes de la carrera',
+    d: 'La Dirección de Carrera explica banderas, normas y seguridad. Llegar con el briefing empezado cuenta como faltar: sales el último en la final.',
+    datos: ['Banderas y normas', 'No espera a nadie'],
+  },
+  {
+    t: 'Sorteo y entrenamiento', h: 'De 5 a 10 minutos', img: boxes, alt: 'Karts alineados en el pit lane',
+    d: 'Los karts se sortean: nadie elige el suyo. Después, unas vueltas para adaptarte a la pista y al kart, cuando el circuito lo ofrece.',
+    datos: ['Karts por sorteo', 'Mismos karts de alquiler'],
+  },
+  {
+    t: 'Clasificación', h: 'De 5 a 10 minutos por categoría', img: pianos, alt: 'Karts trazando una curva junto a los pianos',
+    d: 'Cuenta tu mejor vuelta válida, y con ella se ordena la parrilla de la final. Si tu categoría no cabe en una sola tanda, los grupos se sortean y la parrilla sale de todos los tiempos.',
+    datos: ['Tu mejor vuelta decide', 'Una clasificación por categoría'],
+  },
+  {
+    t: 'Final y podio', h: 'La carrera que da los puntos', img: salida, alt: 'Parrilla de salida de una final',
+    d: `${podioTxt}… puntos para los primeros y ${PUNTOS_FINALIZAR} por terminar. La pole y la vuelta rápida suman ${BONUS.pole} más cada una. Si la categoría no cabe en una parrilla, hay Final A y Final B.`,
+    datos: [`${PUNTOS_POSICION[0]} puntos al ganador`, 'Podio y resultados oficiales'],
+  },
+];
+
+const llevar = [
+  { t: 'Ropa cómoda y calzado cerrado', d: 'Sin bufandas ni prendas sueltas, y el pelo largo recogido.' },
+  { t: 'Tu documento de identidad', d: 'Para la acreditación. La asunción de riesgos ya la firmaste en la ficha.' },
+  { t: `${resto} € en efectivo`, d: 'Lo que falta de la carrera. Si no puedes, por Bizum como tarde el día anterior.' },
+  { t: 'Tu lastre, si lo tienes', d: 'Si corres en Ligeros y tienes lastre propio, tráelo: nos ayuda mucho.' },
+];
+---
+<section class="section como" id="como-funciona" aria-labelledby="como-title">
+  <div class="wrap como__inner">
+    <header class="como__head">
+      <p class="eyebrow" data-reveal>Cómo funciona</p>
+      <h2 class="h2" id="como-title" data-reveal>De la reserva <em>a la bandera a cuadros</em></h2>
+      <p class="lead" data-reveal>Lo que pasa desde que reservas hasta que cruzas la meta. Sin letra pequeña: lo mismo que contestamos cada día por WhatsApp.</p>
+    </header>
+
+    <div class="antes">
+      <h3 class="como__sub" data-reveal>Antes de la carrera</h3>
+      <ol class="antes__lista">
+        {antes.map((a, i) => (
+          <li class="antes__paso" data-reveal data-reveal-delay={i * 0.1}>
+            <span class="antes__n tnum">{String(i + 1).padStart(2, '0')}</span>
+            <h4>{a.t}</h4>
+            <p>{a.d}</p>
+            <p class="antes__nota">{a.nota}</p>
+          </li>
+        ))}
+      </ol>
+      <div class="antes__cta" data-reveal>
+        <a class="btn btn--gold" href="/inscripcion">Reservar plaza · {RESERVA.importe} €</a>
+        <span>{RESERVA.importe} € ahora + {resto} € el día de la carrera = {RESERVA.precioCarrera} € por ronda</span>
+      </div>
+    </div>
+
+    <div class="dia" data-dia data-reveal>
+      <h3 class="como__sub">El día de la carrera</h3>
+      <div class="dia__grid">
+        <div class="dia__pasos" role="tablist" aria-label="Pasos del día de la carrera" aria-orientation="vertical">
+          {dia.map((p, i) => (
+            <button class="dia__paso" type="button" role="tab" id={`dia-tab-${i}`} aria-controls={`dia-panel-${i}`}
+              aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>
+              <span class="dia__n tnum">{i + 1}</span>
+              <span class="dia__txt"><strong>{p.t}</strong><small>{p.h}</small></span>
+              <span class="dia__barra" aria-hidden="true"><i></i></span>
+            </button>
+          ))}
+        </div>
+        <div class="dia__paneles">
+          {dia.map((p, i) => (
+            <article class:list={['dia__panel', { 'is-active': i === 0 }]} role="tabpanel" id={`dia-panel-${i}`} aria-labelledby={`dia-tab-${i}`}>
+              <div class="dia__foto">
+                <Picture src={p.img} formats={['avif', 'webp']} widths={[480, 900]} sizes="(max-width: 900px) 100vw, 46vw" alt={p.alt} loading="lazy" />
+                <span class="dia__etiqueta tnum">{String(i + 1).padStart(2, '0')} / {String(dia.length).padStart(2, '0')}</span>
+              </div>
+              <div class="dia__cuerpo">
+                <p class="dia__hora">{p.h}</p>
+                <h4>{p.t}</h4>
+                <p>{p.d}</p>
+                <ul class="dia__datos">{p.datos.map((d) => <li>{d}</li>)}</ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <div class="llevar">
+      <h3 class="como__sub" data-reveal>Qué llevar</h3>
+      <ul class="llevar__lista">
+        {llevar.map((l, i) => (
+          <li data-reveal data-reveal-delay={i * 0.08}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+            <div><strong>{l.t}</strong><span>{l.d}</span></div>
+          </li>
+        ))}
+      </ul>
+      <p class="llevar__nota" data-reveal>El casco lo pone el circuito. El mono y los guantes son opcionales. ¿Más dudas? <a href="#preguntas">Mira las preguntas frecuentes</a>.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Pestañas del día de la carrera: clic, teclado (flechas, Inicio, Fin) y avance automático mientras la sección está en
+  // pantalla, que se detiene en cuanto el visitante toca algo. Sin animación si pide movimiento reducido.
+  const raiz = document.querySelector<HTMLElement>('[data-dia]');
+  if (raiz) {
+    const tabs = [...raiz.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const paneles = [...raiz.querySelectorAll<HTMLElement>('[role="tabpanel"]')];
+    const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const DURACION = 6500;
+    let actual = 0;
+    let automatico = !reducido;
+    let temporizador: number | undefined;
+
+    const mostrar = (i: number, foco = false) => {
+      actual = (i + tabs.length) % tabs.length;
+      tabs.forEach((t, j) => {
+        const activo = j === actual;
+        t.setAttribute('aria-selected', String(activo));
+        t.tabIndex = activo ? 0 : -1;
+        t.classList.toggle('is-done', j < actual);
+      });
+      paneles.forEach((p, j) => p.classList.toggle('is-active', j === actual));
+      // En el móvil los pasos van en una fila con desplazamiento: se lleva el activo a la vista sin mover la página.
+      const fila = tabs[actual].parentElement!;
+      if (fila.scrollWidth > fila.clientWidth) {
+        const destino = Math.max(0, tabs[actual].offsetLeft - 16);
+        fila.scrollTo({ left: destino, behavior: reducido ? 'auto' : 'smooth' });
+        // Algunos navegadores no animan el desplazamiento: si no se ha movido, se coloca de golpe.
+        window.setTimeout(() => { if (Math.abs(fila.scrollLeft - destino) > 40 && fila.scrollLeft < fila.scrollWidth - fila.clientWidth - 2) fila.scrollTo({ left: destino }); }, 450);
+      }
+      if (foco) tabs[actual].focus();
+      if (automatico) programar();
+    };
+    const programar = () => {
+      window.clearTimeout(temporizador);
+      raiz.style.setProperty('--dia-dur', `${DURACION}ms`);
+      raiz.classList.remove('is-auto'); void raiz.offsetWidth; raiz.classList.add('is-auto');
+      temporizador = window.setTimeout(() => mostrar(actual + 1), DURACION);
+    };
+    const parar = () => { automatico = false; window.clearTimeout(temporizador); raiz.classList.remove('is-auto'); };
+
+    tabs.forEach((t, i) => t.addEventListener('click', () => { parar(); mostrar(i); }));
+    raiz.addEventListener('keydown', (e) => {
+      const k = e.key;
+      const vertical = matchMedia('(min-width: 901px)').matches;
+      const mas = vertical ? 'ArrowDown' : 'ArrowRight';
+      const menos = vertical ? 'ArrowUp' : 'ArrowLeft';
+      if (![mas, menos, 'Home', 'End'].includes(k) || !(e.target as HTMLElement).matches('[role="tab"]')) return;
+      e.preventDefault(); parar();
+      mostrar(k === mas ? actual + 1 : k === menos ? actual - 1 : k === 'Home' ? 0 : tabs.length - 1, true);
+    });
+    raiz.addEventListener('pointerdown', parar, { once: true });
+
+    if (automatico) {
+      new IntersectionObserver((entradas) => {
+        for (const e of entradas) {
+          if (!automatico) return;
+          if (e.isIntersecting) programar(); else { window.clearTimeout(temporizador); raiz.classList.remove('is-auto'); }
+        }
+      }, { threshold: 0.45 }).observe(raiz);
+    }
+  }
+</script>
+
+<style>
+  .como { border-top: 1px solid var(--line); overflow: hidden; }
+  .como__inner { display: grid; gap: clamp(56px, 8vw, 112px); }
+  .como__head { display: grid; gap: 22px; }
+  .como__sub { font-size: 14px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 22px; }
+
+  /* Antes de la carrera */
+  .antes__lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; position: relative; }
+  .antes__paso { position: relative; display: grid; align-content: start; gap: 10px; padding: 28px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(246, 243, 236, 0.04), rgba(246, 243, 236, 0.01)); }
+  .antes__paso:not(:last-child)::after {
+    content: ''; position: absolute; top: 44px; right: -17px; width: 18px; height: 1px; background: var(--gold);
+  }
+  .antes__n { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.2em; color: var(--red); }
+  .antes__paso h4 { font-size: clamp(21px, 1.9vw, 26px); font-weight: 800; }
+  .antes__paso p { margin: 0; color: #cfcbc2; }
+  .antes__nota { font-size: 14px; color: var(--muted) !important; padding-top: 10px; border-top: 1px solid var(--line); margin-top: auto !important; }
+  .antes__cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 24px; }
+  .antes__cta span { color: var(--muted); font-size: 15px; }
+
+  /* El día de la carrera */
+  .dia__grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(20px, 3vw, 40px); align-items: stretch; }
+  .dia__pasos { position: relative; display: grid; gap: 6px; align-content: start; }
+  .dia__paso {
+    position: relative; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; width: 100%; padding: 14px 16px;
+    border-radius: 14px; border: 1px solid transparent; background: transparent; color: var(--paper); font: inherit; text-align: left; cursor: pointer;
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .dia__paso:hover { background: rgba(246, 243, 236, 0.04); }
+  .dia__paso:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+  .dia__paso[aria-selected='true'] { border-color: rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); }
+  .dia__n {
+    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 15px;
+    border: 1px solid rgba(246, 243, 236, 0.25); color: var(--muted); transition: all 0.25s;
+  }
+  .dia__paso[aria-selected='true'] .dia__n, .dia__paso.is-done .dia__n { border-color: transparent; background: var(--grad-gold); color: #0a0a0b; }
+  .dia__txt { display: grid; gap: 2px; }
+  .dia__txt strong { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+  .dia__txt small { font-size: 13px; color: var(--muted); }
+  .dia__barra { position: absolute; left: 16px; right: 16px; bottom: 6px; height: 2px; border-radius: 2px; overflow: hidden; opacity: 0; }
+  .dia__barra i { display: block; height: 100%; width: 100%; background: var(--grad-gold); transform: scaleX(0); transform-origin: left; }
+  .dia.is-auto .dia__paso[aria-selected='true'] .dia__barra { opacity: 1; }
+  .dia.is-auto .dia__paso[aria-selected='true'] .dia__barra i { animation: dia-avance var(--dia-dur, 6500ms) linear forwards; }
+  @keyframes dia-avance { to { transform: scaleX(1); } }
+
+  .dia__paneles { position: relative; display: grid; }
+  .dia__panel { display: grid; grid-template-rows: auto 1fr; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--ink-2, #121214); }
+  :global(html.js) .dia__panel { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s 0.45s; }
+  :global(html.js) .dia__panel.is-active { opacity: 1; visibility: visible; transform: none; transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s; }
+  :global(html:not(.js)) .dia__panel + .dia__panel { margin-top: 16px; }
+  .dia__foto { position: relative; aspect-ratio: 16 / 9; overflow: hidden; }
+  .dia__foto :global(img) { width: 100%; height: 100%; object-fit: cover; transform: scale(1.06); transition: transform 6s ease-out; }
+  .dia__panel.is-active .dia__foto :global(img) { transform: scale(1); }
+  .dia__foto::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10, 10, 11, 0.85)); }
+  .dia__etiqueta { position: absolute; left: 18px; bottom: 14px; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: 0.2em; color: var(--gold-hi); }
+  .dia__cuerpo { display: grid; align-content: start; gap: 12px; padding: clamp(20px, 2.6vw, 30px); }
+  .dia__hora { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); }
+  .dia__cuerpo h4 { font-size: clamp(26px, 2.6vw, 36px); font-weight: 900; letter-spacing: -0.02em; }
+  .dia__cuerpo > p:not(.dia__hora) { margin: 0; color: #cfcbc2; line-height: 1.6; }
+  .dia__datos { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .dia__datos li { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(212, 166, 42, 0.4); font-size: 13px; font-weight: 600; color: var(--gold-hi); }
+
+  /* Qué llevar */
+  .llevar__lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .llevar__lista li { display: grid; gap: 14px; align-content: start; padding: 22px; border-radius: 16px; border: 1px solid var(--line); }
+  .llevar__lista svg { width: 34px; height: 34px; padding: 7px; border-radius: 50%; background: rgba(212, 166, 42, 0.12); fill: none; stroke: var(--gold-hi); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .llevar__lista div { display: grid; gap: 6px; }
+  .llevar__lista strong { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+  .llevar__lista span { color: var(--muted); font-size: 14px; line-height: 1.55; }
+  .llevar__nota { margin: 20px 0 0; color: var(--muted); }
+  .llevar__nota a { color: var(--gold-hi); }
+
+  @media (max-width: 1100px) { .llevar__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) {
+    .antes__lista { grid-template-columns: minmax(0, 1fr); }
+    .antes__paso:not(:last-child)::after { top: auto; bottom: -17px; right: auto; left: 44px; width: 1px; height: 18px; }
+    .dia__grid { grid-template-columns: minmax(0, 1fr); }
+    .dia__pasos { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: calc(var(--gutter) * -1); padding: 2px var(--gutter) 6px; scrollbar-width: none; }
+    .dia__pasos::-webkit-scrollbar { display: none; }
+    .dia__paso { flex: none; scroll-snap-align: start; width: auto; padding: 10px 14px 12px; border-color: var(--line); }
+    .dia__txt small { display: none; }
+    .dia__txt strong { font-size: 15px; white-space: nowrap; }
+    .dia__n { width: 28px; height: 28px; font-size: 13px; }
+  }
+  @media (max-width: 560px) { .llevar__lista { grid-template-columns: minmax(0, 1fr); } }
+  @media (prefers-reduced-motion: reduce) {
+    .dia__foto :global(img) { transition: none; transform: none; }
+    :global(html.js) .dia__panel { transition: none; transform: none; }
+  }
+</style>
