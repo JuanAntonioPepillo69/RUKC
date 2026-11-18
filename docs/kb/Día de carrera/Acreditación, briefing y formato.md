@@ -11,9 +11,8 @@ Fuente: reglamento publicado en la web (Arts. 15, 19, 19 bis, 26 a 28) y el equi
 - Acreditación y pesaje: en persona, al menos 60 minutos antes del briefing. La acreditación se cierra 30 minutos antes del briefing.
 - Llegar tarde: hasta 15 minutos después de la hora límite, aviso y último lugar para el lastre de la organización; más tarde pero antes del cierre, sale último en la parrilla de la carrera; después del cierre, no corre y pierde la cuota.
 - El briefing es obligatorio desde el principio: llegar con el briefing empezado cuenta como faltar y se sale último en la parrilla de la carrera.
-- Documentación: documento de identidad y el documento de información y asunción de riesgos firmado (en menores, también la autorización del tutor). Sin él no se corre.
-- La asunción de riesgos y las demás autorizaciones se aceptan al rellenar la ficha de piloto: el enlace llega por WhatsApp después de reservar y el bot lo puede volver a mandar.
-- [JOHN: ¿con la ficha completada basta, o además hay que llevar el documento de riesgos firmado en papel? Si basta con la ficha, cambia la línea de Documentación.]
+- Documentación: documento de identidad y la ficha de piloto completada (en menores, también la autorización del tutor). Sin la ficha no se corre.
+- La asunción de riesgos y las demás autorizaciones se aceptan al rellenar la ficha de piloto: el enlace llega por WhatsApp después de reservar y el bot lo puede volver a mandar. Con la ficha completada no hay que llevar ningún documento en papel (decisión de John, 18/11/2026).
 - Formato habitual: entrenamiento, clasificación (cuenta la mejor vuelta) y carrera final por categoría. La duración varía según el circuito: ver la nota de cada circuito ([[Karting Campillos]], [[Karting Mijas]], [[Kart&Fun Málaga]], [[Kart&Fun Estepona]], [[Karting del Sol]]).
 - Cada categoría corre por separado; si no cabe en una parrilla, se divide en tandas de hasta 25 pilotos.
 - Las tandas de calentamiento antes del evento están permitidas, no van incluidas y cada piloto las gestiona con el circuito; se declaran en la acreditación y dan participaciones extra en el programa de participación.
