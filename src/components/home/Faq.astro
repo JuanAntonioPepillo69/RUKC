@@ -1,29 +1,36 @@
 ---
-// Preguntas frecuentes (página /preguntas-frecuentes). El contenido está en src/config/preguntas.js.
-import { PREGUNTAS } from '../../config/preguntas.js';
+// Preguntas frecuentes. En /preguntas-frecuentes (pagina), todas por bloques; en la portada (destacadas), solo las dudas que
+// frenan antes de apuntarse, con enlace al resto. El contenido está en src/config/preguntas.js.
+import { DESTACADAS, PREGUNTAS } from '../../config/preguntas.js';
 import { whatsappUrl } from '../../config/site';
 import { RESERVA } from '../../config/reserva.js';
 
-interface Props { pagina?: boolean }
-const { pagina = false } = Astro.props;
+interface Props { pagina?: boolean; destacadas?: boolean }
+const { pagina = false, destacadas = false } = Astro.props;
 const Titulo = pagina ? 'h1' : 'h2';
+const bloques = destacadas
+  ? [{ bloque: '', preguntas: DESTACADAS.map((p) => PREGUNTAS.flatMap((b) => b.preguntas).find((q) => q.p === p)!) }]
+  : PREGUNTAS;
 ---
 <section class="section faq" id="preguntas" aria-labelledby="faq-title">
   <div class="wrap faq__grid">
     <div class="faq__intro">
-      <p class="eyebrow" data-reveal>Preguntas frecuentes</p>
+      <p class="eyebrow" data-reveal>{destacadas ? 'Antes de apuntarte' : 'Preguntas frecuentes'}</p>
       <Titulo class="h2" id="faq-title" data-reveal>Lo que más <em>nos preguntáis</em></Titulo>
-      <p class="lead" data-reveal>Reserva, pagos, ficha de piloto y el día de la carrera. Si tu duda no está aquí, escríbenos.</p>
+      <p class="lead" data-reveal>{destacadas
+        ? 'Las dudas que más nos llegan antes de reservar. El resto, en las preguntas frecuentes.'
+        : 'Reserva, pagos, ficha de piloto y el día de la carrera. Si tu duda no está aquí, escríbenos.'}</p>
       <div class="faq__botones" data-reveal>
         {pagina && <a class="btn btn--gold" href="/inscripcion">Reservar plaza · {RESERVA.importe} €</a>}
+        {destacadas && <a class="btn btn--ghost" href="/preguntas-frecuentes">Ver todas las preguntas</a>}
         <a class="btn btn--ghost" href={whatsappUrl('Hola, tengo una duda sobre RUKC.')} target="_blank" rel="noopener">Preguntar por WhatsApp</a>
       </div>
     </div>
 
     <div class="faq__list">
-      {PREGUNTAS.map((b) => (
+      {bloques.map((b) => (
         <div class="faq__bloque" data-reveal>
-          <h3 class="faq__bloque-titulo">{b.bloque}</h3>
+          {b.bloque && <h3 class="faq__bloque-titulo">{b.bloque}</h3>}
           {b.preguntas.map((q) => (
             <details class="faq__item">
               <summary>{q.p}</summary>

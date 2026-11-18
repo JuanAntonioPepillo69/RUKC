@@ -1,20 +1,49 @@
-// Preguntas frecuentes de la portada (#preguntas). Salen de lo que más preguntaron los pilotos por WhatsApp del 12 al
+// Preguntas frecuentes (/preguntas-frecuentes; las DESTACADAS, también en la portada). Salen de lo que más preguntaron los pilotos por WhatsApp del 12 al
 // 18/11/2026 y se contestan con la base de conocimiento del bot (docs/kb) y el reglamento. Decisiones de John del
 // 18/11: el dorsal es tuyo toda la temporada aunque dejes de correr; con la ficha completada no hace falta llevar el
-// documento de riesgos en papel; la lista de espera va por WhatsApp y por orden de llegada.
+// documento de riesgos en papel; la lista de espera va por WhatsApp y por orden de llegada. Del 18/11, además: basta con
+// haber llevado un kart alguna vez; unas 3 horas en el circuito y unos 30-35 minutos en pista; karts de 4 tiempos, los
+// habituales de cada circuito; el público entra gratis; precio de la temporada completa publicado; la cancelación no
+// promete crédito (lo que manda son las condiciones de la reserva).
 // Las respuestas son HTML (solo enlaces y <strong>); para los datos estructurados de Google se quitan las etiquetas.
-import { BIZUM, RESERVA } from './reserva.js';
+import { BIZUM, RESERVA, TEMPORADA_COMPLETA as TC } from './reserva.js';
 
 const resto = RESERVA.precioCarrera - RESERVA.importe;
 const bizum = BIZUM.numero ? `por Bizum al ${BIZUM.numero}` : 'por Bizum';
+const fechaHasta = new Date(`${TC.hasta}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+const temporada = `La temporada completa también se puede reservar, por WhatsApp: su precio baja a medida que pasan rondas. Hasta el ${fechaHasta}, las ${TC.rondas} rondas que quedan cuestan ${TC.precio} €.`;
+
+/** Las que salen también en la portada: dudas que frenan antes de apuntarse y que no contesta Cómo funciona. */
+export const DESTACADAS = ['¿Necesito experiencia?', '¿Qué karts se usan?', '¿Puede venir gente a verme?', '¿Hay edad mínima?', 'No puedo ir, ¿pierdo la reserva? ¿Puedo cederla?'];
 
 export const PREGUNTAS = [
+  {
+    bloque: 'Antes de apuntarte',
+    preguntas: [
+      {
+        p: '¿Necesito experiencia?',
+        r: 'No hace falta haber competido nunca. Lo que sí pedimos es que hayas llevado un kart al menos una vez, porque en la carrera vas a rodar junto a otros pilotos. Si nunca te has subido a uno, haz antes una tanda en cualquier circuito.',
+      },
+      {
+        p: '¿Qué karts se usan?',
+        r: 'Siempre de 4 tiempos y, normalmente, el kart de alquiler habitual de cada circuito: ni el más básico ni el de competición. El modelo cambia según el circuito, pero en cada carrera todos corréis con el mismo tipo de kart, asignado por sorteo.',
+      },
+      {
+        p: '¿Cuánto dura una carrera?',
+        r: 'Unas 3 horas en el circuito, del briefing al podio, y unos 30 a 35 minutos en pista entre entrenamiento, clasificación y final. Llega al menos una hora antes del briefing para la acreditación y el pesaje.',
+      },
+      {
+        p: '¿Puede venir gente a verme?',
+        r: 'Sí, y es gratis en todos los circuitos. Familia y amigos son bienvenidos.',
+      },
+    ],
+  },
   {
     bloque: 'Reserva y pago',
     preguntas: [
       {
         p: '¿Cuánto cuesta y cómo se paga?',
-        r: `Cada ronda cuesta ${RESERVA.precioCarrera} €. Reservas tu plaza en la web con ${RESERVA.importe} €, con tarjeta o Bizum, y se descuentan del precio. Los ${resto} € restantes se pagan en el circuito el día de la carrera, en efectivo si puedes. Si no, ${bizum} como tarde el día anterior, mandando el justificante por WhatsApp. Si quieres la temporada completa con precio especial, escríbenos.`,
+        r: `Cada ronda cuesta ${RESERVA.precioCarrera} €. Reservas tu plaza en la web con ${RESERVA.importe} €, con tarjeta o Bizum, y se descuentan del precio. Los ${resto} € restantes se pagan en el circuito el día de la carrera, en efectivo si puedes. Si no, ${bizum} como tarde el día anterior, mandando el justificante por WhatsApp. ${temporada}`,
       },
       {
         p: 'He pagado por Bizum, ¿ya tengo la plaza?',
@@ -73,7 +102,7 @@ export const PREGUNTAS = [
     preguntas: [
       {
         p: 'No puedo ir, ¿pierdo la reserva? ¿Puedo cederla?',
-        r: 'Si avisas con 14 días o más, te queda un crédito para otra ronda de la temporada. Con menos de 14 días no hay devolución ni crédito, salvo que tu plaza la cubra alguien de la lista de espera. También puedes ceder tu plaza a otro piloto avisándonos hasta 48 horas antes; él rellena la inscripción y su ficha. Todo el detalle, en las <a href="/condiciones-reserva">condiciones de la reserva</a>.',
+        r: 'La reserva no se devuelve, como dicen las <a href="/condiciones-reserva">condiciones de la reserva</a>. Lo que sí puedes hacer es ceder tu plaza a otro piloto, avisándonos hasta 48 horas antes: él rellena la inscripción y su ficha. Si sabes que no puedes ir, escríbenos por WhatsApp cuanto antes.',
       },
       {
         p: '¿Cuándo es la próxima ronda?',

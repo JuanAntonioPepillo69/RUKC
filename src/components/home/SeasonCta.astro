@@ -4,7 +4,7 @@ import grid from '../../assets/t2/parrilla-lateral.jpg';
 import { cargarTemporada } from '../../lib/season/load';
 import { fechaCorta } from '../../lib/season/format';
 import { whatsappUrl } from '../../config/site';
-import { RESERVA } from '../../config/reserva.js';
+import { RESERVA, TEMPORADA_COMPLETA as TC } from '../../config/reserva.js';
 
 const { rondas } = await cargarTemporada();
 ---
@@ -18,6 +18,10 @@ const { rondas } = await cargarTemporada();
         de cada categoría, en la página de la temporada.
       </p>
       <p class="price" data-reveal>Desde <strong class="tnum">99 €</strong> por carrera</p>
+      <p class="cta__temporada" data-temporada-hasta={TC.hasta} data-reveal>
+        Temporada completa: <strong class="tnum">{TC.precio} €</strong> por las {TC.rondas} rondas que quedan
+        (sale a {(TC.precio / TC.rondas).toLocaleString('es-ES', { maximumFractionDigits: 2 })} € por ronda). <a href={whatsappUrl('Hola, quiero reservar la temporada completa de RUKC.')} target="_blank" rel="noopener">Resérvala por WhatsApp</a>.
+      </p>
       <div class="cta__buttons" data-reveal>
         <a class="btn btn--gold" href="/inscripcion">Reservar plaza · {RESERVA.importe} €</a>
         <a class="btn btn--ghost" href={whatsappUrl()} target="_blank" rel="noopener">Preguntar por WhatsApp</a>
@@ -44,6 +48,10 @@ const { rondas } = await cargarTemporada();
 </section>
 
 <script>
+  // El precio de la temporada completa caduca (baja tras cada ronda): pasada su fecha se oculta hasta que se actualice.
+  const temporada = document.querySelector<HTMLElement>('[data-temporada-hasta]');
+  if (temporada && new Date().toISOString().slice(0, 10) > temporada.dataset.temporadaHasta!) temporada.remove();
+
   // Marca en el navegador las rondas ya disputadas y la siguiente, para que no dependa de la fecha de publicación
   const today = new Date().toISOString().slice(0, 10);
   const items = [...document.querySelectorAll<HTMLElement>('[data-calendar] li')];
@@ -56,6 +64,9 @@ const { rondas } = await cargarTemporada();
 </script>
 
 <style>
+  .cta__temporada { margin: -8px 0 0; color: #cfcbc2; font-size: 16px; line-height: 1.6; }
+  .cta__temporada strong { color: var(--gold-hi); }
+  .cta__temporada a { color: var(--gold-hi); }
   .cta__grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 6vw, 96px); align-items: center; }
   .cta__text { display: grid; gap: 22px; }
   .cta__text .lead { margin: 0; }
