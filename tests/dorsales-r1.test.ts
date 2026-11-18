@@ -23,3 +23,9 @@ test('dorsales de la R1: se bloquean los 35 salvo el propio', () => {
   assert.ok(!moises.includes(18));
   assert.ok(moises.includes(7));
 });
+
+test('dorsales de la R1: Gustav Fischer es el Gustav Anders de la R1 y puede coger el 23', () => {
+  assert.ok(esSuPiloto(DORSALES_R1[23], 'Gustav Fischer'));
+  assert.ok(!dorsalesR1Bloqueados('Gustav Fischer').includes(23));
+  assert.ok(dorsalesR1Bloqueados('Luis Iglesias').includes(23));
+});
