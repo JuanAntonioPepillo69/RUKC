@@ -6,6 +6,7 @@
 // y se guarda de verdad al pulsar "Guardar y seguir".
 import '../styles/global.css';
 import { whatsappUrl } from '../config/site.js';
+import GuiaPeso from '../components/GuiaPeso.astro';
 
 const ayuda = whatsappUrl('Hola, tengo una duda con mi ficha de piloto.');
 const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funciona. ¿Me mandas uno nuevo?');
@@ -86,7 +87,15 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       <form class="card paso" data-paso="perfil" novalidate hidden>
         <h1 class="ob-h">Tu perfil de piloto</h1>
         <label class="field">Nombre de competición <small>Así aparecerás en la clasificación.</small><input name="nombre_competicion" required maxlength="24" /></label>
-        <label class="field">Dorsal <small id="ocupados"></small><input name="dorsal" type="number" min="1" max="999" inputmode="numeric" required /></label>
+        <div class="field dorsal">
+          <label for="ob-dorsal">Dorsal <small>Del 1 al 999. Escribe el que quieras y te decimos al momento si está libre.</small></label>
+          <div class="dorsal__fila">
+            <input id="ob-dorsal" name="dorsal" type="number" min="1" max="999" inputmode="numeric" required aria-describedby="dorsal-estado" />
+            <button type="button" class="dorsal__azar" id="dorsal-azar">Uno al azar</button>
+          </div>
+          <p class="dorsal__estado" id="dorsal-estado" aria-live="polite"></p>
+          <div class="dorsal__sug" id="dorsal-sug" hidden></div>
+        </div>
         <div class="dos">
           <label class="field">Experiencia en karting
             <select name="experiencia" required><option value="">Elige</option><option value="ninguna">Ninguna</option><option value="ocasional">He ido alguna vez</option><option value="amateur">He corrido en ligas amateur</option><option value="competicion">He competido</option></select>
@@ -110,9 +119,11 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
         <label class="check"><input type="checkbox" name="consiente_peso" /> <span>Consiento expresamente el pesaje y el registro de mi peso para asignar mi categoría y mi lastre. Si no lo marco, corro en la categoría Pesados con 10 kg de lastre (Art. 23 bis f).</span></label>
         <div data-si-peso hidden class="ob-grupo">
           <label class="field">Peso de competición (kg) <small>Tu peso con la ropa, el calzado, los guantes y las protecciones con los que vas a correr, más 1,5 kg del casco (Art. 23 bis b).</small><input name="peso_kg" type="number" min="30" max="200" step="0.1" inputmode="decimal" /></label>
+          <GuiaPeso usar />
           <p class="ob-cat" id="cat-texto"></p>
           <fieldset class="pay" id="cat-eleccion" hidden><legend>Elige tu categoría</legend></fieldset>
           <label class="check" id="cat-ambas" hidden><input type="checkbox" name="quiere_ambas" /> <span>Quiero correr también en la otra categoría (te escribimos para ver cómo).</span></label>
+          <div class="compromiso" id="compromiso" hidden></div>
         </div>
         <p class="ob-sub" data-sin-peso>Sin tu consentimiento no guardamos tu peso y corres en Pesados con 10 kg de lastre.</p>
         <label class="field">Altura (cm) <small>Opcional</small><input name="altura_cm" type="number" min="120" max="230" inputmode="numeric" /></label>
@@ -179,7 +190,9 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
   </main>
 
   <script>
-    const token = (location.pathname.match(/^\/onboarding\/([\w-]{20,100})$/) || [])[1] || '';
+    import { dorsalAlAzar, estadoDorsal, sugerencias } from '../lib/ficha/dorsal';
+    import { montarCalculadora, pintarCompromiso } from '../lib/ficha/guia-peso';
+    const token =(location.pathname.match(/^\/onboarding\/([\w-]{20,100})$/) || [])[1] || '';
     const $ = <T extends HTMLElement = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T;
     const $$ = (s: string, r: ParentNode = document) => [...r.querySelectorAll(s)] as HTMLElement[];
     const TITULOS: Record<string, string> = { personales: 'Tus datos', tutor: 'Tutor', perfil: 'Perfil', fisicos: 'Peso y categoría', emergencia: 'Emergencia', foto: 'Foto', formacion: 'Formación', documentos: 'Documentos' };
@@ -268,7 +281,15 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       $('#cat-texto').textContent = !r ? '' : r === 'eleccion' ? 'Con este peso puedes elegir categoría.' : `Tu categoría: ${nombre(r)}.`;
       $('#cat-eleccion').hidden = r !== 'eleccion';
       $('#cat-ambas').hidden = r !== 'eleccion' || !ficha.franja_ambas_categorias;
+      const elegida = r === 'eleccion' ? f.querySelector<HTMLInputElement>('input[name="categoria"]:checked')?.value : r;
+      pintarCompromiso($('#compromiso'), consiente ? elegida : null);
     }
+    montarCalculadora($('[data-calc]', form('fisicos')), (kg) => {
+      const peso = campo(form('fisicos'), 'peso_kg')!;
+      peso.value = String(kg);
+      pintarCategoria();
+      peso.focus();
+    });
 
     function prepararFormularios() {
       const v = ficha.valores;
@@ -279,7 +300,8 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       poner(form('tutor'), { ...(v.tutor ?? {}), ...auto.tutor });
       $('[data-doc-guardado]').textContent = v.tutor?.documento_guardado ? `Guardado: ${v.tutor.documento_guardado}. Escríbelo otra vez si quieres cambiarlo.` : '';
       poner(form('perfil'), { ...v.perfil, ...auto.perfil });
-      $('#ocupados').textContent = ficha.dorsales_ocupados.length ? `Ya cogidos: ${ficha.dorsales_ocupados.join(', ')}.` : 'Elige el que quieras.';
+      ocupados = new Set(ficha.dorsales_ocupados);
+      pintarDorsal();
       const eleccion = $('#cat-eleccion');
       eleccion.replaceChildren(Object.assign(document.createElement('legend'), { textContent: 'Elige tu categoría' }),
         ...ficha.categorias.map((c: any) => {
@@ -309,6 +331,43 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       pintarModulos();
       pintarFoto();
     }
+
+    // Dorsal: no se enseña la lista de cogidos; se dice al momento si el elegido está libre y se proponen libres cercanos.
+    let ocupados = new Set<number>();
+    function pintarDorsal() {
+      const input = campo(form('perfil'), 'dorsal')!;
+      const estado = estadoDorsal(input.value, ocupados);
+      const linea = $('#dorsal-estado');
+      linea.dataset.estado = estado;
+      linea.textContent = {
+        vacio: '',
+        invalido: 'Tiene que ser un número entero del 1 al 999.',
+        libre: `El ${input.value.trim()} está libre.`,
+        ocupado: `El ${input.value.trim()} no está disponible. Prueba con otro.`,
+      }[estado];
+      input.setAttribute('aria-invalid', String(estado === 'ocupado' || estado === 'invalido'));
+      const caja = $('#dorsal-sug');
+      const lista = estado === 'libre' ? [] : sugerencias(ocupados, estado === 'ocupado' ? Number(input.value) : null, 5);
+      caja.hidden = !lista.length;
+      caja.replaceChildren(Object.assign(document.createElement('span'), { textContent: estado === 'ocupado' ? 'Libres cerca:' : 'Algunos libres:' }),
+        ...lista.map((n) => {
+          const b = Object.assign(document.createElement('button'), { type: 'button', className: 'dorsal__chip tnum', textContent: String(n) });
+          b.setAttribute('aria-label', `Elegir el dorsal ${n}`);
+          b.addEventListener('click', () => elegirDorsal(n));
+          return b;
+        }));
+    }
+    function elegirDorsal(n: number) {
+      const input = campo(form('perfil'), 'dorsal')!;
+      input.value = String(n);
+      pintarDorsal();
+      input.focus();
+      programarAutoguardado();
+    }
+    $('#dorsal-azar').addEventListener('click', () => {
+      const n = dorsalAlAzar(ocupados);
+      if (n != null) elegirDorsal(n);
+    });
 
     function pintarLigas() {
       const e = campo(form('perfil'), 'experiencia')!.value;
@@ -455,6 +514,7 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
       if (!t.closest('form.paso')) return;
       if (t.closest('form[data-paso="fisicos"]')) pintarCategoria();
       if ((t as HTMLInputElement).name === 'experiencia') pintarLigas();
+      if ((t as HTMLInputElement).name === 'dorsal') pintarDorsal();
       programarAutoguardado();
     });
     $$('[data-ir]').forEach((b) => b.addEventListener('click', () => ir(b.dataset.ir!)));
@@ -546,5 +606,27 @@ const enlaceNuevo = whatsappUrl('Hola, mi enlace de la ficha de piloto no funcio
   .doc__txt :global(p) { margin: 0 0 10px; }
   .doc__txt :global(h3) { font-size: 16px; margin: 12px 0 6px; }
   .aviso { font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .dorsal label { display: grid; gap: 7px; }
+  .dorsal__fila { display: flex; gap: 10px; }
+  .dorsal__fila input { flex: 1; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dorsal input[aria-invalid='true'] { border-color: rgba(255, 107, 107, 0.7); }
+  .dorsal__azar {
+    flex: none; min-height: 50px; padding: 0 18px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.28);
+    background: transparent; color: var(--paper); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .dorsal__azar:hover, .dorsal__azar:focus-visible { border-color: var(--gold); outline: none; }
+  .dorsal__estado { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .dorsal__estado:empty { display: none; }
+  .dorsal__estado::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .dorsal__estado[data-estado='libre'] { color: #6fd49a; }
+  .dorsal__estado[data-estado='ocupado'], .dorsal__estado[data-estado='invalido'] { color: #ff8a8a; }
+  .dorsal__sug { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .dorsal__sug[hidden] { display: none; }
+  .dorsal__sug :global(span) { font-size: 13px; font-weight: 400; color: var(--muted); margin-right: 2px; }
+  .dorsal__sug :global(.dorsal__chip) {
+    min-width: 48px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(246, 243, 236, 0.22);
+    background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  .dorsal__sug :global(.dorsal__chip:hover), .dorsal__sug :global(.dorsal__chip:focus-visible) { border-color: var(--gold); background: rgba(212, 166, 42, 0.12); outline: none; }
   @media (max-width: 520px) { .dos { grid-template-columns: minmax(0, 1fr); } }
 </style>

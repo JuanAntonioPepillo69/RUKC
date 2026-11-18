@@ -5,6 +5,7 @@
 import Base from '../layouts/Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import GuiaPeso from '../components/GuiaPeso.astro';
 import { SITE, whatsappUrl } from '../config/site';
 import { BIZUM, RESERVA } from '../config/reserva.js';
 import { AVISO_BORRADORES_PROVISIONAL } from '../../lib/catalogo.js';
@@ -63,9 +64,11 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
                 <option value="PES">Pesados</option>
                 <option value="no_se">Aún no lo sé</option>
               </select>
-              <small>La categoría depende del peso con el equipo. Si dudas, elige "Aún no lo sé" y lo vemos contigo.</small>
+              <small>Sale de tu peso con el equipo. Si dudas, elige "Aún no lo sé": te la asignamos con el peso que pongas en tu ficha de piloto.</small>
               <small class="cupo" id="cupo" hidden></small>
             </label>
+            <div class="compromiso" id="compromiso" hidden></div>
+            <GuiaPeso />
           </fieldset>
 
           <fieldset class="paso" data-paso="2">
@@ -194,6 +197,7 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
 </Base>
 
 <script>
+  import { montarCalculadora, pintarCompromiso } from '../lib/ficha/guia-peso';
   type Categoria = { codigo: string; nombre: string; estado: string; plazas: number; libres: number };
   type Ronda = { id: string; numero: number; fecha: string; fecha_corta: string; circuito: string; aplazada: boolean; categorias: Categoria[] };
   type Catalogo = { reserva_cent: number; carrera_cent: number | null; rondas: Ronda[]; aviso_borradores: { texto: string; provisional: boolean } };
@@ -397,6 +401,8 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
   }
   el('otra').hidden = !otra.checked;
   pintarTutor();
+  pintarCompromiso(document.getElementById('compromiso')!, selCat.value);
+  montarCalculadora(form.querySelector<HTMLElement>('[data-calc]')!);
   if (new URLSearchParams(location.search).has('cancelado')) el('cancelado').hidden = false;
   pintarMetodo();
   cargarCatalogo();
@@ -406,6 +412,7 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
     const n = (e.target as HTMLInputElement).name;
     if (n === 'metodo') pintarMetodo();
     if (n === 'ronda' || n === 'categoria') pintarRonda();
+    if (n === 'categoria') pintarCompromiso(document.getElementById('compromiso')!, selCat.value);
     if (n === 'otra') el('otra').hidden = !otra.checked;
     if (n === 'otra' || n === 'menor' || n === 'tutor_yo') pintarTutor();
     recordar();

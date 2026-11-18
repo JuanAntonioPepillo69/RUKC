@@ -1,0 +1,78 @@
+---
+// Guía de peso de competición y categoría, plegada: calculadora desde la báscula de casa y tabla de cuánto sumar.
+// La conecta montarCalculadora() (src/lib/ficha/guia-peso.ts). Con `usar`, ofrece pasar el peso sugerido a la ficha.
+import { CASCO_KG, FORMAS_DE_PESARSE } from '../lib/ficha/peso';
+
+interface Props { usar?: boolean; abierta?: boolean }
+const { usar = false, abierta = false } = Astro.props;
+const formas = Object.entries(FORMAS_DE_PESARSE);
+const suma = ([a, b]: [number, number]) => (a === b ? `${String(a).replace('.', ',')} kg` : `de ${a} a ${b} kg`);
+---
+<details class="guia-peso" data-calc open={abierta}>
+  <summary>¿Qué categoría me toca? Calcúlalo con tu báscula</summary>
+  <div class="guia-peso__cuerpo">
+    <p>La categoría sale del <strong>peso de competición</strong>: tu peso con la ropa, las zapatillas, los guantes y las protecciones con los que vas a correr, más {String(CASCO_KG).replace('.', ',')} kg fijos del casco (Art. 23 bis).</p>
+    <ul class="guia-peso__cortes">
+      <li><strong>Ligeros</strong><span>de 70 a 80 kg</span></li>
+      <li><strong>Eliges</strong><span>de 80,1 a 84,9 kg</span></li>
+      <li><strong>Pesados</strong><span>85 kg o más</span></li>
+    </ul>
+    <div class="guia-peso__campos">
+      <label>Lo que marca tu báscula (kg)
+        <input data-calc-bascula type="number" min="25" max="250" step="0.1" inputmode="decimal" placeholder="Por ejemplo, 78" />
+      </label>
+      <label>Cómo te has pesado
+        <select data-calc-como>
+          {formas.map(([k, f]) => <option value={k}>{f.texto}</option>)}
+        </select>
+      </label>
+    </div>
+    <p class="guia-peso__res" data-calc-res aria-live="polite"></p>
+    {usar && <button type="button" class="guia-peso__usar" data-calc-usar hidden></button>}
+    <table class="guia-peso__tabla">
+      <caption>Cuánto sumar a lo que marca tu báscula</caption>
+      <thead><tr><th scope="col">Si te pesas…</th><th scope="col">Suma</th></tr></thead>
+      <tbody>
+        {formas.map(([, f]) => <tr><th scope="row">{f.texto}<small>{f.detalle}</small></th><td class="tnum">{suma(f.suma)}</td></tr>)}
+      </tbody>
+    </table>
+    <p class="guia-peso__nota">Son estimaciones: lo que cuenta es la báscula del circuito el día de la carrera. A lo largo del día tu peso puede variar alrededor de 1 kg. Si llevas protecciones propias, súmalas: un protector de costillas pesa de 0,7 a 1,2 kg. Si te sale cerca de 80 u 85 kg, pésate con la ropa y las zapatillas con las que vas a correr.</p>
+  </div>
+</details>
+
+<style>
+  .guia-peso { border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 10, 11, 0.4); }
+  .guia-peso summary { cursor: pointer; padding: 12px 14px; font-weight: 600; font-size: 15px; color: var(--gold-hi); }
+  .guia-peso__cuerpo { display: grid; gap: 14px; padding: 0 14px 14px; font-size: 14px; font-weight: 400; color: #dcd8cf; }
+  .guia-peso__cuerpo p { margin: 0; }
+  .guia-peso__cortes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .guia-peso__cortes li { display: grid; gap: 2px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); text-align: center; }
+  .guia-peso__cortes strong { color: var(--paper); font-size: 14px; }
+  .guia-peso__cortes span { font-size: 13px; color: var(--muted); }
+  .guia-peso__campos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px; }
+  .guia-peso__campos label { display: grid; gap: 7px; font-weight: 600; color: var(--paper); min-width: 0; }
+  .guia-peso__campos input, .guia-peso__campos select {
+    width: 100%; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(246, 243, 236, 0.18);
+    background: rgba(10, 10, 11, 0.6); color: var(--paper); font: inherit; font-weight: 500; font-size: 16px;
+  }
+  .guia-peso__campos input:focus, .guia-peso__campos select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 166, 42, 0.25); }
+  .guia-peso__res { color: var(--gold-hi); font-weight: 600; }
+  .guia-peso__res:empty { display: none; }
+  .guia-peso__usar { justify-self: start; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--gold); background: rgba(212, 166, 42, 0.08); color: var(--paper); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .guia-peso__usar[hidden] { display: none; }
+  .guia-peso__tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .guia-peso__tabla caption { text-align: left; font-weight: 600; color: var(--paper); margin-bottom: 6px; font-size: 14px; }
+  .guia-peso__tabla th, .guia-peso__tabla td { padding: 8px 0; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .guia-peso__tabla thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+  .guia-peso__tabla tbody th { font-weight: 600; color: var(--paper); padding-right: 12px; }
+  .guia-peso__tabla small { display: block; font-weight: 400; color: var(--muted); }
+  .guia-peso__tabla td { white-space: nowrap; color: var(--gold-hi); font-weight: 700; }
+  .guia-peso__nota { font-size: 13px; color: var(--muted); }
+  @media (max-width: 520px) { .guia-peso__campos { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Aviso de compromiso de categoría (pintarCompromiso): vive en la página, fuera del componente. */
+  :global(.compromiso) { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(212, 166, 42, 0.45); background: rgba(212, 166, 42, 0.08); font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--paper); }
+  :global(.compromiso[hidden]) { display: none; }
+  :global(.compromiso ul) { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  :global(.compromiso p) { margin: 0; color: var(--muted); font-size: 13px; }
+</style>
