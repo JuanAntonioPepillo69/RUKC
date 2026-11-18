@@ -1,6 +1,6 @@
 // /grupo/<token> y /ficha/<token> (vercel.json los reescribe a /api/grupo?token=<token>) · botón "Unirme al grupo" de la confirmación
 // de plaza por WhatsApp (B1). El token firma la inscripción (lib/whatsapp/confirmacion.js).
-// - Inscripción reservada o pagada y acceso al grupo aprobado: redirige al enlace del grupo de la temporada
+// - Inscripción reservada, pagada o confirmada sin pago (inscripcion.plaza_confirmada) y acceso al grupo aprobado: redirige al enlace del grupo de la temporada
 //   (bot_settings.grupo_invite_code o temporada.enlace_grupo_whatsapp).
 // - Si no: redirige a la ficha del piloto (/onboarding/<token nuevo>), que explica qué falta. El enlace anterior a la
 //   ficha deja de valer, como cuando el panel lo reenvía.
@@ -31,14 +31,15 @@ export async function GET(request) {
 
   const destino = await conTransaccion(async (c) => {
     const { rows: [x] } = await c.query(
-      `SELECT i.estado, i.piloto_persona_id, r.temporada_id,
+      `SELECT i.estado, i.plaza_confirmada, i.piloto_persona_id, r.temporada_id,
               (SELECT valor FROM bot_settings WHERE clave = 'grupo_invite_code') AS codigo_bot,
               t.enlace_grupo_whatsapp, g.estado AS acceso, o.id AS onboarding_id
        FROM inscripcion i JOIN ronda r ON r.id = i.ronda_id JOIN temporada t ON t.id = r.temporada_id
        LEFT JOIN acceso_grupo g ON g.persona_id = i.piloto_persona_id AND g.temporada_id = r.temporada_id
        LEFT JOIN onboarding o ON o.persona_id = i.piloto_persona_id AND o.temporada_id = r.temporada_id
        WHERE i.id = $1`, [inscripcionId]);
-    if (!x || !['reservada', 'pagada', 'asistio'].includes(x.estado)) return { tipo: 'anulada' };
+    const conPlaza = x && (['reservada', 'pagada', 'asistio'].includes(x.estado) || (x.estado === 'pendiente_pago' && x.plaza_confirmada));
+    if (!conPlaza) return { tipo: 'anulada' };
     const enlace = x.codigo_bot ? (/^https?:\/\//.test(x.codigo_bot) ? x.codigo_bot : `https://chat.whatsapp.com/${x.codigo_bot}`) : x.enlace_grupo_whatsapp;
     if (['aprobado', 'enlace_enviado', 'dentro'].includes(x.acceso) && enlace) return { tipo: 'grupo', url: enlace };
     if (!x.onboarding_id) return { tipo: 'sin_ficha' };

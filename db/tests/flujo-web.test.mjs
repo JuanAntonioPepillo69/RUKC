@@ -1069,3 +1069,21 @@ test('ficha: a las 24 h, si no la ha empezado y nadie le ha mandado el enlace, e
   // Fuera de horario no se manda nada.
   assert.equal((await enviosAutomaticosFicha({ ahora: await enMadrid(-3, '23:00') })).nota, 'fuera de horario');
 });
+
+// --- Plaza confirmada sin pago ---------------------------------------------------------------------------------------
+test('plaza confirmada sin pago: sin pagos no es plaza para el bot; marcada por el equipo, recibe recordatorios y ficha', async () => {
+  const telefono = await pilotoConPlaza('LIG');
+  const [i] = await q(`SELECT i.id FROM inscripcion i JOIN persona p ON p.id = i.piloto_persona_id WHERE p.telefono = $1 AND i.ronda_id = $2`, [telefono, ronda.id]);
+  await q('DELETE FROM aplicacion_pago WHERE inscripcion_id = $1', [i.id]);
+  assert.equal((await q('SELECT estado FROM inscripcion WHERE id = $1', [i.id]))[0].estado, 'pendiente_pago');
+  const enD1 = async () => (await destinatariosRonda(await datosRonda(ronda.id), 'D1')).some((x) => x.telefono === telefono);
+  assert.equal(await datosBot.tienePlaza(telefono), false);
+  assert.equal(await datosBot.fichaDe(telefono), null);
+  assert.equal(await enD1(), false);
+
+  await q('UPDATE inscripcion SET plaza_confirmada = true WHERE id = $1', [i.id]);
+  assert.equal((await q('SELECT estado FROM inscripcion WHERE id = $1', [i.id]))[0].estado, 'pendiente_pago', 'el estado de cobro no cambia');
+  assert.equal(await datosBot.tienePlaza(telefono), true);
+  assert.ok(await datosBot.fichaDe(telefono));
+  assert.equal(await enD1(), true);
+});
