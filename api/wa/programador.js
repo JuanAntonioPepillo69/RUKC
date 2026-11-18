@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import { json } from '../../lib/http.js';
 import { planificar, procesarCola } from '../../lib/whatsapp/programador.js';
+import { planificarGrupo } from '../../lib/whatsapp/grupo.js';
 
 function autorizado(request) {
   const secreto = process.env.CRON_SECRET;
@@ -21,7 +22,9 @@ export async function manejar(request, deps = {}) {
     plan = { error: e.message };
   }
   const cola = await procesarCola(deps);
-  return json({ plan, cola });
+  // Mensajes para el grupo de pilotos (a John, para que los pegue en el grupo): lib/whatsapp/grupo.js.
+  const grupo = await planificarGrupo(deps);
+  return json({ plan, cola, grupo });
 }
 
 export const GET = (request) => manejar(request);

@@ -642,6 +642,69 @@ test('canal admin: una pregunta normal la contesta Claude con las herramientas d
   assert.equal(enviadosA(ADMIN).at(-1).text.body, 'Hoy todo tranquilo.');
 });
 
+// --- Mensajes para el grupo de pilotos (lib/whatsapp/grupo.js) -------------------------------------------------------
+test('grupo de pilotos: PAUSA y REANUDA GRUPO, mensaje del día una sola vez y comentario de la tarde solo con mensajes reenviados', async () => {
+  const { planificarGrupo, prepararPublicacion } = await import('../../lib/whatsapp/grupo.js');
+  const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  const limpiar = () => q(`DELETE FROM wa_batches WHERE automatizacion = 'D3' AND ronda_id IS NULL AND vista_previa ~ $1`,
+    [`^\\[grupo(-omitido)?:[a-z]+:${hoy}\\]`]);
+  // Hora de Madrid → instante (el cron trabaja en hora de Madrid).
+  const desfase = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', hourCycle: 'h23' })
+    .format(new Date(`${hoy}T12:00:00Z`))) - 12;
+  const en = (h, min) => ({ ...deps, ahora: new Date(Date.UTC(...hoy.split('-').map((x, i) => Number(x) - (i === 1 ? 1 : 0)), h - desfase, min)) });
+  await limpiar();
+  await enviarAviso(entrante(ADMIN, 'ESTADO'));   // John con la ventana abierta
+  try {
+    await enviarAviso(entrante(ADMIN, 'PAUSA GRUPO'));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /no te mandaré más mensajes para el grupo/);
+    assert.equal((await planificarGrupo(en(10, 5))).nota, 'grupo en pausa');
+    await enviarAviso(entrante(ADMIN, 'REANUDA GRUPO'));
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /vuelven los mensajes para el grupo/);
+
+    // 10:05: mensaje del día. A John le llegan dos mensajes: qué es y el texto limpio para pegar en el grupo.
+    let antes = enviadosA(ADMIN).length;
+    const r = await planificarGrupo(en(10, 5));
+    assert.deepEqual(r.grupo, [{ tipo: 'diario', enviado: true }], JSON.stringify(r));
+    const nuevos = enviadosA(ADMIN).slice(antes).map((m) => m.text.body);
+    assert.equal(nuevos.length, 2);
+    assert.match(nuevos[0], /^Para el grupo de pilotos, mensaje del día/);
+    assert.match(nuevos[1], /99 €/);
+    // La siguiente pasada del cron no lo repite.
+    await planificarGrupo(en(10, 10));
+    assert.equal(enviadosA(ADMIN).length, antes + 2);
+
+    // 18:35 sin mensajes del grupo reenviados: no hay comentario de la tarde.
+    antes = enviadosA(ADMIN).length;
+    assert.deepEqual((await planificarGrupo(en(18, 35))).grupo, []);
+    assert.equal(enviadosA(ADMIN).length, antes);
+
+    // John reenvía mensajes del grupo (y pega otro con "GRUPO:"): un solo acuse y no pasan por el asistente.
+    const llm0 = llamadasLlm;
+    await enviarAviso(entrante(ADMIN, 'Alguien sabe si en Campillos hay sombra para esperar?', { context: { forwarded: true } }));
+    await enviarAviso(entrante(ADMIN, 'Yo llevo sillas plegables', { context: { forwarded: true } }));
+    await enviarAviso(entrante(ADMIN, 'GRUPO: y yo agua para todos'));
+    assert.equal(llamadasLlm, llm0, 'los mensajes del grupo no van al asistente');
+    assert.equal(enviadosA(ADMIN).length, antes + 1);
+    assert.match(enviadosA(ADMIN).at(-1).text.body, /^Anotado/);
+
+    // Ahora sí: comentario de la tarde con lo que se ha hablado en el grupo.
+    antes = enviadosA(ADMIN).length;
+    const t = await planificarGrupo(en(18, 40));
+    assert.deepEqual(t.grupo, [{ tipo: 'tarde', enviado: true }], JSON.stringify(t));
+    assert.match(enviadosA(ADMIN).slice(antes)[0].text.body, /comentario de la tarde/);
+    assert.match(ultimosMensajes[0].content, /sombra para esperar[\s\S]*sillas plegables[\s\S]*agua para todos/);
+
+    // Próxima carrera (sin IA) y punto del reglamento: el texto se prepara con los datos de la liga.
+    const carrera = await prepararPublicacion('carrera', { d: deps });
+    if (carrera.texto) assert.match(carrera.texto, /^Próxima carrera: la R\d+, el \p{L}+ \d+ de \p{L}+ en /u);
+    const regl = await prepararPublicacion('reglamento', { d: deps });
+    assert.ok(regl.texto && regl.articulo, JSON.stringify(regl));
+    assert.match(ultimosMensajes[0].content, new RegExp(`Art\\. ${regl.articulo}\\. `));
+  } finally {
+    await limpiar();
+  }
+});
+
 // --- Chat de la web (api/chat.js) ------------------------------------------------------------------------------------
 test('chat web: solo desde nuestra web, responde con el bot y corta a los 12 mensajes en 10 minutos', async () => {
   const { manejar: chat } = await import('../../api/chat.js');
