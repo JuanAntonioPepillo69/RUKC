@@ -7,24 +7,13 @@ import Journey from '../components/home/Journey.astro';
 import Why from '../components/home/Why.astro';
 import ComoFunciona from '../components/home/ComoFunciona.astro';
 import SeasonCta from '../components/home/SeasonCta.astro';
-import Faq from '../components/home/Faq.astro';
-import { PREGUNTAS, textoPlano } from '../config/preguntas.js';
 import Footer from '../components/Footer.astro';
 
-// Datos estructurados de las preguntas frecuentes (FAQPage), para que Google pueda mostrarlas.
-const faqLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: PREGUNTAS.flatMap((b) => b.preguntas).map((q) => ({
-    '@type': 'Question', name: q.p, acceptedAnswer: { '@type': 'Answer', text: textoPlano(q.r) },
-  })),
-};
 ---
 <Base
   title="RUKC | RaceUp Karting Championship, liga de karting de alquiler en la Costa del Sol"
   description="La primera liga de karting de alquiler de la Costa del Sol. Mismos karts, lastre y categorías por peso. Temporada 2: ocho rondas del 17 de octubre de 2026 al 3 de julio de 2027."
 >
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(faqLd)} />
   <Header />
   <main>
     <Hero />
@@ -33,7 +22,6 @@ const faqLd = {
     <Why />
     <ComoFunciona />
     <SeasonCta />
-    <Faq />
   </main>
   <Footer />
   <script>

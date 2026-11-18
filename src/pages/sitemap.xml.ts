@@ -6,7 +6,7 @@ import { urlRonda } from '../lib/season/format';
 export const GET: APIRoute = async ({ site }) => {
   const t = await cargarTemporada();
   const paths = [
-    '/', '/season-2', '/inscripcion', '/reglamento',
+    '/', '/season-2', '/inscripcion', '/reglamento', '/preguntas-frecuentes',
     ...t.rondas.filter((r) => r.estado === 'disputada').map(urlRonda),
     '/aviso-legal', '/privacidad', '/cookies', '/condiciones-reserva',
   ];

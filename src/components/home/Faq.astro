@@ -1,15 +1,23 @@
 ---
-// Preguntas frecuentes (portada, #preguntas). El contenido está en src/config/preguntas.js.
+// Preguntas frecuentes (página /preguntas-frecuentes). El contenido está en src/config/preguntas.js.
 import { PREGUNTAS } from '../../config/preguntas.js';
 import { whatsappUrl } from '../../config/site';
+import { RESERVA } from '../../config/reserva.js';
+
+interface Props { pagina?: boolean }
+const { pagina = false } = Astro.props;
+const Titulo = pagina ? 'h1' : 'h2';
 ---
 <section class="section faq" id="preguntas" aria-labelledby="faq-title">
   <div class="wrap faq__grid">
     <div class="faq__intro">
       <p class="eyebrow" data-reveal>Preguntas frecuentes</p>
-      <h2 class="h2" id="faq-title" data-reveal>Lo que más <em>nos preguntáis</em></h2>
+      <Titulo class="h2" id="faq-title" data-reveal>Lo que más <em>nos preguntáis</em></Titulo>
       <p class="lead" data-reveal>Reserva, pagos, ficha de piloto y el día de la carrera. Si tu duda no está aquí, escríbenos.</p>
-      <a class="btn btn--ghost" href={whatsappUrl('Hola, tengo una duda sobre RUKC.')} target="_blank" rel="noopener" data-reveal>Preguntar por WhatsApp</a>
+      <div class="faq__botones" data-reveal>
+        {pagina && <a class="btn btn--gold" href="/inscripcion">Reservar plaza · {RESERVA.importe} €</a>}
+        <a class="btn btn--ghost" href={whatsappUrl('Hola, tengo una duda sobre RUKC.')} target="_blank" rel="noopener">Preguntar por WhatsApp</a>
+      </div>
     </div>
 
     <div class="faq__list">
@@ -29,6 +37,7 @@ import { whatsappUrl } from '../../config/site';
 </section>
 
 <style>
+  .faq__botones { display: flex; flex-wrap: wrap; gap: 12px; }
   .faq { border-top: 1px solid var(--line); }
   .faq__grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
   .faq__intro { position: sticky; top: 110px; display: grid; gap: 22px; justify-items: start; }

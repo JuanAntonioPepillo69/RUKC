@@ -1,9 +1,8 @@
 ---
 const path = Astro.url.pathname;
 const links = [
-  { href: '/', label: 'Inicio', movil: false },   // en el móvil sobra: el escudo ya lleva a la portada
+  { href: '/', label: 'Inicio' },
   { href: '/season-2', label: 'Temporada 2' },
-  { href: '/#preguntas', label: 'Preguntas' },
 ];
 ---
 <header class="hdr">
@@ -13,7 +12,7 @@ const links = [
   </a>
   <nav class="hdr__nav" aria-label="Principal">
     {links.map((l) => (
-      <a href={l.href} class={l.movil === false ? 'solo-ancho' : undefined} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a>
+      <a href={l.href} aria-current={path === l.href ? 'page' : undefined}>{l.label}</a>
     ))}
   </nav>
   <a class="hdr__cta" href="/inscripcion">Reservar plaza</a>
@@ -38,7 +37,7 @@ const links = [
   .hdr.is-solid { background: rgba(10, 10, 11, 0.86); backdrop-filter: blur(10px); box-shadow: 0 1px 0 var(--line); }
   .hdr__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-weight: 900; letter-spacing: 0.06em; }
   .hdr__nav { display: flex; gap: 22px; margin-left: auto; font-size: 14px; font-weight: 600; }
-  .hdr__nav a { text-decoration: none; color: var(--muted); transition: color 0.2s; white-space: nowrap; }
+  .hdr__nav a { text-decoration: none; color: var(--muted); transition: color 0.2s; }
   .hdr__nav a:hover, .hdr__nav a[aria-current='page'] { color: var(--paper); }
   .hdr__cta {
     font-family: var(--font-display); font-weight: 800; font-size: 14px; text-decoration: none;
@@ -48,9 +47,6 @@ const links = [
     .hdr { gap: 14px; }
     .hdr__brand span { display: none; }
     .hdr__nav { gap: 14px; font-size: 13px; }
-    .hdr__cta { font-size: 13px; padding: 8px 12px; white-space: nowrap; }
-  }
-  @media (max-width: 480px) {
-    .hdr__nav .solo-ancho { display: none; }
+    .hdr__cta { font-size: 13px; padding: 8px 12px; }
   }
 </style>

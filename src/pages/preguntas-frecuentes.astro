@@ -1,0 +1,36 @@
+---
+// Preguntas frecuentes: reserva y pago, antes de la carrera, el día de la carrera y cambios. Fuera de la portada para que
+// la portada lleve a reservar; se enlaza desde el pie, desde Cómo funciona y desde la reserva.
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Faq from '../components/home/Faq.astro';
+import Footer from '../components/Footer.astro';
+import { PREGUNTAS, textoPlano } from '../config/preguntas.js';
+
+// Datos estructurados (FAQPage), para que Google pueda mostrar las preguntas.
+const faqLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: PREGUNTAS.flatMap((b) => b.preguntas).map((q) => ({
+    '@type': 'Question', name: q.p, acceptedAnswer: { '@type': 'Answer', text: textoPlano(q.r) },
+  })),
+};
+---
+<Base
+  title="Preguntas frecuentes | RUKC"
+  description="Reserva y pago, ficha de piloto, qué llevar, lastre, edad mínima, cambios y cancelaciones en RUKC, la liga de karting de alquiler de la Costa del Sol."
+>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(faqLd)} />
+  <Header />
+  <main class="faq-pagina">
+    <Faq pagina />
+  </main>
+  <Footer />
+  <script>
+    import '../scripts/reveal';
+  </script>
+</Base>
+
+<style>
+  .faq-pagina :global(.faq) { border-top: 0; padding-top: clamp(120px, 14vw, 180px); }
+</style>

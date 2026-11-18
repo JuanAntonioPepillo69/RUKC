@@ -4,7 +4,7 @@
 // 23 ter, 23 quater, 26 a 29 bis y 46 a 47). Los importes salen de config/reserva.js y los puntos de lib/season/points.
 import { Picture } from 'astro:assets';
 import { RESERVA } from '../../config/reserva.js';
-import { BONUS, PUNTOS_FINALIZAR, PUNTOS_POSICION } from '../../lib/season/points';
+import { BONUS, PUNTOS_POSICION } from '../../lib/season/points';
 import paddock from '../../assets/t1/paddock-pilotos.jpg';
 import briefing from '../../assets/t2/briefing.jpg';
 import boxes from '../../assets/t1/boxes-karts.jpg';
@@ -17,18 +17,18 @@ const resto = RESERVA.precioCarrera - RESERVA.importe;
 const antes = [
   {
     t: 'Reserva tu plaza',
-    d: `${RESERVA.importe} € con tarjeta o Bizum, que se descuentan de los ${RESERVA.precioCarrera} € de la ronda. Los ${resto} € restantes, el día de la carrera.`,
-    nota: 'La inscripción cierra el martes anterior a la carrera, o antes si se llena tu categoría.',
+    d: `${RESERVA.importe} € con tarjeta o Bizum. Se descuentan de los ${RESERVA.precioCarrera} € de la ronda.`,
+    nota: 'Cierra el martes anterior a la carrera, o antes si se llena tu categoría.',
   },
   {
     t: 'Rellena tu ficha de piloto',
-    d: 'Una vez por temporada: tus datos, un contacto de emergencia, tu dorsal y la asunción de riesgos, firmada en la propia ficha.',
+    d: 'Una sola vez por temporada: tus datos, tu dorsal y las autorizaciones. Te llega el enlace por WhatsApp.',
     nota: 'El dorsal que eliges es tuyo toda la temporada.',
   },
   {
     t: 'Te avisamos por WhatsApp',
-    d: 'Confirmación de plaza con acceso al grupo de pilotos, y la hora exacta de tu categoría una semana antes y la víspera.',
-    nota: 'Ligeros y Pesados pueden tener horas distintas.',
+    d: 'Confirmación de plaza, acceso al grupo de pilotos y la hora exacta de tu carrera.',
+    nota: 'Una semana antes y la víspera.',
   },
 ];
 
@@ -36,39 +36,39 @@ const podioTxt = PUNTOS_POSICION.slice(0, 3).join(', ');
 const dia = [
   {
     t: 'Acreditación', h: 'Al menos 1 h antes del briefing', img: paddock, alt: 'Pilotos en el paddock antes de una ronda',
-    d: `Llegas, te identificas con tu documento de identidad y pagas los ${resto} € restantes. La acreditación cierra 30 minutos antes del briefing.`,
-    datos: ['Documento de identidad', 'Llegar tarde se sanciona'],
+    d: `Te identificas y pagas los ${resto} € restantes. Cierra 30 minutos antes del briefing.`,
+    datos: ['Documento de identidad', 'Llega con tiempo'],
   },
   {
     t: 'Pesaje y lastre', h: 'Mismas reglas para todos', img: parrilla, alt: 'Pilotos con el casco puesto en la parrilla',
-    d: 'Te pesas con la ropa y el calzado con los que vas a correr, más 1,5 kg fijos por el casco. Lo que te falte para el mínimo de tu categoría se completa con lastre en un cinturón a la altura de la cadera.',
-    datos: ['Ligeros: mínimo 70 kg', 'Pesados: mínimo 85 kg', 'La organización pone hasta 2 kg'],
+    d: 'Te pesas con la ropa con la que vas a correr. Si no llegas al mínimo de tu categoría, lo completas con lastre.',
+    datos: ['Ligeros: mínimo 70 kg', 'Pesados: mínimo 85 kg'],
   },
   {
     t: 'Briefing', h: 'Obligatorio, empieza a su hora', img: briefing, alt: 'Briefing de pilotos antes de la carrera',
-    d: 'La Dirección de Carrera explica banderas, normas y seguridad. Llegar con el briefing empezado cuenta como faltar: sales el último en la final.',
-    datos: ['Banderas y normas', 'No espera a nadie'],
+    d: 'Banderas, normas y seguridad. Si llegas con él empezado, sales el último en la final.',
+    datos: ['Obligatorio'],
   },
   {
     t: 'Sorteo y entrenamiento', h: 'De 5 a 10 minutos', img: boxes, alt: 'Karts alineados en el pit lane',
-    d: 'Los karts se sortean: nadie elige el suyo. Después, unas vueltas para adaptarte a la pista y al kart, cuando el circuito lo ofrece.',
-    datos: ['Karts por sorteo', 'Mismos karts de alquiler'],
+    d: 'Los karts se sortean: nadie elige el suyo. Luego, unas vueltas para coger la pista.',
+    datos: ['Karts por sorteo'],
   },
   {
     t: 'Clasificación', h: 'De 5 a 10 minutos por categoría', img: pianos, alt: 'Karts trazando una curva junto a los pianos',
-    d: 'Cuenta tu mejor vuelta válida, y con ella se ordena la parrilla de la final. Si tu categoría no cabe en una sola tanda, los grupos se sortean y la parrilla sale de todos los tiempos.',
-    datos: ['Tu mejor vuelta decide', 'Una clasificación por categoría'],
+    d: 'Tu mejor vuelta decide tu puesto en la parrilla de la final.',
+    datos: ['Cada categoría por separado'],
   },
   {
     t: 'Final y podio', h: 'La carrera que da los puntos', img: salida, alt: 'Parrilla de salida de una final',
-    d: `${podioTxt}… puntos para los primeros y ${PUNTOS_FINALIZAR} por terminar. La pole y la vuelta rápida suman ${BONUS.pole} más cada una. Si la categoría no cabe en una parrilla, hay Final A y Final B.`,
-    datos: [`${PUNTOS_POSICION[0]} puntos al ganador`, 'Podio y resultados oficiales'],
+    d: `${podioTxt}… puntos para los primeros, y todo el que termina puntúa. La pole y la vuelta rápida suman ${BONUS.pole} más.`,
+    datos: [`${PUNTOS_POSICION[0]} puntos al ganador`, 'Resultados en la web'],
   },
 ];
 
 const llevar = [
   { t: 'Ropa cómoda y calzado cerrado', d: 'Sin bufandas ni prendas sueltas, y el pelo largo recogido.' },
-  { t: 'Tu documento de identidad', d: 'Para la acreditación. La asunción de riesgos ya la firmaste en la ficha.' },
+  { t: 'Tu documento de identidad', d: 'Para la acreditación. Nada más en papel.' },
   { t: `${resto} € en efectivo`, d: 'Lo que falta de la carrera. Si no puedes, por Bizum como tarde el día anterior.' },
   { t: 'Tu lastre, si lo tienes', d: 'Si corres en Ligeros y tienes lastre propio, tráelo: nos ayuda mucho.' },
 ];
@@ -78,7 +78,7 @@ const llevar = [
     <header class="como__head">
       <p class="eyebrow" data-reveal>Cómo funciona</p>
       <h2 class="h2" id="como-title" data-reveal>De la reserva <em>a la bandera a cuadros</em></h2>
-      <p class="lead" data-reveal>Lo que pasa desde que reservas hasta que cruzas la meta. Sin letra pequeña: lo mismo que contestamos cada día por WhatsApp.</p>
+      <p class="lead" data-reveal>Tres pasos antes de la carrera y una mañana de competición. Esto es todo lo que tienes que saber.</p>
     </header>
 
     <div class="antes">
@@ -141,7 +141,7 @@ const llevar = [
           </li>
         ))}
       </ul>
-      <p class="llevar__nota" data-reveal>El casco lo pone el circuito. El mono y los guantes son opcionales. ¿Más dudas? <a href="#preguntas">Mira las preguntas frecuentes</a>.</p>
+      <p class="llevar__nota" data-reveal>El casco lo pone el circuito. El mono y los guantes son opcionales. ¿Más dudas? <a href="/preguntas-frecuentes">Mira las preguntas frecuentes</a>.</p>
     </div>
   </div>
 </section>

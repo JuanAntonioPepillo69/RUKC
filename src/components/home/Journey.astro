@@ -43,12 +43,11 @@ const t2 = [
   { n: 5, l: 'circuitos' },
   { n: 2, l: 'categorías' },
 ];
-// Todo sale del reglamento v1.1
+// Lo que cambia para el piloto en la T2 (reglamento v1.1), en corto
 const nuevo = [
-  { t: 'Ligeros y Pesados', d: 'Dos categorías por peso, cada una con su campeonato. Lastre hasta el mínimo de cada una.' },
-  { t: 'Comité de Comisarios', d: 'Tres miembros que resuelven las apelaciones. La Dirección de Carrera decide en pista.' },
-  { t: 'Pasaporte de penalización', d: 'Las infracciones suman puntos. Con 12 en un año, una ronda fuera.' },
-  { t: 'Resultados en la web', d: 'Clasificación de cada carrera y del campeonato publicadas tras cada ronda.' },
+  { t: 'Ligeros y Pesados', d: 'Dos categorías por peso, cada una con su campeonato.' },
+  { t: 'Karts por sorteo', d: 'Mismos karts de alquiler para todos, asignados por sorteo.' },
+  { t: 'Resultados en la web', d: 'Clasificación de cada carrera y del campeonato tras cada ronda.' },
 ];
 ---
 <section class="section journey" id="recorrido" aria-labelledby="journey-title">
@@ -147,7 +146,7 @@ const nuevo = [
   .strip__track li:nth-child(even) { margin-top: 48px; }
   .strip__track :global(img) { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; filter: saturate(0.85) contrast(1.05); }
 
-  .news { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .news { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .news li { padding: 24px; border-radius: 14px; background: rgba(246, 243, 236, 0.03); border: 1px solid var(--line); }
   .news h3 { font-size: 20px; font-weight: 800; }
   .news p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
@@ -166,7 +165,6 @@ const nuevo = [
     .stats--3 { grid-template-columns: repeat(3, 1fr); }
     .stat + .stat { padding-left: 16px; }
     .stats:not(.stats--3) .stat:nth-child(3) { padding-left: 0; border-left: 0; }
-    .news { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 560px) {
     .r1__grid { grid-template-columns: 1fr 1fr; }

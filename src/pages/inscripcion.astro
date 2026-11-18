@@ -32,7 +32,7 @@ const formV2 = (import.meta.env.FORM_V2 ?? process.env.FORM_V2) === 'true';
           <li><span class="tnum">2</span>{conBizum ? 'Paga la reserva con tarjeta en la pantalla segura de Stripe, o con Bizum.' : 'Paga la reserva con tarjeta en la pantalla segura de Stripe.'}</li>
           <li><span class="tnum">3</span>Te confirmamos la plaza por WhatsApp.</li>
         </ol>
-        <p class="res__help">¿Dudas antes de reservar? <a href={whatsappUrl()} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>.</p>
+        <p class="res__help">¿Dudas antes de reservar? Mira las <a href="/preguntas-frecuentes">preguntas frecuentes</a> o <a href={whatsappUrl()} target="_blank" rel="noopener">escríbenos por WhatsApp</a>.</p>
       </section>
 
       <div class="res__side">
