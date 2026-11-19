@@ -3,8 +3,8 @@
 // 18/11: el dorsal es tuyo toda la temporada aunque dejes de correr; con la ficha completada no hace falta llevar el
 // documento de riesgos en papel; la lista de espera va por WhatsApp y por orden de llegada. Del 18/11, además: basta con
 // haber llevado un kart alguna vez; unas 3 horas en el circuito y unos 30-35 minutos en pista; karts de 4 tiempos, los
-// habituales de cada circuito; el público entra gratis; precio de la temporada completa publicado; la cancelación no
-// promete crédito (lo que manda son las condiciones de la reserva).
+// habituales de cada circuito; el público entra gratis; precio de la temporada completa publicado. Del 19/11: la reserva
+// no se devuelve, pero avisando con 14 días o más se puede pasar a otra ronda con crédito.
 // Las respuestas son HTML (solo enlaces y <strong>); para los datos estructurados de Google se quitan las etiquetas.
 import { BIZUM, RESERVA, TEMPORADA_COMPLETA as TC } from './reserva.js';
 
@@ -102,7 +102,7 @@ export const PREGUNTAS = [
     preguntas: [
       {
         p: 'No puedo ir, ¿pierdo la reserva? ¿Puedo cederla?',
-        r: 'La reserva no se devuelve, como dicen las <a href="/condiciones-reserva">condiciones de la reserva</a>. Lo que sí puedes hacer es ceder tu plaza a otro piloto, avisándonos hasta 48 horas antes: él rellena la inscripción y su ficha. Si sabes que no puedes ir, escríbenos por WhatsApp cuanto antes.',
+        r: 'La reserva no se devuelve, pero no tienes por qué perderla. Si nos avisas con 14 días o más de antelación, lo que has pagado queda como crédito y te cambias a otra ronda de la temporada. También puedes ceder tu plaza a otro piloto avisándonos hasta 48 horas antes: él rellena la inscripción y su ficha. Escríbenos por WhatsApp en cuanto sepas que no puedes ir.',
       },
       {
         p: '¿Cuándo es la próxima ronda?',
