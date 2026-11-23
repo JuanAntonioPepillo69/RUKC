@@ -52,8 +52,17 @@ const usoHerramienta = (name, input, id = `tu_${Math.random()}`) => ({ type: 'to
 let llamadasLlm = 0;
 let ultimosMensajes = null;
 let alPensar = null;   // gancho de los tests: se ejecuta mientras "piensa" Claude (p. ej. para que llegue otro mensaje)
+let moderaciones = 0;  // revisiones de mensajes del grupo (moderador simulado)
 const llm = {
   async crear(params) {
+    // Moderador del grupo (lib/whatsapp/moderacion.js): marca los insultos; no cuenta como llamada al bot ni al asistente.
+    if (typeof params.system === 'string' && params.system.startsWith('Eres el moderador')) {
+      moderaciones += 1;
+      const msg = params.messages.at(-1).content.match(/<mensaje>\n([\s\S]*?)\n<\/mensaje>/)?.[1] ?? '';
+      return texto(/imbécil|gilipollas/i.test(msg)
+        ? JSON.stringify({ problema: true, gravedad: 'media', motivo: 'Insulta a otro piloto', mensaje_grupo: 'Pilotos, recordad el Art. 55: aquí nos respetamos todos, dentro y fuera de la pista.' })
+        : '{"problema": false, "gravedad": "baja", "motivo": "", "mensaje_grupo": ""}');
+    }
     llamadasLlm += 1;
     ultimosMensajes = params.messages;
     if (alPensar) { const f = alPensar; alPensar = null; await f(); }
@@ -673,23 +682,26 @@ test('grupo de pilotos: PAUSA y REANUDA GRUPO, mensaje del día una sola vez y c
     await planificarGrupo(en(10, 10));
     assert.equal(enviadosA(ADMIN).length, antes + 2);
 
-    // 18:35 sin mensajes del grupo reenviados: no hay comentario de la tarde.
+    // 20:45 sin mensajes del grupo reenviados: no hay comentario de la tarde. (A esa hora, cualquier día de la semana,
+    // solo está abierta la franja de la tarde: la carrera del lunes acaba a las 20:00 y el reglamento a las 20:30.)
     antes = enviadosA(ADMIN).length;
-    assert.deepEqual((await planificarGrupo(en(18, 35))).grupo, []);
+    assert.deepEqual((await planificarGrupo(en(20, 45))).grupo, []);
     assert.equal(enviadosA(ADMIN).length, antes);
 
     // John reenvía mensajes del grupo (y pega otro con "GRUPO:"): un solo acuse y no pasan por el asistente.
     const llm0 = llamadasLlm;
+    const mod0 = moderaciones;
     await enviarAviso(entrante(ADMIN, 'Alguien sabe si en Campillos hay sombra para esperar?', { context: { forwarded: true } }));
     await enviarAviso(entrante(ADMIN, 'Yo llevo sillas plegables', { context: { forwarded: true } }));
     await enviarAviso(entrante(ADMIN, 'GRUPO: y yo agua para todos'));
     assert.equal(llamadasLlm, llm0, 'los mensajes del grupo no van al asistente');
-    assert.equal(enviadosA(ADMIN).length, antes + 1);
+    assert.equal(moderaciones, mod0 + 3, 'cada mensaje del grupo se revisa');
+    assert.equal(enviadosA(ADMIN).length, antes + 1, 'nada ofensivo: solo el acuse');
     assert.match(enviadosA(ADMIN).at(-1).text.body, /^Anotado/);
 
     // Ahora sí: comentario de la tarde con lo que se ha hablado en el grupo.
     antes = enviadosA(ADMIN).length;
-    const t = await planificarGrupo(en(18, 40));
+    const t = await planificarGrupo(en(20, 50));
     assert.deepEqual(t.grupo, [{ tipo: 'tarde', enviado: true }], JSON.stringify(t));
     assert.match(enviadosA(ADMIN).slice(antes)[0].text.body, /comentario de la tarde/);
     assert.match(ultimosMensajes[0].content, /sombra para esperar[\s\S]*sillas plegables[\s\S]*agua para todos/);
@@ -703,6 +715,23 @@ test('grupo de pilotos: PAUSA y REANUDA GRUPO, mensaje del día una sola vez y c
   } finally {
     await limpiar();
   }
+});
+
+test('moderación del grupo: un mensaje ofensivo reenviado avisa a John con el mensaje listo para el grupo; la pique sana, no', async () => {
+  await enviarAviso(entrante(ADMIN, 'ESTADO'));   // John con la ventana abierta
+  const antes = enviadosA(ADMIN).length;
+  // El acuse «Anotado» sale una vez por tanda (y puede que no, si el test anterior reenvió hace menos de 3 minutos).
+  const avisos = () => enviadosA(ADMIN).slice(antes).map((m) => m.text.body).filter((b) => !/^Anotado/.test(b));
+  await enviarAviso(entrante(ADMIN, 'El domingo te paso por fuera en la primera curva, avisado quedas', { context: { forwarded: true } }));
+  assert.deepEqual(avisos(), [], 'la pique sana no lleva aviso');
+  await enviarAviso(entrante(ADMIN, 'Eres un imbécil, no sabes ni frenar', { context: { forwarded: true } }));
+  const nuevos = avisos();
+  assert.equal(nuevos.length, 2, JSON.stringify(nuevos));
+  assert.match(nuevos[0], /^Mensaje del grupo con posible problema \(gravedad media\)/);
+  assert.match(nuevos[0], /«Eres un imbécil, no sabes ni frenar»/);
+  assert.match(nuevos[0], /Motivo: Insulta a otro piloto/);
+  assert.equal(nuevos[1], 'Pilotos, recordad el Art. 55: aquí nos respetamos todos, dentro y fuera de la pista.');
+  assert.doesNotMatch(nuevos[1], /imbécil/, 'el mensaje para el grupo no cita a nadie');
 });
 
 // --- Chat de la web (api/chat.js) ------------------------------------------------------------------------------------
